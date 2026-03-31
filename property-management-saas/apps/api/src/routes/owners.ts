@@ -34,7 +34,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
       orderBy: { createdAt: 'desc' }
     });
 
-    const formatted = owners.map(o => ({
+    const formatted = owners.map((o: any) => ({
       id: o.user.id,
       name: o.user.name,
       email: o.user.email,
