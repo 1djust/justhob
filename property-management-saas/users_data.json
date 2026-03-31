@@ -1,0 +1,136 @@
+[
+  {
+    "id": "957d1c98-bdc6-43af-a1e0-8569cd16bcd9",
+    "email": "ogunduyijustus@gmail.com",
+    "password": "$2a$10$vkjJyqy1cIrDnviUITblR.ac/bdAVsfni4xnQPJaGwT5bQWbrvWTm",
+    "name": "user test",
+    "createdAt": "2026-03-25T11:04:33.472Z",
+    "updatedAt": "2026-03-25T11:04:33.472Z",
+    "workspaces": [
+      {
+        "id": "1c9e7e9d-8ff4-4c84-9d3a-03af3255db7d",
+        "role": "LANDLORD",
+        "userId": "957d1c98-bdc6-43af-a1e0-8569cd16bcd9",
+        "workspaceId": "50535c85-a73b-4c76-93e7-21aa97e78c4e",
+        "createdAt": "2026-03-25T11:13:59.119Z",
+        "updatedAt": "2026-03-25T11:13:59.119Z",
+        "workspace": {
+          "id": "50535c85-a73b-4c76-93e7-21aa97e78c4e",
+          "name": "My Properties",
+          "createdAt": "2026-03-25T11:13:59.119Z",
+          "updatedAt": "2026-03-25T11:13:59.119Z"
+        }
+      }
+    ]
+  },
+  {
+    "id": "b747fa02-41da-40ae-8018-bf09f2593b89",
+    "email": "landlord@test.com",
+    "password": "$2a$10$PuVASu.37vbEHl.m1JAHIum8gUyAu3tFg9ZNQN5RfnEbGv2UsepUe",
+    "name": "Test Landlord",
+    "createdAt": "2026-03-26T08:42:53.958Z",
+    "updatedAt": "2026-03-26T08:42:53.958Z",
+    "workspaces": [
+      {
+        "id": "d76fb662-dfe2-4109-a020-895a1ff0a162",
+        "role": "LANDLORD",
+        "userId": "b747fa02-41da-40ae-8018-bf09f2593b89",
+        "workspaceId": "d2d21a0c-c206-4d2e-a667-443837952e95",
+        "createdAt": "2026-03-26T08:42:53.958Z",
+        "updatedAt": "2026-03-26T08:42:53.958Z",
+        "workspace": {
+          "id": "d2d21a0c-c206-4d2e-a667-443837952e95",
+          "name": "My Properties",
+          "createdAt": "2026-03-26T08:42:53.958Z",
+          "updatedAt": "2026-03-26T08:42:53.958Z"
+        }
+      }
+    ]
+  },
+  {
+    "id": "6ee9fba0-1345-4948-a6ec-31e426eb041a",
+    "email": "tenant@test.com",
+    "password": "$2a$10$hi2NoYW/t16GfhoB9BYkc.XFB.rgR3flipH8J6/f.V9FW/ptE.15a",
+    "name": "Test Tenant",
+    "createdAt": "2026-03-26T09:23:14.582Z",
+    "updatedAt": "2026-03-26T09:23:14.582Z",
+    "workspaces": [
+      {
+        "id": "a74a0590-35c6-418b-b529-da9fa2b204e4",
+        "role": "LANDLORD",
+        "userId": "6ee9fba0-1345-4948-a6ec-31e426eb041a",
+        "workspaceId": "00a5c46b-d8a7-4c1a-a8ec-6fecb14fcfea",
+        "createdAt": "2026-03-26T09:23:14.582Z",
+        "updatedAt": "2026-03-26T09:23:14.582Z",
+        "workspace": {
+          "id": "00a5c46b-d8a7-4c1a-a8ec-6fecb14fcfea",
+          "name": "My Properties",
+          "createdAt": "2026-03-26T09:23:14.582Z",
+          "updatedAt": "2026-03-26T09:23:14.582Z"
+        }
+      }
+    ]
+  },
+  {
+    "id": "1e3f6f7a-787c-4f69-8585-4e511c6d0ceb",
+    "email": "tenant-mobile-new@test.com",
+    "password": "$2a$10$oAkry2WYsm3meOF.Br1S8eqHTOhj4cfa7bzsM6Xhpry5zrywWjscy",
+    "name": "Tenant Mobile",
+    "createdAt": "2026-03-26T09:34:58.433Z",
+    "updatedAt": "2026-03-26T09:34:58.433Z",
+    "workspaces": [
+      {
+        "id": "49576295-e209-4356-8e30-4f336e63198d",
+        "role": "LANDLORD",
+        "userId": "1e3f6f7a-787c-4f69-8585-4e511c6d0ceb",
+        "workspaceId": "559777ec-220b-485b-93ef-0e1e4fb4a81f",
+        "createdAt": "2026-03-26T09:34:58.433Z",
+        "updatedAt": "2026-03-26T09:34:58.433Z",
+        "workspace": {
+          "id": "559777ec-220b-485b-93ef-0e1e4fb4a81f",
+          "name": "My Properties",
+          "createdAt": "2026-03-26T09:34:58.433Z",
+          "updatedAt": "2026-03-26T09:34:58.433Z"
+        }
+      }
+    ]
+  },
+  {
+    "id": "38404bbc-1321-4274-acff-69e576b41d5c",
+    "email": "tenant-final@test.com",
+    "password": "$2a$10$kjbCBv0DOCkdkVzVMPC5KO6q9UoGCgOa8UfxOjrN4jetweBIzcSBy",
+    "name": "Tenant Final",
+    "createdAt": "2026-03-26T09:44:59.994Z",
+    "updatedAt": "2026-03-26T09:44:59.994Z",
+    "workspaces": [
+      {
+        "id": "e7051f6d-7e9a-46e0-a134-d23b577d3d81",
+        "role": "LANDLORD",
+        "userId": "38404bbc-1321-4274-acff-69e576b41d5c",
+        "workspaceId": "2b078149-d964-4537-b0bb-7e3b50920d0b",
+        "createdAt": "2026-03-26T09:44:59.994Z",
+        "updatedAt": "2026-03-26T09:44:59.994Z",
+        "workspace": {
+          "id": "2b078149-d964-4537-b0bb-7e3b50920d0b",
+          "name": "My Properties",
+          "createdAt": "2026-03-26T09:44:59.994Z",
+          "updatedAt": "2026-03-26T09:44:59.994Z"
+        }
+      },
+      {
+        "id": "b3d2e092-d551-4a0e-8e34-e4cd23f80bd9",
+        "role": "TENANT",
+        "userId": "38404bbc-1321-4274-acff-69e576b41d5c",
+        "workspaceId": "d2d21a0c-c206-4d2e-a667-443837952e95",
+        "createdAt": "2026-03-26T09:51:12.490Z",
+        "updatedAt": "2026-03-26T09:51:12.490Z",
+        "workspace": {
+          "id": "d2d21a0c-c206-4d2e-a667-443837952e95",
+          "name": "My Properties",
+          "createdAt": "2026-03-26T08:42:53.958Z",
+          "updatedAt": "2026-03-26T08:42:53.958Z"
+        }
+      }
+    ]
+  }
+]

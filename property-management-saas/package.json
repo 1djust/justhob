@@ -1,0 +1,24 @@
+{
+  "name": "property-management-saas",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "npm@10.2.3",
+  "engines": {
+    "node": ">=18"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.12.0",
+    "prettier": "^3.2.5",
+    "turbo": "latest"
+  }
+}

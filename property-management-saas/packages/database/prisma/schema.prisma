@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspaces      WorkspaceMember[]
+  propertiesOwned Property[]
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bankCode      String?
+  accountNumber String?
+  accountName   String?
+
+  members             WorkspaceMember[]
+  properties          Property[]
+  units               Unit[]
+  tenants             Tenant[]
+  maintenanceRequests MaintenanceRequest[]
+}
+
+model WorkspaceMember {
+  id             String          @id @default(uuid())
+  role           Role            @default(TENANT)
+  userId         String
+  workspaceId    String
+  payoutStrategy PayoutStrategy?
+  bankCode       String?
+  accountNumber  String?
+  accountName    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+enum PayoutStrategy {
+  DIRECT_TO_LANDLORD
+  MANAGER_COLLECTS
+}
+
+enum Role {
+  PROPERTY_MANAGER
+  LANDLORD
+  TENANT
+}
+
+model Property {
+  id          String    @id @default(uuid())
+  name        String
+  address     String
+  workspaceId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id])
+
+  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  units               Unit[]
+  leases              Lease[]
+  maintenanceRequests MaintenanceRequest[]
+}
+
+model Unit {
+  id          String       @id @default(uuid())
+  unitNumber  String // e.g. "B2"
+  type        PropertyType
+  status      UnitStatus   @default(VACANT)
+  propertyId  String
+  workspaceId String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  property  Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  leases    Lease[]
+
+  @@unique([propertyId, unitNumber])
+}
+
+enum PropertyType {
+  ROOM_SELF_CONTAIN
+  MINI_FLAT
+  ROOM_PARLOUR_SELF_CONTAIN
+  SINGLE_ROOM
+  TWO_BEDROOM_FLAT
+  THREE_BEDROOM_FLAT
+  DUPLEX
+  OTHERS
+}
+
+enum UnitStatus {
+  VACANT
+  OCCUPIED
+  MAINTENANCE
+}
+
+model Tenant {
+  id          String    @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  workspaceId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  leases              Lease[]
+  maintenanceRequests MaintenanceRequest[]
+}
+
+model Lease {
+  id         String      @id @default(uuid())
+  tenantId   String
+  propertyId String
+  unitId     String? // Optional for now to avoid breaking existing data until sync
+  startDate  DateTime
+  endDate    DateTime?
+  yearlyRent Float       @default(0) @map("monthlyRent")
+  status     LeaseStatus @default(ACTIVE)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  unit     Unit?     @relation(fields: [unitId], references: [id])
+  payments Payment[]
+}
+
+enum LeaseStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  leaseId       String
+  amount        Float
+  dueDate       DateTime
+  paidDate      DateTime?
+  status        PaymentStatus @default(PENDING)
+  note          String?
+  rrr           String?       @unique // Remita Retrieval Reference
+  transactionId String?       @unique // Remita Transaction ID
+  paymentUrl    String? // Remita Hosted Checkout URL
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  lease Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+model MaintenanceRequest {
+  id          String            @id @default(uuid())
+  description String
+  imageUrl    String? // For compressed base64 images
+  status      MaintenanceStatus @default(PENDING)
+  tenantId    String
+  propertyId  String
+  workspaceId String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property  Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+enum MaintenanceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
