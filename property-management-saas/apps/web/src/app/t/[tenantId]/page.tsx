@@ -4,11 +4,30 @@ import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
+interface MaintenanceRequest {
+  id: string;
+  description: string;
+  status: string;
+  createdAt: string;
+  property: { name: string };
+}
+
+interface TenantLease {
+  property: { id: string; name: string; address: string };
+}
+
+interface PortalTenant {
+  name: string;
+  workspace?: { name: string };
+  leases?: TenantLease[];
+  maintenanceRequests?: MaintenanceRequest[];
+}
+
 export default function TenantPortalPage() {
   const params = useParams();
   const tenantId = params.tenantId as string;
 
-  const [tenant, setTenant] = React.useState<any>(null);
+  const [tenant, setTenant] = React.useState<PortalTenant | null>(null);
   const [loading, setLoading] = React.useState(true);
   
   // Form State
@@ -20,7 +39,7 @@ export default function TenantPortalPage() {
 
   const fetchTenant = async () => {
     try {
-      const res = await fetch(`http://localhost:3001/api/public/tenants/${tenantId}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/public/tenants/${tenantId}`);
       if (res.ok) {
         const data = await res.json();
         setTenant(data.tenant);
@@ -37,6 +56,7 @@ export default function TenantPortalPage() {
 
   React.useEffect(() => {
     if (tenantId) fetchTenant();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,7 +83,7 @@ export default function TenantPortalPage() {
     setSuccess(false);
 
     try {
-      const res = await fetch(`http://localhost:3001/api/public/tenants/${tenantId}/maintenance`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/public/tenants/${tenantId}/maintenance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -146,7 +166,7 @@ export default function TenantPortalPage() {
                 className="w-full px-3 py-2 border border-border rounded-md bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-500"
               >
                 {tenant.leases?.length === 0 && <option value="">No active leases found</option>}
-                {tenant.leases?.map((l: any) => (
+                {tenant.leases?.map((l) => (
                   <option key={l.property.id} value={l.property.id}>{l.property.name} - {l.property.address}</option>
                 ))}
               </select>
@@ -175,6 +195,7 @@ export default function TenantPortalPage() {
               />
               {imageString && (
                 <div className="mt-3 w-32 h-32 rounded-md overflow-hidden border border-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={imageString} alt="Preview" className="w-full h-full object-cover" />
                 </div>
               )}
@@ -199,10 +220,10 @@ export default function TenantPortalPage() {
           </div>
           <div className="p-6">
             {!tenant.maintenanceRequests || tenant.maintenanceRequests.length === 0 ? (
-              <p className="text-zinc-500 text-center py-8">You haven't submitted any requests yet.</p>
+              <p className="text-zinc-500 text-center py-8">You haven&apos;t submitted any requests yet.</p>
             ) : (
               <div className="space-y-4">
-                {tenant.maintenanceRequests.map((req: any) => (
+                {tenant.maintenanceRequests.map((req) => (
                   <div key={req.id} className="border border-border rounded-lg p-4 bg-zinc-50 dark:bg-zinc-900/50">
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-medium text-sm">{req.property.name}</span>

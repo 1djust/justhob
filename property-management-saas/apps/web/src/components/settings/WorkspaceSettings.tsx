@@ -33,10 +33,10 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
 
   // Load existing data
   React.useEffect(() => {
-    apiFetch(`http://localhost:3001/api/workspaces`, { credentials: 'include' })
+    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
-        const ws = data.workspaces?.find((w: any) => w.id === workspaceId);
+        const ws = data.workspaces?.find((w: { id: string; bankCode?: string; accountNumber?: string; accountName?: string }) => w.id === workspaceId);
         if (ws) {
           setBankCode(ws.bankCode || '');
           setAccountNumber(ws.accountNumber || '');
@@ -50,7 +50,7 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
     setLoading(true);
     setSuccess(false);
     try {
-      const res = await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}`, {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bankCode, accountNumber, accountName }),

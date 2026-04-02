@@ -16,12 +16,10 @@ interface RevenueChartProps {
 }
 
 export function RevenueChart({ data }: RevenueChartProps) {
-  // Ensure the chart looks good even if there's no data yet
-  const hasData = data && data.some(d => d.revenue > 0);
-  const displayData = hasData ? data : data?.map(d => ({ ...d, revenue: Math.random() * 1000 })); // dummy data if empty so the chart renders something visible for the demo, or we can just leave it empty.
-  
-  // Actually, let's just use the real data. If it's all 0, it renders an empty chart which is accurate.
-  const chartData = [...(data || [])].reverse(); // API returns descending order, chart needs ascending
+  const chartData = React.useMemo(
+    () => [...(data || [])].reverse(),
+    [data]
+  );
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -59,7 +57,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
           }}
           labelStyle={{ color: 'var(--foreground)', fontWeight: 'bold', marginBottom: '4px' }}
           itemStyle={{ color: '#18181b', fontWeight: '500' }}
-          formatter={(value: any) => [`₦${Number(value).toLocaleString()}`, 'Revenue']}
+          formatter={(value: unknown) => [`₦${Number(value).toLocaleString()}`, 'Revenue']}
         />
         <Bar 
           dataKey="revenue" 

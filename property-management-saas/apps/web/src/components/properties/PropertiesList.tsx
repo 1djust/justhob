@@ -20,7 +20,22 @@ import {
   UserCircle
 } from 'lucide-react';
 
-const propertyTypeConfig: Record<string, { label: string; icon: any; description: string }> = {
+interface Unit {
+  id: string;
+  unitNumber: string;
+  type: string;
+  status: string;
+}
+
+interface Property {
+  id: string;
+  name: string;
+  address: string;
+  owner?: { name?: string; email: string };
+  units?: Unit[];
+}
+
+const propertyTypeConfig: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; description: string }> = {
   ROOM_SELF_CONTAIN: { label: 'Self-Contain', icon: Layout, description: 'Single room + utilities' },
   MINI_FLAT: { label: 'Mini Flat', icon: Square, description: '1 Bedroom + Parlour' },
   ROOM_PARLOUR_SELF_CONTAIN: { label: 'R&P S/C', icon: Box, description: 'Room & Parlour' },
@@ -31,14 +46,14 @@ const propertyTypeConfig: Record<string, { label: string; icon: any; description
   OTHERS: { label: 'Others', icon: MoreHorizontal, description: 'Custom unit type' }
 };
 
-export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyManager = true }: { workspaceId: string; onPropertiesLoaded?: (props: any[]) => void; isPropertyManager?: boolean }) {
-  const [properties, setProperties] = React.useState<any[]>([]);
+export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyManager = true }: { workspaceId: string; onPropertiesLoaded?: (props: Property[]) => void; isPropertyManager?: boolean }) {
+  const [properties, setProperties] = React.useState<Property[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
 
   const fetchProperties = async () => {
     try {
-      const res = await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/properties`, {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/properties`, {
         credentials: 'include'
       });
       if (res.ok) {
@@ -53,8 +68,16 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (workspaceId) fetchProperties();
+  }, [workspaceId]);
+
+  React.useEffect(() => {
+    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/owners`, { credentials: 'include' })
+      .then(res => res.ok ? res.json() : { owners: [] })
+      .then((data: { owners?: { id: string; name: string; email: string }[] }) => setOwners(data.owners || []))
+      .catch(e => console.error(e));
   }, [workspaceId]);
 
   if (loading) return (
@@ -134,7 +157,7 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
                 {p.units && p.units.length > 0 && (
                   <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
                     <div className="grid grid-cols-1 gap-2 max-h-[160px] overflow-y-auto no-scrollbar">
-                      {p.units.map((u: any) => (
+                      {p.units.map((u) => (
                         <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 group/unit hover:border-zinc-400 transition-colors">
                           <div className="flex items-center gap-3">
                             <div className="w-6 h-6 rounded-lg bg-white dark:bg-zinc-950 flex items-center justify-center text-[10px] font-bold border border-zinc-100 dark:border-zinc-800">
@@ -175,9 +198,9 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
     address: '', 
     ownerId: '' 
   });
-  const [units, setUnits] = React.useState<any[]>([]);
+  const [units, setUnits] = React.useState<{ unitNumber: string; type: string }[]>([]);
   const [loading, setLoading] = React.useState(false);
-  const [owners, setOwners] = React.useState<any[]>([]);
+  const [owners, setOwners] = React.useState<{ id: string; name: string; email: string }[]>([]);
 
   const addUnit = () => {
     setUnits([...units, { unitNumber: '', type: 'MINI_FLAT' }]);
@@ -194,7 +217,7 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
   };
 
   React.useEffect(() => {
-    apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/owners`, { credentials: 'include' })
+    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/owners`, { credentials: 'include' })
       .then(res => res.ok ? res.json() : { owners: [] })
       .then(data => setOwners(data.owners || []))
       .catch(e => console.error(e));
@@ -205,7 +228,7 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
     setLoading(true);
     try {
       const payload = { ...formData, units, ownerId: formData.ownerId || undefined };
-      await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/properties`, {
+      await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/properties`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

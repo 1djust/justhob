@@ -28,8 +28,18 @@ interface OwnerManagementProps {
   workspaceId: string;
 }
 
+interface Owner {
+  id: string;
+  name: string;
+  email: string;
+  payoutStrategy: string;
+  accountName?: string;
+  accountNumber?: string;
+  bankCode?: string;
+}
+
 export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
-  const [owners, setOwners] = React.useState<any[]>([]);
+  const [owners, setOwners] = React.useState<Owner[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
   const payoutStrategyLabels: Record<string, string> = {
@@ -39,7 +49,7 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
 
   const fetchOwners = async () => {
     try {
-      const res = await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/owners`, {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/owners`, {
         credentials: 'include'
       });
       if (res.ok) {
@@ -53,13 +63,14 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (workspaceId) fetchOwners();
   }, [workspaceId]);
 
   const handleRemove = async (ownerId: string) => {
     if (!confirm('Remove this owner? Their properties will become unassigned.')) return;
-    await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/owners/${ownerId}`, {
+    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/owners/${ownerId}`, {
       method: 'DELETE',
       credentials: 'include'
     });
@@ -160,7 +171,7 @@ function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComp
     setLoading(true);
     setError('');
     try {
-      const res = await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/owners`, {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/owners`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -172,7 +183,7 @@ function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComp
         const data = await res.json();
         setError(data.error || 'Failed to add owner');
       }
-    } catch (e) {
+    } catch {
       setError('Network error');
     } finally {
       setLoading(false);

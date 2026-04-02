@@ -3,27 +3,48 @@
 import * as React from 'react';
 import { apiFetch } from '@/lib/api';
 
+interface Lease {
+  id: string;
+  status: string;
+  unit?: { unitNumber: string };
+  property?: { name: string };
+}
+
+interface Tenant {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  leases: Lease[];
+}
+
+interface Property {
+  id: string;
+  name: string;
+  units?: { id: string; status: string; unitNumber: string; type: string }[];
+}
+
 interface TenantProps {
   workspaceId: string;
-  properties: any[];
-  onLeasesLoaded?: (leases: any[]) => void;
+  properties: Property[];
+  onLeasesLoaded?: (leases: Lease[]) => void;
 }
 
 export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantProps) {
-  const [tenants, setTenants] = React.useState<any[]>([]);
+  const [tenants, setTenants] = React.useState<Tenant[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
   const [assigningTenantId, setAssigningTenantId] = React.useState<string | null>(null);
 
   const fetchTenants = async () => {
     try {
-      const res = await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/tenants`, {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants`, {
         credentials: 'include'
       });
       if (res.ok) {
         const data = await res.json();
         setTenants(data.tenants || []);
-        const allLeases = (data.tenants || []).flatMap((t: any) => t.leases || []);
+        const allLeases = (data.tenants || []).flatMap((t: Tenant) => t.leases || []);
         onLeasesLoaded?.(allLeases);
       }
     } catch (e) {
@@ -33,13 +54,14 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantP
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (workspaceId) fetchTenants();
   }, [workspaceId]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to remove this tenant?')) return;
-    await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/tenants/${id}`, {
+    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     });
@@ -66,7 +88,7 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantP
 
       {tenants.length === 0 ? (
         <div className="text-zinc-500 py-8 text-center border border-dashed border-border rounded-xl">
-          No tenants found. Click "Add Tenant" to get started.
+          No tenants found. Click &quot;Add Tenant&quot; to get started.
         </div>
       ) : (
         <div className="space-y-4">
@@ -108,7 +130,7 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantP
                 <div className="mt-4 pt-3 border-t border-border">
                   <p className="text-xs font-medium text-zinc-500 mb-2">Active Leases</p>
                   <div className="flex flex-wrap gap-2">
-                    {t.leases.map((l: any) => (
+                    {t.leases.map((l) => (
                       <span key={l.id} className="inline-flex items-center gap-1.5 text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2.5 py-1 rounded-md border border-border">
                         <span className="font-bold text-zinc-900 dark:text-zinc-100">{l.unit?.unitNumber || 'Unit'}</span>
                         <span className="text-zinc-400">•</span>
@@ -134,7 +156,7 @@ function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComple
     e.preventDefault();
     setLoading(true);
     try {
-      await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/tenants`, {
+      await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -174,19 +196,19 @@ function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComple
   );
 }
 
-function LeaseForm({ workspaceId, tenantId, properties, onComplete }: { workspaceId: string; tenantId: string; properties: any[]; onComplete: () => void }) {
+function LeaseForm({ workspaceId, tenantId, properties, onComplete }: { workspaceId: string; tenantId: string; properties: Property[]; onComplete: () => void }) {
   const [formData, setFormData] = React.useState({ propertyId: '', unitId: '', startDate: '', endDate: '', yearlyRent: '' });
   const [loading, setLoading] = React.useState(false);
 
   // Derive available units from the selected property
   const selectedProperty = properties.find(p => p.id === formData.propertyId);
-  const availableUnits = selectedProperty?.units?.filter((u: any) => u.status === 'VACANT') || [];
+  const availableUnits = selectedProperty?.units?.filter((u) => u.status === 'VACANT') || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/tenants/${tenantId}/leases`, {
+      await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants/${tenantId}/leases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -226,7 +248,7 @@ function LeaseForm({ workspaceId, tenantId, properties, onComplete }: { workspac
             className="w-full px-3 py-2 border border-border rounded-md bg-white dark:bg-zinc-950 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500 disabled:opacity-50"
           >
             <option value="">{formData.propertyId ? 'Select unit...' : 'First select a property'}</option>
-            {availableUnits.map((u: any) => (
+            {availableUnits.map((u) => (
               <option key={u.id} value={u.id}>{u.unitNumber} ({u.type.replace(/_/g, ' ')})</option>
             ))}
           </select>

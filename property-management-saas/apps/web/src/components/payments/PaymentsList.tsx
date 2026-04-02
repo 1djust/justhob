@@ -3,21 +3,40 @@
 import * as React from 'react';
 import { apiFetch } from '@/lib/api';
 
+interface Lease {
+  id: string;
+  tenant?: { name: string };
+  property?: { name: string };
+  yearlyRent?: number;
+}
+
+interface Payment {
+  id: string;
+  amount: number;
+  status: string;
+  dueDate: string;
+  paidDate?: string;
+  lease?: {
+    tenant?: { name: string };
+    property?: { name: string };
+  };
+}
+
 interface PaymentsListProps {
   workspaceId: string;
-  leases: any[];
+  leases: Lease[];
   isPropertyManager?: boolean;
 }
 
 export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: PaymentsListProps) {
-  const [payments, setPayments] = React.useState<any[]>([]);
+  const [payments, setPayments] = React.useState<Payment[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
   const [filter, setFilter] = React.useState<string>('');
 
   const fetchPayments = async () => {
     try {
-      const url = `http://localhost:3001/api/workspaces/${workspaceId}/payments${filter ? `?status=${filter}` : ''}`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/payments${filter ? `?status=${filter}` : ''}`;
       const res = await apiFetch(url, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
@@ -30,12 +49,13 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (workspaceId) fetchPayments();
   }, [workspaceId, filter]);
 
   const handleMarkPaid = async (paymentId: string) => {
-    await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/payments/${paymentId}/pay`, {
+    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/payments/${paymentId}/pay`, {
       method: 'PUT',
       credentials: 'include'
     });
@@ -145,7 +165,7 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
   );
 }
 
-function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string; leases: any[]; onComplete: () => void }) {
+function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string; leases: Lease[]; onComplete: () => void }) {
   const [formData, setFormData] = React.useState({ leaseId: '', amount: '', dueDate: '', status: 'PENDING', note: '' });
   const [loading, setLoading] = React.useState(false);
 
@@ -162,7 +182,7 @@ function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string;
     e.preventDefault();
     setLoading(true);
     try {
-      await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/payments`, {
+      await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

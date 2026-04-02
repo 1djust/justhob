@@ -8,14 +8,24 @@ interface MaintenanceListProps {
   isPropertyManager?: boolean;
 }
 
+interface MaintenanceRequest {
+  id: string;
+  description: string;
+  status: string;
+  createdAt: string;
+  imageUrl?: string;
+  property?: { name: string };
+  tenant?: { name: string };
+}
+
 export function MaintenanceList({ workspaceId, isPropertyManager = true }: MaintenanceListProps) {
-  const [requests, setRequests] = React.useState<any[]>([]);
+  const [requests, setRequests] = React.useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [filter, setFilter] = React.useState<string>('');
 
   const fetchRequests = async () => {
     try {
-      const url = `http://localhost:3001/api/workspaces/${workspaceId}/maintenance${filter ? `?status=${filter}` : ''}`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/maintenance${filter ? `?status=${filter}` : ''}`;
       const res = await apiFetch(url, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
@@ -30,10 +40,10 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
 
   React.useEffect(() => {
     if (workspaceId) fetchRequests();
-  }, [workspaceId, filter]);
+  }, [workspaceId, filter, fetchRequests]);
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
-    await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/maintenance/${id}`, {
+    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/maintenance/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
@@ -85,6 +95,7 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
               
               {req.imageUrl && (
                 <div className="mb-4 rounded-md overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={req.imageUrl} alt="Maintenance issue" className="w-full h-32 object-cover hover:opacity-90 cursor-pointer" onClick={() => window.open(req.imageUrl, '_blank')} />
                 </div>
               )}

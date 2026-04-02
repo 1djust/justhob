@@ -12,21 +12,37 @@ import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { WorkspaceSettings } from '@/components/settings/WorkspaceSettings';
 import { OwnerManagement } from '@/components/owners/OwnerManagement';
 
+interface Workspace {
+  id: string;
+  name: string;
+}
+
+interface WorkspaceMember {
+  workspace: Workspace;
+  role: string;
+}
+
+interface User {
+  email: string;
+  name?: string;
+  workspaces?: WorkspaceMember[];
+}
+
 export default function DashboardPage() {
-  const [user, setUser] = React.useState<any>(null);
+  const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [creatingWorkspace, setCreatingWorkspace] = React.useState(false);
   const router = useRouter();
 
   const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState<string | null>(null);
-  const [properties, setProperties] = React.useState<any[]>([]);
-  const [leases, setLeases] = React.useState<any[]>([]);
+  const [properties, setProperties] = React.useState<{ id: string; name: string }[]>([]);
+  const [leases, setLeases] = React.useState<{ id: string }[]>([]);
 
-  const activeRole = user?.workspaces?.find((w: any) => w.workspace.id === selectedWorkspaceId)?.role;
+  const activeRole = user?.workspaces?.find((w) => w.workspace.id === selectedWorkspaceId)?.role;
   const isPropertyManager = activeRole === 'PROPERTY_MANAGER';
 
   React.useEffect(() => {
-    apiFetch('http://localhost:3001/api/auth/me')
+    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/me`)
       .then(res => {
         if (!res.ok) throw new Error('Unauthorized');
         return res.json();
@@ -44,14 +60,14 @@ export default function DashboardPage() {
   }, [router]);
 
   const handleLogout = async () => {
-    await apiFetch('http://localhost:3001/api/auth/logout', { method: 'POST' });
+    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/logout`, { method: 'POST' });
     router.push('/login');
   };
 
   const createInitialWorkspace = async () => {
     setCreatingWorkspace(true);
     try {
-      const res = await apiFetch('http://localhost:3001/api/workspaces', {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'My Properties' })
@@ -119,7 +135,7 @@ export default function DashboardPage() {
           <div className="p-6">
             {user?.workspaces?.length > 0 ? (
               <ul className="space-y-4">
-                {user.workspaces.map((member: any) => (
+                {user.workspaces.map((member) => (
                   <li key={member.workspace.id} className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-900 border border-border p-4 rounded-lg">
                     <span className="font-medium">{member.workspace.name}</span>
                     <span className="text-xs font-semibold px-2 py-1 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">

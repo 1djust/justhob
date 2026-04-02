@@ -9,14 +9,24 @@ interface DashboardStatsProps {
   workspaceId: string;
 }
 
+interface StatsData {
+  stats: {
+    totalProperties: number;
+    totalTenants: number;
+    rentCollected: number;
+    pendingMaintenance: number;
+  };
+  chartData: { name: string; revenue: number }[];
+}
+
 export function DashboardStats({ workspaceId }: DashboardStatsProps) {
-  const [stats, setStats] = React.useState<any>(null);
+  const [stats, setStats] = React.useState<StatsData | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     if (!workspaceId) return;
     
-    apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/stats`, {
+    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/stats`, {
       credentials: 'include'
     })
       .then(res => res.json())

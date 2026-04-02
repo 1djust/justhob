@@ -5,6 +5,22 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { apiFetch } from '@/lib/api';
 
+interface Lease {
+  id: string;
+  status: string;
+  startDate: string;
+  endDate?: string;
+  property?: { name: string; address: string };
+}
+
+interface Tenant {
+  name: string;
+  email: string;
+  phone: string;
+  createdAt: string;
+  leases?: Lease[];
+}
+
 export default function TenantProfilePage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -12,14 +28,14 @@ export default function TenantProfilePage() {
   const tenantId = params.id as string;
   const workspaceId = searchParams.get('workspaceId');
 
-  const [tenant, setTenant] = React.useState<any>(null);
+  const [tenant, setTenant] = React.useState<Tenant | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [editing, setEditing] = React.useState(false);
   const [formData, setFormData] = React.useState({ name: '', email: '', phone: '' });
 
   React.useEffect(() => {
     if (!workspaceId || !tenantId) return;
-    apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/tenants/${tenantId}`, {
+    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants/${tenantId}`, {
       credentials: 'include'
     })
       .then(res => {
@@ -42,7 +58,7 @@ export default function TenantProfilePage() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await apiFetch(`http://localhost:3001/api/workspaces/${workspaceId}/tenants/${tenantId}`, {
+    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants/${tenantId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
@@ -137,7 +153,7 @@ export default function TenantProfilePage() {
               </div>
               <div>
                 <p className="text-xs font-medium text-zinc-500 mb-1">Active Leases</p>
-                <p className="font-medium">{tenant.leases?.filter((l: any) => l.status === 'ACTIVE').length || 0}</p>
+                <p className="font-medium">{tenant.leases?.filter((l) => l.status === 'ACTIVE').length || 0}</p>
               </div>
             </div>
           )}
@@ -151,7 +167,7 @@ export default function TenantProfilePage() {
           <div className="p-6">
             {tenant.leases?.length > 0 ? (
               <div className="space-y-3">
-                {tenant.leases.map((lease: any) => (
+                {tenant.leases.map((lease) => (
                   <div key={lease.id} className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-border p-4 rounded-lg">
                     <div>
                       <p className="font-medium">{lease.property?.name}</p>

@@ -29,7 +29,7 @@ export function LoginForm() {
       }
 
       // Sync with Prisma backend
-      const res = await apiFetch('http://localhost:3001/api/auth/sync', {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/sync`, {
         method: 'POST',
       });
 
@@ -38,8 +38,8 @@ export function LoginForm() {
       }
 
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
