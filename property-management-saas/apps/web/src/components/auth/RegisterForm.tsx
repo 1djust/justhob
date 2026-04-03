@@ -11,6 +11,7 @@ export function RegisterForm() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
+  const [success, setSuccess] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
 
@@ -33,17 +34,27 @@ export function RegisterForm() {
       }
 
       // Sync with Prisma backend
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // Email confirmation is likely required
+        setSuccess(true);
+        return;
+      }
+
       const res = await apiFetch(`${API_BASE_URL}/api/auth/sync`, {
         method: 'POST',
         body: JSON.stringify({ name }),
       });
 
       if (!res.ok) {
-        throw new Error('Failed to sync user data');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to sync user data to backend');
       }
 
       router.push('/dashboard');
     } catch (err) {
+      console.error('Registration error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -57,8 +68,20 @@ export function RegisterForm() {
           {error}
         </div>
       )}
-      
-      <div className="space-y-2">
+
+      {success && (
+        <div className="p-4 text-sm text-green-500 bg-green-500/10 rounded-md border border-green-500/20 text-center space-y-2">
+          <p className="font-bold text-base">Registration Successful!</p>
+          <p>Please check your email to confirm your account before logging in.</p>
+          <Link href="/login" className="block text-primary hover:underline font-medium pt-2">
+            Go to Login
+          </Link>
+        </div>
+      )}
+
+      {!success && (
+        <>
+          <div className="space-y-2">
         <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
           Full Name
         </label>
@@ -107,12 +130,14 @@ export function RegisterForm() {
         {loading ? 'Creating account...' : 'Create Account'}
       </button>
 
-      <div className="text-center text-sm text-zinc-500 mt-6">
-        Already have an account?{' '}
-        <Link href="/login" className="text-primary hover:underline underline-offset-4 font-medium transition-colors">
-          Sign In
-        </Link>
-      </div>
-    </form>
-  );
+        <div className="text-center text-sm text-zinc-500 mt-6">
+          Already have an account?{' '}
+          <Link href="/login" className="text-primary hover:underline underline-offset-4 font-medium transition-colors">
+            Sign In
+          </Link>
+        </div>
+      </>
+    )}
+  </form>
+);
 }

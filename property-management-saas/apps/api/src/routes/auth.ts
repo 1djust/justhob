@@ -6,38 +6,58 @@ export default async function authRoutes(fastify: FastifyInstance) {
   // Sync Supabase user to Prisma (called after frontend login/register)
   fastify.post('/sync', async (request: FastifyRequest, reply: FastifyReply) => {
     const token = request.headers.authorization?.replace('Bearer ', '');
-    if (!token) return reply.status(401).send({ error: 'No token provided' });
+    // console.log('[Sync] Token present:', !!token);
+    if (!token) {
+      console.error('[Sync] No token in request headers');
+      return reply.status(401).send({ error: 'Authentication required. Please sign in.' });
+    }
 
-    const { data: { user: supaUser }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !supaUser) return reply.status(401).send({ error: 'Invalid token' });
+    const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
+    const supaUser = supaData?.user;
+
+    if (supaError || !supaUser) {
+      console.error('[Sync] Supabase auth error:', supaError?.message || 'User not found');
+      return reply.status(401).send({ error: 'Invalid or expired session. Please sign in again.' });
+    }
+
+    console.log('[Sync] Synchronizing user:', supaUser.email);
 
     const { name } = (request.body as any) || {};
 
-    // Upsert: create Prisma user if first login, or return existing
-    let user = await prisma.user.findUnique({ where: { id: supaUser.id } });
+    try {
+      // Upsert: create Prisma user if first login, or return existing
+      let user = await prisma.user.findUnique({ where: { id: supaUser.id } });
 
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          id: supaUser.id,
-          email: supaUser.email!,
-          name: name || supaUser.user_metadata?.name || null,
-          workspaces: {
-            create: {
-              role: 'PROPERTY_MANAGER',
-              workspace: { create: { name: 'My Properties' } }
+      if (!user) {
+        console.log('[Sync] Creating new user in database:', supaUser.email);
+        user = await prisma.user.create({
+          data: {
+            id: supaUser.id,
+            email: supaUser.email!,
+            name: name || supaUser.user_metadata?.name || null,
+            workspaces: {
+              create: {
+                role: 'PROPERTY_MANAGER',
+                workspace: { create: { name: 'My Properties' } }
+              }
             }
           }
-        }
+        });
+      }
+
+      const userWithWorkspaces = await prisma.user.findUnique({
+        where: { id: supaUser.id },
+        select: { id: true, email: true, name: true, workspaces: { include: { workspace: true } } }
+      });
+
+      return reply.send({ user: userWithWorkspaces });
+    } catch (err) {
+      console.error('[Sync] Database synchronization failed:', err);
+      return reply.status(500).send({ 
+        error: 'Database error. Your registration succeeded in Supabase but we failed to setup your database profile.',
+        details: process.env.NODE_ENV === 'development' ? (err as Error).message : undefined 
       });
     }
-
-    const userWithWorkspaces = await prisma.user.findUnique({
-      where: { id: supaUser.id },
-      select: { id: true, email: true, name: true, workspaces: { include: { workspace: true } } }
-    });
-
-    return reply.send({ user: userWithWorkspaces });
   });
 
   // Get current user
