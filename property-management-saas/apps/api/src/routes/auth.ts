@@ -55,7 +55,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       console.error('[Sync] Database synchronization failed:', err);
       return reply.status(500).send({ 
         error: 'Database error. Your registration succeeded in Supabase but we failed to setup your database profile.',
-        details: process.env.NODE_ENV === 'development' ? (err as Error).message : undefined 
+        details: (err as Error).message 
       });
     }
   });
