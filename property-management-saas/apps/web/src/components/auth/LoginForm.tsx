@@ -70,16 +70,16 @@ export function LoginForm() {
       {error && (
         <div className="p-3 text-sm text-red-500 bg-red-500/10 rounded-md border border-red-500/20 space-y-2">
           <p>{error}</p>
-          {(error.toLowerCase().includes('confirm') || error.toLowerCase().includes('not confirmed')) && (
+          <div className="pt-2 border-t border-red-500/10">
             <button
               type="button"
               onClick={handleResendConfirmation}
               disabled={resending}
-              className="text-xs font-bold underline hover:no-underline block"
+              className="text-xs font-bold underline hover:no-underline block text-zinc-600 dark:text-zinc-400"
             >
-              {resending ? 'Sending...' : 'Resend confirmation email'}
+              {resending ? 'Sending...' : "Didn't receive a confirmation email? Resend"}
             </button>
-          )}
+          </div>
         </div>
       )}
       
