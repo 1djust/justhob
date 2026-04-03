@@ -11,6 +11,7 @@ export function LoginForm() {
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [resending, setResending] = React.useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,22 +35,51 @@ export function LoginForm() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to sync user data');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to sync user data to backend');
       }
 
       router.push('/dashboard');
     } catch (err) {
+      console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResendConfirmation = async () => {
+    if (!email) return;
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+      if (error) throw error;
+      setError('Confirmation email sent! Please check your inbox.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend confirmation');
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="p-3 text-sm text-red-500 bg-red-500/10 rounded-md border border-red-500/20">
-          {error}
+        <div className="p-3 text-sm text-red-500 bg-red-500/10 rounded-md border border-red-500/20 space-y-2">
+          <p>{error}</p>
+          {(error.toLowerCase().includes('confirm') || error.toLowerCase().includes('not confirmed')) && (
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={resending}
+              className="text-xs font-bold underline hover:no-underline block"
+            >
+              {resending ? 'Sending...' : 'Resend confirmation email'}
+            </button>
+          )}
         </div>
       )}
       
