@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL } from '@/lib/api';
 // import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const NIGERIAN_BANKS = [
@@ -49,7 +49,7 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
 
   const fetchOwners = async () => {
     try {
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/owners`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, {
         credentials: 'include'
       });
       if (res.ok) {
@@ -70,7 +70,7 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
 
   const handleRemove = async (ownerId: string) => {
     if (!confirm('Remove this owner? Their properties will become unassigned.')) return;
-    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/owners/${ownerId}`, {
+    await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners/${ownerId}`, {
       method: 'DELETE',
       credentials: 'include'
     });
@@ -171,7 +171,7 @@ function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComp
     setLoading(true);
     setError('');
     try {
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/owners`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

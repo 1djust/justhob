@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { PropertiesList } from '@/components/properties/PropertiesList';
 import { TenantsList } from '@/components/tenants/TenantsList';
 import { PaymentsList } from '@/components/payments/PaymentsList';
@@ -42,7 +42,7 @@ export default function DashboardPage() {
   const isPropertyManager = activeRole === 'PROPERTY_MANAGER';
 
   React.useEffect(() => {
-    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/me`)
+    apiFetch(`${API_BASE_URL}/api/auth/me`)
       .then(res => {
         if (!res.ok) throw new Error('Unauthorized');
         return res.json();
@@ -60,14 +60,14 @@ export default function DashboardPage() {
   }, [router]);
 
   const handleLogout = async () => {
-    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/logout`, { method: 'POST' });
+    await apiFetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST' });
     router.push('/login');
   };
 
   const createInitialWorkspace = async () => {
     setCreatingWorkspace(true);
     try {
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/workspaces`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'My Properties' })
@@ -133,7 +133,7 @@ export default function DashboardPage() {
             <h3 className="font-semibold text-lg">Your Workspaces</h3>
           </div>
           <div className="p-6">
-            {user?.workspaces?.length > 0 ? (
+            {user?.workspaces && user.workspaces.length > 0 ? (
               <ul className="space-y-4">
                 {user.workspaces.map((member) => (
                   <li key={member.workspace.id} className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-900 border border-border p-4 rounded-lg">

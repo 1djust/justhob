@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL } from '@/lib/api';
 
 interface Lease {
   id: string;
@@ -38,7 +38,7 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantP
 
   const fetchTenants = async () => {
     try {
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
         credentials: 'include'
       });
       if (res.ok) {
@@ -61,7 +61,7 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantP
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to remove this tenant?')) return;
-    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants/${id}`, {
+    await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     });
@@ -156,7 +156,7 @@ function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComple
     e.preventDefault();
     setLoading(true);
     try {
-      await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants`, {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -208,7 +208,7 @@ function LeaseForm({ workspaceId, tenantId, properties, onComplete }: { workspac
     e.preventDefault();
     setLoading(true);
     try {
-      await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants/${tenantId}/leases`, {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants/${tenantId}/leases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

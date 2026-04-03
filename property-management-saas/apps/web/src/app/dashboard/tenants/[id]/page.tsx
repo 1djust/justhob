@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL } from '@/lib/api';
 
 interface Lease {
   id: string;
@@ -35,7 +35,7 @@ export default function TenantProfilePage() {
 
   React.useEffect(() => {
     if (!workspaceId || !tenantId) return;
-    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants/${tenantId}`, {
+    apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants/${tenantId}`, {
       credentials: 'include'
     })
       .then(res => {
@@ -58,13 +58,15 @@ export default function TenantProfilePage() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/tenants/${tenantId}`, {
+    await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants/${tenantId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
       credentials: 'include'
     });
-    setTenant({ ...tenant, ...formData });
+    if (tenant) {
+      setTenant({ ...tenant, ...formData });
+    }
     setEditing(false);
   };
 
@@ -100,8 +102,8 @@ export default function TenantProfilePage() {
         <div className="rounded-xl border border-border bg-white dark:bg-zinc-950 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-border flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">{tenant.name}</h2>
-              <p className="text-sm text-zinc-500 mt-1">Added {new Date(tenant.createdAt).toLocaleDateString()}</p>
+              <h2 className="text-2xl font-bold">{tenant?.name}</h2>
+              <p className="text-sm text-zinc-500 mt-1">Added {tenant?.createdAt ? new Date(tenant.createdAt).toLocaleDateString() : '—'}</p>
             </div>
             <div className="flex gap-2">
               <button
@@ -145,15 +147,15 @@ export default function TenantProfilePage() {
             <div className="p-6 grid gap-6 md:grid-cols-3">
               <div>
                 <p className="text-xs font-medium text-zinc-500 mb-1">Email</p>
-                <p className="font-medium">{tenant.email || '—'}</p>
+                <p className="font-medium">{tenant?.email || '—'}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-zinc-500 mb-1">Phone</p>
-                <p className="font-medium">{tenant.phone || '—'}</p>
+                <p className="font-medium">{tenant?.phone || '—'}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-zinc-500 mb-1">Active Leases</p>
-                <p className="font-medium">{tenant.leases?.filter((l) => l.status === 'ACTIVE').length || 0}</p>
+                <p className="font-medium">{tenant?.leases?.filter((l) => l.status === 'ACTIVE').length || 0}</p>
               </div>
             </div>
           )}
@@ -165,7 +167,7 @@ export default function TenantProfilePage() {
             <h3 className="font-semibold text-lg">Lease History</h3>
           </div>
           <div className="p-6">
-            {tenant.leases?.length > 0 ? (
+            {tenant?.leases && tenant.leases.length > 0 ? (
               <div className="space-y-3">
                 {tenant.leases.map((lease) => (
                   <div key={lease.id} className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-border p-4 rounded-lg">

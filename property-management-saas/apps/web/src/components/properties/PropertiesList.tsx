@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { 
   Building, 
   Home, 
@@ -53,7 +53,7 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
 
   const fetchProperties = async () => {
     try {
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/properties`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/properties`, {
         credentials: 'include'
       });
       if (res.ok) {
@@ -73,12 +73,6 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
     if (workspaceId) fetchProperties();
   }, [workspaceId]);
 
-  React.useEffect(() => {
-    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/owners`, { credentials: 'include' })
-      .then(res => res.ok ? res.json() : { owners: [] })
-      .then((data: { owners?: { id: string; name: string; email: string }[] }) => setOwners(data.owners || []))
-      .catch(e => console.error(e));
-  }, [workspaceId]);
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -217,7 +211,7 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
   };
 
   React.useEffect(() => {
-    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/owners`, { credentials: 'include' })
+    apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, { credentials: 'include' })
       .then(res => res.ok ? res.json() : { owners: [] })
       .then(data => setOwners(data.owners || []))
       .catch(e => console.error(e));
@@ -228,7 +222,7 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
     setLoading(true);
     try {
       const payload = { ...formData, units, ownerId: formData.ownerId || undefined };
-      await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/properties`, {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/properties`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

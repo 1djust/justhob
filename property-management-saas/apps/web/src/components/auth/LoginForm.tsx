@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL } from '@/lib/api';
 
 export function LoginForm() {
   const [email, setEmail] = React.useState('');
@@ -29,7 +29,7 @@ export function LoginForm() {
       }
 
       // Sync with Prisma backend
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/sync`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/auth/sync`, {
         method: 'POST',
       });
 

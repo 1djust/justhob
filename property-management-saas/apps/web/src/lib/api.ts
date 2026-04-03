@@ -1,5 +1,11 @@
 import { supabase } from './supabase';
 
+const isProduction = typeof window !== 'undefined' && 
+  (window.location.hostname === 'justhob.vercel.app' || !window.location.hostname.includes('localhost'));
+
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
+  (isProduction ? 'https://justhob.onrender.com' : 'http://localhost:3001');
+
 export async function apiFetch(url: string, options: RequestInit = {}) {
   const { data: { session } } = await supabase.auth.getSession();
   

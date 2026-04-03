@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { RevenueChart } from './RevenueChart';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL } from '@/lib/api';
 
 
 interface DashboardStatsProps {
@@ -26,7 +26,7 @@ export function DashboardStats({ workspaceId }: DashboardStatsProps) {
   React.useEffect(() => {
     if (!workspaceId) return;
     
-    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/stats`, {
+    apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/stats`, {
       credentials: 'include'
     })
       .then(res => res.json())

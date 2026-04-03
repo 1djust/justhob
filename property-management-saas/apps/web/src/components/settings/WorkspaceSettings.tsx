@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL } from '@/lib/api';
 
 // Common Nigerian Banks and their NIBSS codes
 const NIGERIAN_BANKS = [
@@ -33,7 +33,7 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
 
   // Load existing data
   React.useEffect(() => {
-    apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces`, { credentials: 'include' })
+    apiFetch(`${API_BASE_URL}/api/workspaces`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         const ws = data.workspaces?.find((w: { id: string; bankCode?: string; accountNumber?: string; accountName?: string }) => w.id === workspaceId);
@@ -50,7 +50,7 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
     setLoading(true);
     setSuccess(false);
     try {
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bankCode, accountNumber, accountName }),

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL } from '@/lib/api';
 
 interface MaintenanceListProps {
   workspaceId: string;
@@ -25,7 +25,7 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
 
   const fetchRequests = async () => {
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/maintenance${filter ? `?status=${filter}` : ''}`;
+      const url = `${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance${filter ? `?status=${filter}` : ''}`;
       const res = await apiFetch(url, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
@@ -43,7 +43,7 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
   }, [workspaceId, filter, fetchRequests]);
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
-    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/maintenance/${id}`, {
+    await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),

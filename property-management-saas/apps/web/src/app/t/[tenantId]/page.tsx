@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { API_BASE_URL } from '@/lib/api';
 
 interface MaintenanceRequest {
   id: string;
@@ -39,7 +40,7 @@ export default function TenantPortalPage() {
 
   const fetchTenant = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/public/tenants/${tenantId}`);
+      const res = await fetch(`${API_BASE_URL}/api/public/tenants/${tenantId}`);
       if (res.ok) {
         const data = await res.json();
         setTenant(data.tenant);
@@ -83,7 +84,7 @@ export default function TenantPortalPage() {
     setSuccess(false);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/public/tenants/${tenantId}/maintenance`, {
+      const res = await fetch(`${API_BASE_URL}/api/public/tenants/${tenantId}/maintenance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

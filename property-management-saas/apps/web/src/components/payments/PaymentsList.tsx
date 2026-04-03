@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE_URL } from '@/lib/api';
 
 interface Lease {
   id: string;
@@ -36,7 +36,7 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
 
   const fetchPayments = async () => {
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/payments${filter ? `?status=${filter}` : ''}`;
+      const url = `${API_BASE_URL}/api/workspaces/${workspaceId}/payments${filter ? `?status=${filter}` : ''}`;
       const res = await apiFetch(url, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
@@ -55,7 +55,7 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
   }, [workspaceId, filter]);
 
   const handleMarkPaid = async (paymentId: string) => {
-    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/payments/${paymentId}/pay`, {
+    await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments/${paymentId}/pay`, {
       method: 'PUT',
       credentials: 'include'
     });
@@ -182,7 +182,7 @@ function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string;
     e.preventDefault();
     setLoading(true);
     try {
-      await apiFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/workspaces/${workspaceId}/payments`, {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
