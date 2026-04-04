@@ -1,8 +1,23 @@
 'use client';
 
 import * as React from 'react';
+import { 
+  UserPlus, 
+  Trash2, 
+  Building2, 
+  Mail, 
+  Wallet, 
+  CheckCircle2, 
+  AlertCircle, 
+  ShieldCheck, 
+  CreditCard,
+  ChevronRight,
+  Search,
+  MoreVertical,
+  Banknote,
+  Landmark
+} from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
-// import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const NIGERIAN_BANKS = [
   { code: '044', name: 'Access Bank' },
@@ -70,83 +85,123 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
 
   const handleRemove = async (ownerId: string) => {
     if (!confirm('Remove this owner? Their properties will become unassigned.')) return;
-    await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners/${ownerId}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    });
-    fetchOwners();
+    try {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners/${ownerId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      fetchOwners();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  if (loading) return <div className="mt-8">Loading owners...</div>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="w-8 h-8 border-4 border-zinc-200 border-t-zinc-900 rounded-full animate-spin"></div>
+        <p className="text-sm font-medium text-zinc-500">Retrieving owners...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-8">
-      <div className="flex justify-between items-center mb-6 border-b border-border pb-4">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex justify-between items-center mb-10 pb-6 border-b border-zinc-100 dark:border-zinc-800">
         <div>
-          <h3 className="text-xl font-bold tracking-tight">Property Owners</h3>
-          <p className="text-sm text-zinc-500 mt-1">Manage landlords who own properties in this workspace</p>
+          <h3 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-zinc-50 dark:to-zinc-400 bg-clip-text text-transparent">Landlords</h3>
+          <p className="text-sm text-zinc-500 mt-1">Manage property owners and payout configurations</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+          className="group relative flex items-center gap-2 bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 px-6 py-2.5 rounded-full text-sm font-bold shadow-xl hover:scale-105 active:scale-95 transition-all"
         >
-          {showForm ? 'Cancel' : 'Add Owner'}
+          {showForm ? 'Cancel' : <><UserPlus className="w-4 h-4" /> Add Owner</>}
         </button>
       </div>
 
       {showForm && (
-        <AddOwnerForm workspaceId={workspaceId} onComplete={() => { setShowForm(false); fetchOwners(); }} />
+        <div className="animate-in zoom-in-95 fade-in duration-300">
+          <AddOwnerForm workspaceId={workspaceId} onComplete={() => { setShowForm(false); fetchOwners(); }} />
+        </div>
       )}
 
       {owners.length === 0 ? (
-        <div className="text-zinc-500 py-8 text-center border border-dashed border-border rounded-xl">
-          No property owners added yet. Click &quot;Add Owner&quot; to invite a landlord.
+        <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] bg-zinc-50/50 dark:bg-zinc-900/30">
+          <Landmark className="w-12 h-12 text-zinc-300 mb-4" />
+          <p className="text-zinc-500 font-bold text-center px-4 tracking-tight">
+            No owners registered yet. <br />
+            <span className="text-xs font-medium opacity-60 italic whitespace-nowrap">Invite landlords to begin managing their properties.</span>
+          </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-white dark:bg-zinc-950 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-zinc-50 dark:bg-zinc-900">
-                <th className="text-left p-4 font-medium text-zinc-500">Name</th>
-                <th className="text-left p-4 font-medium text-zinc-500">Email</th>
-                <th className="text-left p-4 font-medium text-zinc-500">Payout Strategy</th>
-                <th className="text-left p-4 font-medium text-zinc-500">Account Holder</th>
-                <th className="text-left p-4 font-medium text-zinc-500">Bank Details</th>
-                <th className="text-right p-4 font-medium text-zinc-500">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {owners.map(o => (
-                <tr key={o.id} className="border-b border-border last:border-0 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
-                  <td className="p-4 font-medium">{o.name}</td>
-                  <td className="p-4 text-zinc-500">{o.email}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      o.payoutStrategy === 'DIRECT_TO_LANDLORD' 
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
-                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                    }`}>
-                      {payoutStrategyLabels[o.payoutStrategy] || 'Not Set'}
-                    </span>
-                  </td>
-                  <td className="p-4 text-zinc-500">
-                    {o.accountName || '—'}
-                  </td>
-                  <td className="p-4 text-zinc-500">
-                    {o.accountNumber ? `${o.bankCode} • ${o.accountNumber}` : '—'}
-                  </td>
-                  <td className="p-4 text-right">
-                    <button
-                      onClick={() => handleRemove(o.id)}
-                      className="text-xs font-medium px-3 py-1.5 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </td>
+        <div className="rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm overflow-hidden border-separate">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-zinc-50/50 dark:bg-zinc-900/50 border-b border-zinc-100 dark:border-zinc-800">
+                  <th className="text-left py-6 px-8 font-bold text-[10px] uppercase tracking-widest text-zinc-400">Owner Identity</th>
+                  <th className="text-left py-6 px-8 font-bold text-[10px] uppercase tracking-widest text-zinc-400">Payout Strategy</th>
+                  <th className="text-left py-6 px-8 font-bold text-[10px] uppercase tracking-widest text-zinc-400">Bank Settlement</th>
+                  <th className="text-right py-6 px-8 font-bold text-[10px] uppercase tracking-widest text-zinc-400">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900">
+                {owners.map(o => (
+                  <tr key={o.id} className="group hover:bg-zinc-50/30 dark:hover:bg-zinc-900/20 transition-colors">
+                    <td className="py-6 px-8">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-zinc-100 font-bold border border-zinc-200 dark:border-zinc-800">
+                          {o.name.charAt(0)}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100">{o.name}</span>
+                          <span className="text-xs text-zinc-500 flex items-center gap-1.5 mt-0.5">
+                            <Mail className="w-3 h-3" /> {o.email}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-6 px-8">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                        o.payoutStrategy === 'DIRECT_TO_LANDLORD' 
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50' 
+                          : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50'
+                      }`}>
+                        {o.payoutStrategy === 'DIRECT_TO_LANDLORD' ? <ShieldCheck className="w-3 h-3" /> : <Wallet className="w-3 h-3" />}
+                        {payoutStrategyLabels[o.payoutStrategy] || 'NOT SET'}
+                      </span>
+                    </td>
+                    <td className="py-6 px-8">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                          <CreditCard className="w-3.5 h-3.5 text-zinc-400" />
+                          {o.accountName || '—'}
+                        </span>
+                        <span className="text-[10px] font-bold text-zinc-500 tracking-wider">
+                          {o.accountNumber ? `NUBAN: ${o.accountNumber}` : 'Account Pending'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-6 px-8 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleRemove(o.id)}
+                          className="p-2 rounded-xl text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
+                          title="Remove Owner"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <button className="p-2 rounded-xl text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -191,53 +246,61 @@ function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComp
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-8 p-6 border border-border rounded-xl bg-zinc-50 dark:bg-zinc-900/50 space-y-4">
-      <h4 className="font-semibold text-lg mb-2">Add Property Owner</h4>
-      <p className="text-sm text-zinc-500 mb-4">
-        Add a landlord to this workspace. If the email is already registered, they will be added as an owner. Otherwise, a new account will be created with the password you provide.
-      </p>
+    <form onSubmit={handleSubmit} className="mb-12 p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] bg-white dark:bg-zinc-950 shadow-2xl space-y-10 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-zinc-50 dark:bg-zinc-900/50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
+      
+      <div>
+        <h4 className="text-xl font-bold mb-1">Onboard New Landlord</h4>
+        <p className="text-sm text-zinc-500">Configure owner details and payment agreements</p>
+      </div>
 
       {error && (
-        <div className="p-3 rounded-md bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 text-sm">
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-100 dark:border-rose-900/50 flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {error}
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Full Name</label>
-          <input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-border rounded-md bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-500" placeholder="e.g. John Doe" />
+      <div className="grid gap-8 md:grid-cols-2 relative">
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Full Identity</label>
+          <input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold placeholder:font-normal" placeholder="e.g. Johnathan Doe" />
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Email Address</label>
-          <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-border rounded-md bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-500" placeholder="landlord@example.com" />
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Communication Email</label>
+          <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold placeholder:font-normal" placeholder="landlord@example.com" />
         </div>
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Temporary Password (for new accounts)</label>
-          <input value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full px-3 py-2 border border-border rounded-md bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-500" placeholder="Leave empty for default: TempPass123!" />
+        <div className="md:col-span-2 space-y-2">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Access Authentication (Temporary Password)</label>
+          <input value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold placeholder:font-normal" placeholder="Defaults to: TempPass123!" />
         </div>
 
-        <div className="md:col-span-2 border-t border-border pt-4 mt-2">
-          <h5 className="text-sm font-bold mb-3">Payout Configuration</h5>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Payout Strategy</label>
+        <div className="md:col-span-2 space-y-8 pt-6">
+          <div className="flex items-center gap-3">
+             <div className="h-[1px] flex-1 bg-zinc-100 dark:border-zinc-800" />
+             <span className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.3em]">Settlement Configuration</span>
+             <div className="h-[1px] flex-1 bg-zinc-100 dark:border-zinc-800" />
+          </div>
+
+          <div className="grid gap-8 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Payout Protocol</label>
               <select 
                 value={formData.payoutStrategy} 
                 onChange={e => setFormData({ ...formData, payoutStrategy: e.target.value })} 
-                className="w-full px-3 py-2 border border-border rounded-md bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold appearance-none cursor-pointer"
               >
-                <option value="DIRECT_TO_LANDLORD">Direct to Landlord (Automatic Payout)</option>
-                <option value="MANAGER_COLLECTS">Manager Collects First (Manual Payout)</option>
+                <option value="DIRECT_TO_LANDLORD">DIRECT SETTLEMENT (Automatic)</option>
+                <option value="MANAGER_COLLECTS">MANUAL DISBURSEMENT (Escrow)</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Bank Name</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Receiving Financial Institution</label>
               <select 
                 required 
                 value={formData.bankCode} 
                 onChange={e => setFormData({ ...formData, bankCode: e.target.value })} 
-                className="w-full px-3 py-2 border border-border rounded-md bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold appearance-none cursor-pointer"
               >
                 <option value="">Select bank...</option>
                 {NIGERIAN_BANKS.sort((a,b) => a.name.localeCompare(b.name)).map(b => (
@@ -245,42 +308,45 @@ function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComp
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Account Number</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">NUBAN Account Number</label>
               <input 
                 required 
                 maxLength={10}
                 value={formData.accountNumber} 
                 onChange={e => setFormData({ ...formData, accountNumber: e.target.value.replace(/[^0-9]/g, '') })} 
-                className="w-full px-3 py-2 border border-border rounded-md bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-500" 
-                placeholder="10-digit NUBAN" 
+                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 font-black tracking-[0.2em]" 
+                placeholder="0000000000" 
               />
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Account Holder Name</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Account Holder Name (Legal)</label>
               <input 
                 required 
                 value={formData.accountName} 
                 onChange={e => setFormData({ ...formData, accountName: e.target.value })} 
-                className="w-full px-3 py-2 border border-border rounded-md bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-500" 
-                placeholder="Name exactly as it appears on the bank account" 
+                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 font-bold placeholder:font-normal" 
+                placeholder="AS SEEN ON BANK RECORDS" 
               />
             </div>
           </div>
-          <p className="text-xs text-zinc-400 mt-2">
-            {formData.payoutStrategy === 'DIRECT_TO_LANDLORD' 
-              ? 'Rent will be automatically split between manager and landlord during collection.' 
-              : 'Rent will be paid fully to the manager, who then pays the landlord manually.'}
-          </p>
+          <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 flex items-start gap-3">
+             <Banknote className="w-4 h-4 text-zinc-400 mt-0.5" />
+             <p className="text-[11px] font-medium text-zinc-500 leading-relaxed">
+               {formData.payoutStrategy === 'DIRECT_TO_LANDLORD' 
+                 ? 'FUNDS PROTOCOL: Revenue will be automatically split at the source. Landlord receives net amount instantly upon successful tenant settlement.' 
+                 : 'FUNDS PROTOCOL: Revenue collected fully by agent. Periodic manual reconciliation and disbursement to landlord required.'}
+             </p>
+          </div>
         </div>
       </div>
-      <div className="flex justify-end pt-2">
+      <div className="flex justify-end pt-4">
         <button 
           disabled={loading || !formData.name || !formData.email || !formData.bankCode || formData.accountNumber.length !== 10 || !formData.accountName} 
           type="submit" 
-          className="bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 px-6 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900 px-10 py-4 rounded-full text-sm font-black shadow-2xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50 tracking-widest uppercase"
         >
-          {loading ? 'Adding...' : 'Add Owner'}
+          {loading ? 'Processing...' : 'Authorize Add'}
         </button>
       </div>
     </form>
