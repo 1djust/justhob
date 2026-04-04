@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate --schema=../../packages/database/prisma/schema.prisma && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@property-management/database": "*",
     "@supabase/supabase-js": "^2.100.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.6.0",
