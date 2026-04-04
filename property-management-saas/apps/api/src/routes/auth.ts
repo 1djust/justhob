@@ -12,64 +12,39 @@ export default async function authRoutes(fastify: FastifyInstance) {
       return reply.status(401).send({ error: 'Authentication required. Please sign in.' });
     }
     try {
-      console.log('[Sync] Starting sync for token...');
-      
       if (!prisma) {
-        console.error('[Sync] CRITICAL: Prisma is UNDEFINED at start of sync!');
-        return reply.status(500).send({ 
-          error: "Database configuration error.", 
-          details: "The database client (Prisma) failed to initialize on the server." 
-        });
+        return reply.status(500).send({ error: "Database client failed to initialize." });
       }
 
       const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
       
       if (supaError || !supaData || !supaData.user) {
-        console.error('[Sync] Supabase Auth Error:', supaError?.message || 'No user data returned from Supabase');
-        return reply.status(401).send({ error: supaError?.message || 'Invalid or expired session from Supabase.' });
+        return reply.status(401).send({ error: supaError?.message || 'Invalid session.' });
       }
 
       const supaUser = supaData.user;
-      console.log('[Sync] Valid user found in Supabase:', supaUser.id);
-
       const { name } = (request.body as any) || {};
 
       // Check if Prisma user already exists
-      let user;
-      try {
-        if (!prisma.user) {
-          throw new Error('prisma.user is undefined. Prisma Client models may not be generated.');
-        }
-        user = await prisma.user.findUnique({ 
-          where: { id: supaUser.id },
-          include: {
-            workspaces: {
-              include: { workspace: true }
-            }
+      let user = await prisma.user.findUnique({ 
+        where: { id: supaUser.id },
+        include: {
+          workspaces: {
+            include: { workspace: true }
           }
-        });
-      } catch (dbErr: any) {
-        console.error('[Sync] Database Query Error:', dbErr.message);
-        return reply.status(500).send({ 
-          error: "Database connectivity error.", 
-          details: dbErr.message || "Failed to reach the database to check for existing user." 
-        });
-      }
+        }
+      });
 
       if (!user) {
-        console.log('[Sync] User not found by ID. Checking if email already exists:', supaUser.email);
-        
+        // Auto-Healing: Check if email already exists with different ID
         const existingByEmail = await prisma.user.findUnique({
           where: { email: supaUser.email || '' }
         });
 
         if (existingByEmail) {
-          console.log('[Sync] Found orphaned user with same email but different ID. Migrating...', existingByEmail.id);
-          // Delete the old record to avoid unique constraints, then we'll create the new one
           await prisma.user.delete({ where: { id: existingByEmail.id } });
         }
 
-        console.log('[Sync] Creating new user in database:', supaUser.email);
         try {
           const userMetadata: any = supaUser.user_metadata || {};
           const userName = name || userMetadata.name || null;
@@ -92,12 +67,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
               }
             }
           });
-          console.log('[Sync] Successfully created user and default workspace.');
         } catch (createErr: any) {
-          console.error('[Sync] User Creation Error:', createErr.message);
           return reply.status(500).send({ 
             error: "Database profile setup failed.", 
-            details: createErr.message || "Failed to create your user profile in the database."
+            details: createErr.message 
           });
         }
       }
@@ -108,14 +81,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
         workspaceId: user.workspaces?.[0]?.workspaceId || null
       };
 
-      console.log('[Sync] Sync completed successfully for:', user.email);
       return reply.send({ user: userWithWorkspaces });
 
     } catch (e: any) {
-      console.error('[Sync] UNCAUGHT CRASH:', e.message, e.stack);
       return reply.status(500).send({ 
         error: "Internal Server Error during sync.", 
-        details: e.message || "An unexpected crash occurred on the server."
+        details: e.message 
       });
     }
   });
