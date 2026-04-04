@@ -7,7 +7,8 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ||
   (isProduction ? 'https://justhob.onrender.com' : 'http://localhost:3001');
 
 export async function apiFetch(url: string, options: RequestInit = {}) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data } = await supabase.auth.getSession();
+  const session = data?.session;
   
   const headers = new Headers(options.headers || {});
   if (session?.access_token) {
