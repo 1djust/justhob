@@ -57,6 +57,18 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       if (!user) {
+        console.log('[Sync] User not found by ID. Checking if email already exists:', supaUser.email);
+        
+        const existingByEmail = await prisma.user.findUnique({
+          where: { email: supaUser.email || '' }
+        });
+
+        if (existingByEmail) {
+          console.log('[Sync] Found orphaned user with same email but different ID. Migrating...', existingByEmail.id);
+          // Delete the old record to avoid unique constraints, then we'll create the new one
+          await prisma.user.delete({ where: { id: existingByEmail.id } });
+        }
+
         console.log('[Sync] Creating new user in database:', supaUser.email);
         try {
           const userMetadata: any = supaUser.user_metadata || {};
@@ -65,7 +77,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           user = await prisma.user.create({
             data: {
               id: supaUser.id,
-              email: supaUser.email || '', // Fallback to empty string if email is missing
+              email: supaUser.email || '', 
               name: userName,
               workspaces: {
                 create: {
