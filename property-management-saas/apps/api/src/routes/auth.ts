@@ -65,8 +65,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const token = request.headers.authorization?.replace('Bearer ', '');
     if (!token) return reply.status(401).send({ error: 'Unauthorized' });
 
-    const { data: { user: supaUser }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !supaUser) return reply.status(401).send({ error: 'Invalid token' });
+    const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
+    const supaUser = supaData?.user;
+    if (supaError || !supaUser) return reply.status(401).send({ error: 'Invalid token' });
 
     const user = await prisma.user.findUnique({
       where: { id: supaUser.id },

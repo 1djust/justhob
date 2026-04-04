@@ -7,7 +7,8 @@ export const authenticate = async (request: FastifyRequest, reply: FastifyReply)
   const token = request.headers.authorization?.replace('Bearer ', '');
   if (!token) return reply.status(401).send({ error: 'Unauthorized' });
 
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  const user = data?.user;
   if (error || !user) return reply.status(401).send({ error: 'Invalid token' });
 
   (request as any).userId = user.id;
