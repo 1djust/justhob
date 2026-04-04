@@ -10,6 +10,7 @@ export function LoginForm() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
+  const [errorDetails, setErrorDetails] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [resending, setResending] = React.useState(false);
   const router = useRouter();
@@ -36,6 +37,7 @@ export function LoginForm() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
+        setErrorDetails(errorData.details || '');
         throw new Error(errorData.error || 'Failed to sync user data to backend');
       }
 
@@ -69,7 +71,8 @@ export function LoginForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
         <div className="p-3 text-sm text-red-500 bg-red-500/10 rounded-md border border-red-500/20 space-y-2">
-          <p>{error}</p>
+          <p className="font-bold">{error}</p>
+          {errorDetails && <p className="text-xs opacity-80 font-mono mt-1 pt-1 border-tl border-red-500/20">{errorDetails}</p>}
           <div className="pt-2 border-t border-red-500/10">
             <button
               type="button"
