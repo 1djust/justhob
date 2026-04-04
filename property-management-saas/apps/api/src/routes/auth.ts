@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { prisma } from '@property-management/database';
+import { prisma } from '../lib/database';
 import { supabaseAdmin } from '../lib/supabase';
 
 export default async function authRoutes(fastify: FastifyInstance) {
@@ -11,51 +11,99 @@ export default async function authRoutes(fastify: FastifyInstance) {
       console.error('[Sync] No token in request headers');
       return reply.status(401).send({ error: 'Authentication required. Please sign in.' });
     }
-
-    const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
-    const supaUser = supaData?.user;
-
-    if (supaError || !supaUser) {
-      console.error('[Sync] Supabase auth error:', supaError?.message || 'User not found');
-      return reply.status(401).send({ error: 'Invalid or expired session. Please sign in again.' });
-    }
-
-    console.log('[Sync] Synchronizing user:', supaUser.email);
-
-    const { name } = (request.body as any) || {};
-
     try {
-      // Upsert: create Prisma user if first login, or return existing
-      let user = await prisma.user.findUnique({ where: { id: supaUser.id } });
-
-      if (!user) {
-        console.log('[Sync] Creating new user in database:', supaUser.email);
-        user = await prisma.user.create({
-          data: {
-            id: supaUser.id,
-            email: supaUser.email!,
-            name: name || supaUser.user_metadata?.name || null,
-            workspaces: {
-              create: {
-                role: 'PROPERTY_MANAGER',
-                workspace: { create: { name: 'My Properties' } }
-              }
-            }
-          }
+      console.log('[Sync] Starting sync for token...');
+      
+      if (!prisma) {
+        console.error('[Sync] CRITICAL: Prisma is UNDEFINED at start of sync!');
+        return reply.status(500).send({ 
+          error: "Database configuration error.", 
+          details: "The database client (Prisma) failed to initialize on the server." 
         });
       }
 
-      const userWithWorkspaces = await prisma.user.findUnique({
-        where: { id: supaUser.id },
-        select: { id: true, email: true, name: true, workspaces: { include: { workspace: true } } }
-      });
+      const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
+      
+      if (supaError || !supaData || !supaData.user) {
+        console.error('[Sync] Supabase Auth Error:', supaError?.message || 'No user data returned from Supabase');
+        return reply.status(401).send({ error: supaError?.message || 'Invalid or expired session from Supabase.' });
+      }
 
+      const supaUser = supaData.user;
+      console.log('[Sync] Valid user found in Supabase:', supaUser.id);
+
+      const { name } = (request.body as any) || {};
+
+      // Check if Prisma user already exists
+      let user;
+      try {
+        if (!prisma.user) {
+          throw new Error('prisma.user is undefined. Prisma Client models may not be generated.');
+        }
+        user = await prisma.user.findUnique({ 
+          where: { id: supaUser.id },
+          include: {
+            workspaces: {
+              include: { workspace: true }
+            }
+          }
+        });
+      } catch (dbErr: any) {
+        console.error('[Sync] Database Query Error:', dbErr.message);
+        return reply.status(500).send({ 
+          error: "Database connectivity error.", 
+          details: dbErr.message || "Failed to reach the database to check for existing user." 
+        });
+      }
+
+      if (!user) {
+        console.log('[Sync] Creating new user in database:', supaUser.email);
+        try {
+          const userMetadata: any = supaUser.user_metadata || {};
+          const userName = name || userMetadata.name || null;
+          
+          user = await prisma.user.create({
+            data: {
+              id: supaUser.id,
+              email: supaUser.email || '', // Fallback to empty string if email is missing
+              name: userName,
+              workspaces: {
+                create: {
+                  role: 'PROPERTY_MANAGER',
+                  workspace: { create: { name: 'My Properties' } }
+                }
+              }
+            },
+            include: {
+              workspaces: {
+                include: { workspace: true }
+              }
+            }
+          });
+          console.log('[Sync] Successfully created user and default workspace.');
+        } catch (createErr: any) {
+          console.error('[Sync] User Creation Error:', createErr.message);
+          return reply.status(500).send({ 
+            error: "Database profile setup failed.", 
+            details: createErr.message || "Failed to create your user profile in the database."
+          });
+        }
+      }
+
+      const userWithWorkspaces = {
+        ...user,
+        role: user.workspaces?.[0]?.role || 'USER',
+        workspaceId: user.workspaces?.[0]?.workspaceId || null
+      };
+
+      console.log('[Sync] Sync completed successfully for:', user.email);
       return reply.send({ user: userWithWorkspaces });
-    } catch (err) {
-      console.error('[Sync] Database synchronization failed:', err);
+
+    } catch (e: any) {
+      console.error('[Sync] UNCAUGHT CRASH:', e.message, e.stack);
       return reply.status(500).send({ 
-        error: 'Database error. Your registration succeeded in Supabase but we failed to setup your database profile.',
-        details: (err as Error).message 
+        error: "Internal Server Error during sync.", 
+        details: e.message || "An unexpected crash occurred on the server."
       });
     }
   });

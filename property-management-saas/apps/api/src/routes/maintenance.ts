@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { prisma } from '@property-management/database';
+import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess } from '../lib/middleware';
 
 export default async function maintenanceRoutes(fastify: FastifyInstance) {

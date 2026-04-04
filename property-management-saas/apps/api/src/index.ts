@@ -2,7 +2,7 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
-import { prisma } from '@property-management/database';
+import { prisma } from './lib/database';
 
 
 const fastify = Fastify({ logger: true });

@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { prisma } from '@property-management/database';
+import { prisma } from './database';
 import { supabaseAdmin } from './supabase';
 
 // Shared authenticate middleware — verifies Supabase JWT and attaches userId

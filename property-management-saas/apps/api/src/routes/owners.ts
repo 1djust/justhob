@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { prisma } from '@property-management/database';
+import { prisma } from '../lib/database';
 import { authenticate } from '../lib/middleware';
 import { supabaseAdmin } from '../lib/supabase';
 

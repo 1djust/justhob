@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { prisma } from '@property-management/database';
+import { prisma } from '../lib/database';
 
 export default async function publicRoutes(fastify: FastifyInstance) {
   // Get tenant public profile (for the portal)
