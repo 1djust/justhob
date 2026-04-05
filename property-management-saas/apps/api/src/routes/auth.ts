@@ -193,7 +193,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
       return reply.status(401).send({ error: 'Invalid session' });
     }
 
-    // Update the password
+    const userEmail = supaData.user.email;
+
+    // Update the password and clear the mustChangePassword flag
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(supaData.user.id, {
       password: newPassword,
       user_metadata: { ...supaData.user.user_metadata, mustChangePassword: false }
@@ -203,7 +205,30 @@ export default async function authRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: updateError.message });
     }
 
-    return reply.send({ success: true, message: 'Password updated successfully' });
+    // Re-authenticate with the new password to get a fresh token
+    const { data: loginData, error: loginError } = await supabaseAdmin.auth.signInWithPassword({
+      email: userEmail!,
+      password: newPassword,
+    });
+
+    if (loginError || !loginData.session) {
+      // Password was changed but re-login failed — user will need to log in manually
+      return reply.send({ success: true, message: 'Password updated. Please log in again.' });
+    }
+
+    // Get user profile from Prisma
+    const user = await prisma.user.findUnique({
+      where: { id: supaData.user.id },
+      include: { workspaces: { include: { workspace: true } } }
+    });
+
+    const role = user?.workspaces?.[0]?.role || supaData.user.user_metadata.role || 'TENANT';
+
+    return reply.send({
+      success: true,
+      access_token: loginData.session.access_token,
+      user: { ...user, role, mustChangePassword: false }
+    });
   });
 
   // Logout (no-op since Supabase handles sessions, but kept for compatibility)

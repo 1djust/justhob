@@ -49,14 +49,20 @@ class AuthRepository {
     await _apiClient.storage.delete(key: 'access_token');
   }
 
-  Future<bool> changePassword(String newPassword) async {
+  Future<User?> changePassword(String newPassword) async {
     try {
       final response = await _apiClient.dio.post('/auth/change-password', data: {
         'newPassword': newPassword,
       });
-      return response.statusCode == 200;
+      if (response.statusCode == 200 && response.data['access_token'] != null) {
+        // Store the fresh token
+        await _apiClient.storage.write(key: 'access_token', value: response.data['access_token']);
+        // Return the updated user
+        return User.fromJson(response.data['user']);
+      }
+      return null;
     } catch (e) {
-      return false;
+      return null;
     }
   }
 }
