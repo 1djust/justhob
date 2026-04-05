@@ -48,4 +48,15 @@ class AuthRepository {
     await _apiClient.cookieJar.deleteAll();
     await _apiClient.storage.delete(key: 'access_token');
   }
+
+  Future<bool> changePassword(String newPassword) async {
+    try {
+      final response = await _apiClient.dio.post('/auth/change-password', data: {
+        'newPassword': newPassword,
+      });
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
 }

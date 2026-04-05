@@ -11,6 +11,7 @@ class User with _$User {
     required String email,
     String? name,
     @Default([]) List<WorkspaceMember> workspaces,
+    @Default(false) bool mustChangePassword,
   }) = _User;
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

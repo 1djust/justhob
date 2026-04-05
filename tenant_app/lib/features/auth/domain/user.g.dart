@@ -15,6 +15,7 @@ _$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
           ?.map((e) => WorkspaceMember.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
+  mustChangePassword: json['mustChangePassword'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
@@ -23,4 +24,5 @@ Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
       'email': instance.email,
       'name': instance.name,
       'workspaces': instance.workspaces,
+      'mustChangePassword': instance.mustChangePassword,
     };

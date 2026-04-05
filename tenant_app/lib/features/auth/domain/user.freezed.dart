@@ -25,6 +25,7 @@ mixin _$User {
   String get email => throw _privateConstructorUsedError;
   String? get name => throw _privateConstructorUsedError;
   List<WorkspaceMember> get workspaces => throw _privateConstructorUsedError;
+  bool get mustChangePassword => throw _privateConstructorUsedError;
 
   /// Serializes this User to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -45,6 +46,7 @@ abstract class $UserCopyWith<$Res> {
     String email,
     String? name,
     List<WorkspaceMember> workspaces,
+    bool mustChangePassword,
   });
 }
 
@@ -67,6 +69,7 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
     Object? email = null,
     Object? name = freezed,
     Object? workspaces = null,
+    Object? mustChangePassword = null,
   }) {
     return _then(
       _value.copyWith(
@@ -86,6 +89,10 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
                 ? _value.workspaces
                 : workspaces // ignore: cast_nullable_to_non_nullable
                       as List<WorkspaceMember>,
+            mustChangePassword: null == mustChangePassword
+                ? _value.mustChangePassword
+                : mustChangePassword // ignore: cast_nullable_to_non_nullable
+                      as bool,
           )
           as $Val,
     );
@@ -105,6 +112,7 @@ abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
     String email,
     String? name,
     List<WorkspaceMember> workspaces,
+    bool mustChangePassword,
   });
 }
 
@@ -124,6 +132,7 @@ class __$$UserImplCopyWithImpl<$Res>
     Object? email = null,
     Object? name = freezed,
     Object? workspaces = null,
+    Object? mustChangePassword = null,
   }) {
     return _then(
       _$UserImpl(
@@ -143,6 +152,10 @@ class __$$UserImplCopyWithImpl<$Res>
             ? _value._workspaces
             : workspaces // ignore: cast_nullable_to_non_nullable
                   as List<WorkspaceMember>,
+        mustChangePassword: null == mustChangePassword
+            ? _value.mustChangePassword
+            : mustChangePassword // ignore: cast_nullable_to_non_nullable
+                  as bool,
       ),
     );
   }
@@ -156,6 +169,7 @@ class _$UserImpl implements _User {
     required this.email,
     this.name,
     final List<WorkspaceMember> workspaces = const [],
+    this.mustChangePassword = false,
   }) : _workspaces = workspaces;
 
   factory _$UserImpl.fromJson(Map<String, dynamic> json) =>
@@ -177,8 +191,12 @@ class _$UserImpl implements _User {
   }
 
   @override
+  @JsonKey()
+  final bool mustChangePassword;
+
+  @override
   String toString() {
-    return 'User(id: $id, email: $email, name: $name, workspaces: $workspaces)';
+    return 'User(id: $id, email: $email, name: $name, workspaces: $workspaces, mustChangePassword: $mustChangePassword)';
   }
 
   @override
@@ -192,7 +210,9 @@ class _$UserImpl implements _User {
             const DeepCollectionEquality().equals(
               other._workspaces,
               _workspaces,
-            ));
+            ) &&
+            (identical(other.mustChangePassword, mustChangePassword) ||
+                other.mustChangePassword == mustChangePassword));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -203,6 +223,7 @@ class _$UserImpl implements _User {
     email,
     name,
     const DeepCollectionEquality().hash(_workspaces),
+    mustChangePassword,
   );
 
   /// Create a copy of User
@@ -225,6 +246,7 @@ abstract class _User implements User {
     required final String email,
     final String? name,
     final List<WorkspaceMember> workspaces,
+    final bool mustChangePassword,
   }) = _$UserImpl;
 
   factory _User.fromJson(Map<String, dynamic> json) = _$UserImpl.fromJson;
@@ -237,6 +259,8 @@ abstract class _User implements User {
   String? get name;
   @override
   List<WorkspaceMember> get workspaces;
+  @override
+  bool get mustChangePassword;
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.

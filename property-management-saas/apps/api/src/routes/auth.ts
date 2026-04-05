@@ -75,10 +75,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
       }
 
+      const mustChange = supaUser?.user_metadata?.mustChangePassword === true;
       const userWithWorkspaces = {
         ...user,
-        role: user.workspaces?.[0]?.role || 'USER',
-        workspaceId: user.workspaces?.[0]?.workspaceId || null
+        role: (user as any).workspaces?.[0]?.role || 'USER',
+        workspaceId: (user as any).workspaces?.[0]?.workspaceId || null,
+        mustChangePassword: mustChange
       };
 
       return reply.send({ user: userWithWorkspaces });
@@ -102,10 +104,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     const user = await prisma.user.findUnique({
       where: { id: supaUser.id },
-      select: { id: true, email: true, name: true, workspaces: { include: { workspace: true } } }
+      include: { workspaces: { include: { workspace: true } } }
     });
 
-    return reply.send({ user });
+    const mustChange = supaUser.user_metadata?.mustChangePassword === true;
+    const role = user?.workspaces?.[0]?.role || supaUser.user_metadata.role || 'TENANT';
+
+    return reply.send({ user: user ? { ...user, role, mustChangePassword: mustChange } : null });
   });
 
   // Login (called by mobile app)
@@ -151,18 +156,49 @@ export default async function authRoutes(fastify: FastifyInstance) {
       });
       
       const role = data.user.user_metadata.role || 'TENANT';
+      const mustChange = data.user.user_metadata?.mustChangePassword === true;
       return reply.send({
         access_token: data.session.access_token,
-        user: { ...newUser, role }
+        user: { ...newUser, role, mustChangePassword: mustChange }
       });
     }
 
+    const mustChange = data.user.user_metadata?.mustChangePassword === true;
     const role = user.workspaces?.[0]?.role || data.user.user_metadata.role || 'USER';
 
     return reply.send({
       access_token: data.session.access_token,
-      user: { ...user, role }
+      user: { ...user, role, mustChangePassword: mustChange }
     });
+  });
+
+  // Change password (for first-login forced password change)
+  fastify.post('/change-password', async (request: FastifyRequest, reply: FastifyReply) => {
+    const token = request.headers.authorization?.replace('Bearer ', '');
+    if (!token) return reply.status(401).send({ error: 'Unauthorized' });
+
+    const { newPassword } = request.body as { newPassword?: string };
+    if (!newPassword || newPassword.length < 6) {
+      return reply.status(400).send({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Verify the token and get the user
+    const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
+    if (supaError || !supaData?.user) {
+      return reply.status(401).send({ error: 'Invalid session' });
+    }
+
+    // Update the password
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(supaData.user.id, {
+      password: newPassword,
+      user_metadata: { ...supaData.user.user_metadata, mustChangePassword: false }
+    });
+
+    if (updateError) {
+      return reply.status(500).send({ error: updateError.message });
+    }
+
+    return reply.send({ success: true, message: 'Password updated successfully' });
   });
 
   // Logout (no-op since Supabase handles sessions, but kept for compatibility)

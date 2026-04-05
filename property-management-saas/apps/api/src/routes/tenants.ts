@@ -60,7 +60,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         email,
         password: tempPassword,
         email_confirm: true,
-        user_metadata: { name, role: 'TENANT' }
+        user_metadata: { name, role: 'TENANT', mustChangePassword: true }
       });
 
       if (authError) {
@@ -117,7 +117,6 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           data: { name, email, phone, workspaceId }
         });
 
-    // Return credentials once so the manager can share them with the tenant
     return reply.status(201).send({ 
       tenant,
       credentials: email ? { email, tempPassword } : null

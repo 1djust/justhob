@@ -38,4 +38,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     await _repository.logout();
     state = const AsyncValue.data(null);
   }
+
+  Future<bool> changePassword(String newPassword) async {
+    final success = await _repository.changePassword(newPassword);
+    if (success) {
+      await checkAuth(); // Re-fetch user to clear the mustChangePassword flag
+    }
+    return success;
+  }
 }
