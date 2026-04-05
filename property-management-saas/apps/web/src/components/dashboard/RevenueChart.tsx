@@ -2,13 +2,16 @@
 
 import * as React from 'react';
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  defs,
+  linearGradient,
+  stop
 } from 'recharts';
 
 interface RevenueChartProps {
@@ -23,49 +26,63 @@ export function RevenueChart({ data }: RevenueChartProps) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart
+      <AreaChart
         data={chartData}
         margin={{
-          top: 5,
-          right: 30,
-          left: 20,
-          bottom: 5,
+          top: 10,
+          right: 10,
+          left: 0,
+          bottom: 0,
         }}
       >
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b" opacity={0.2} />
+        <defs>
+          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b" opacity={0.1} />
         <XAxis 
           dataKey="name" 
           axisLine={false}
           tickLine={false}
-          tick={{ fill: '#71717a', fontSize: 12 }}
+          tick={{ fill: '#71717a', fontSize: 10, fontWeight: 600 }}
           dy={10}
         />
         <YAxis 
-          tickFormatter={(value) => `₦${value}`}
+          tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`}
           axisLine={false}
           tickLine={false}
-          tick={{ fill: '#71717a', fontSize: 12 }}
+          tick={{ fill: '#71717a', fontSize: 10, fontWeight: 600 }}
           dx={-10}
+          width={60}
         />
         <Tooltip
-          cursor={{ fill: 'transparent' }}
-          contentStyle={{ 
-            backgroundColor: 'var(--background)',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' 
+          cursor={{ stroke: '#10b981', strokeWidth: 1, strokeDasharray: '4 4' }}
+          content={({ active, payload, label }) => {
+            if (active && payload && payload.length) {
+              return (
+                <div className="rounded-2xl border border-white/20 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md p-4 shadow-2xl">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">{label}</p>
+                  <p className="text-xl font-bold text-zinc-900 dark:text-white">
+                    ₦{Number(payload[0].value).toLocaleString()}
+                  </p>
+                </div>
+              );
+            }
+            return null;
           }}
-          labelStyle={{ color: 'var(--foreground)', fontWeight: 'bold', marginBottom: '4px' }}
-          itemStyle={{ color: '#18181b', fontWeight: '500' }}
-          formatter={(value: unknown) => [`₦${Number(value).toLocaleString()}`, 'Revenue']}
         />
-        <Bar 
+        <Area 
+          type="monotone" 
           dataKey="revenue" 
-          fill="#000000" 
-          radius={[4, 4, 0, 0]} 
-          className="dark:fill-white" 
+          stroke="#10b981" 
+          strokeWidth={3}
+          fillOpacity={1} 
+          fill="url(#colorRevenue)" 
+          animationDuration={1500}
         />
-      </BarChart>
+      </AreaChart>
     </ResponsiveContainer>
   );
 }

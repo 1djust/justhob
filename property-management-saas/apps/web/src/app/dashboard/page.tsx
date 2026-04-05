@@ -11,6 +11,11 @@ import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { WorkspaceSettings } from '@/components/settings/WorkspaceSettings';
 import { OwnerManagement } from '@/components/owners/OwnerManagement';
 import { Sidebar } from '@/components/dashboard/Sidebar';
+import { 
+  Plus, 
+  ShieldCheck, 
+  Building 
+} from 'lucide-react';
 
 interface Workspace {
   id: string;
@@ -96,16 +101,19 @@ export default function DashboardPage() {
   const renderActiveView = () => {
     if (!selectedWorkspaceId) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh]">
-          <div className="rounded-xl border border-border bg-white dark:bg-zinc-950 p-12 shadow-xl text-center max-w-md w-full">
-            <h3 className="text-2xl font-bold mb-4 tracking-tight">Get Started</h3>
-            <p className="text-zinc-500 mb-8 leading-relaxed">
-              You need to create a Workspace to start adding properties and tenants.
+        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+          <div className="rounded-[2.5rem] border border-white/20 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl p-12 shadow-2xl text-center max-w-md w-full animate-in zoom-in-95 duration-500">
+            <div className="w-20 h-20 bg-zinc-900 dark:bg-white rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-2xl">
+              <Plus className="w-10 h-10 text-white dark:text-zinc-950" />
+            </div>
+            <h3 className="text-3xl font-bold mb-4 tracking-tighter">Get Started</h3>
+            <p className="text-zinc-500 mb-10 leading-relaxed font-medium">
+              You need to create a Workspace to start managing your properties and tenants.
             </p>
             <button 
               onClick={createInitialWorkspace}
               disabled={creatingWorkspace}
-              className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 px-6 py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 px-8 py-4 rounded-2xl text-sm font-bold hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50 shadow-xl"
             >
               {creatingWorkspace ? 'Creating...' : 'Create "My Properties" Workspace'}
             </button>
@@ -117,30 +125,70 @@ export default function DashboardPage() {
     switch (activeView) {
       case 'dashboard':
         return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-              <p className="text-zinc-500 mt-2">Welcome back, {user?.name || user?.email?.split('@')[0]}. Here is your property overview.</p>
-            </div>
-            <DashboardStats workspaceId={selectedWorkspaceId} />
-            <div className="rounded-xl border border-border bg-white dark:bg-zinc-950 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-border">
-                <h3 className="font-semibold text-lg">Your Workspaces</h3>
+          <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <div className="relative">
+              <div className="absolute -left-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-3xl" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-[1px] w-8 bg-zinc-300 dark:bg-zinc-800" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Overview</span>
+                </div>
+                <h2 className="text-5xl font-bold tracking-tighter sm:text-6xl">Dashboard</h2>
+                <p className="text-zinc-500 mt-4 text-lg font-medium max-w-2xl leading-relaxed">
+                  Welcome back, <span className="text-zinc-900 dark:text-white font-bold">{user?.name || user?.email?.split('@')[0]}</span>. 
+                  Efficiency is the key to property management.
+                </p>
               </div>
-              <div className="p-6">
+            </div>
+
+            <DashboardStats workspaceId={selectedWorkspaceId} />
+
+            <div className="relative rounded-[2.5rem] border border-white/20 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md p-8 shadow-2xl overflow-hidden">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h3 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Active Workspaces</h3>
+                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">Manage your team and roles</p>
+                </div>
+              </div>
+              
+              <div className="relative">
                 {user?.workspaces && user.workspaces.length > 0 ? (
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {user.workspaces.map((member) => (
-                      <li key={member.workspace.id} className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-900 border border-border p-4 rounded-xl group transition-all hover:border-zinc-400 dark:hover:border-zinc-600">
-                        <span className="font-medium">{member.workspace.name}</span>
-                        <span className="text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-                          {member.role.replace('_', ' ')}
-                        </span>
-                      </li>
+                      <div 
+                        key={member.workspace.id} 
+                        className={`group relative flex flex-col p-6 rounded-[2rem] border transition-all duration-300 ${
+                          selectedWorkspaceId === member.workspace.id 
+                            ? 'bg-zinc-900 text-white border-zinc-900 shadow-xl' 
+                            : 'bg-white/40 dark:bg-zinc-900/40 border-white/20 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-6">
+                          <div className={`p-3 rounded-2xl ${selectedWorkspaceId === member.workspace.id ? 'bg-white/10' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                            <Building className={`w-5 h-5 ${selectedWorkspaceId === member.workspace.id ? 'text-white' : 'text-zinc-500'}`} />
+                          </div>
+                          <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            selectedWorkspaceId === member.workspace.id 
+                              ? 'bg-white/20 text-white' 
+                              : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                          }`}>
+                            {member.role.replace('_', ' ')}
+                          </div>
+                        </div>
+                        <h4 className="text-xl font-bold tracking-tight mb-2">{member.workspace.name}</h4>
+                        <div className="mt-auto pt-4 flex items-center justify-between">
+                          <span className={`text-[10px] font-medium ${selectedWorkspaceId === member.workspace.id ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                            {member.role === 'PROPERTY_MANAGER' ? 'Full Access' : 'View Only'}
+                          </span>
+                          {selectedWorkspaceId === member.workspace.id && (
+                            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                          )}
+                        </div>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
-                  <p className="text-zinc-500 text-center py-8">You are not a member of any workspaces yet.</p>
+                  <p className="text-zinc-500 text-center py-12 font-medium">You are not a member of any workspaces yet.</p>
                 )}
               </div>
             </div>
@@ -174,7 +222,7 @@ export default function DashboardPage() {
       />
       
       <main className="flex-1 lg:ml-64 transition-all duration-300 min-h-screen">
-        <div className="max-w-7xl mx-auto p-4 md:p-8 lg:p-12 pb-24">
+        <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
           {renderActiveView()}
         </div>
       </main>
