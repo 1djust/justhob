@@ -98,17 +98,22 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const token = request.headers.authorization?.replace('Bearer ', '');
     if (!token) return reply.status(401).send({ error: 'Unauthorized' });
 
+    // First verify the token is valid
     const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
     const supaUser = supaData?.user;
     if (supaError || !supaUser) return reply.status(401).send({ error: 'Invalid token' });
+
+    // Use admin API to get FRESH metadata (getUser(token) can return stale JWT claims)
+    const { data: freshData } = await supabaseAdmin.auth.admin.getUserById(supaUser.id);
+    const freshMeta = freshData?.user?.user_metadata || supaUser.user_metadata;
 
     const user = await prisma.user.findUnique({
       where: { id: supaUser.id },
       include: { workspaces: { include: { workspace: true } } }
     });
 
-    const mustChange = supaUser.user_metadata?.mustChangePassword === true;
-    const role = user?.workspaces?.[0]?.role || supaUser.user_metadata.role || 'TENANT';
+    const mustChange = freshMeta?.mustChangePassword === true;
+    const role = user?.workspaces?.[0]?.role || freshMeta.role || 'TENANT';
 
     return reply.send({ user: user ? { ...user, role, mustChangePassword: mustChange } : null });
   });
