@@ -81,11 +81,21 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
 
       // Also ensure they exist in the User table and WorkspaceMember table
       if (supabaseUserId) {
-        await prisma.user.upsert({
-          where: { id: supabaseUserId },
-          update: { email, name },
-          create: { id: supabaseUserId, email, name }
-        });
+        // Check if a User with this email already exists (from a previous registration)
+        const existingDbUser = await prisma.user.findUnique({ where: { email } });
+        
+        if (existingDbUser && existingDbUser.id !== supabaseUserId) {
+          // Email exists under a different ID — update the ID to match the new Supabase user
+          // First clean up old workspace memberships and update references
+          await prisma.workspaceMember.deleteMany({ where: { userId: existingDbUser.id } });
+          await prisma.user.delete({ where: { id: existingDbUser.id } });
+          await prisma.user.create({ data: { id: supabaseUserId, email, name } });
+        } else if (!existingDbUser) {
+          await prisma.user.create({ data: { id: supabaseUserId, email, name } });
+        } else {
+          // Same ID, just update
+          await prisma.user.update({ where: { id: supabaseUserId }, data: { email, name } });
+        }
 
         await prisma.workspaceMember.upsert({
           where: { userId_workspaceId: { userId: supabaseUserId, workspaceId } },
