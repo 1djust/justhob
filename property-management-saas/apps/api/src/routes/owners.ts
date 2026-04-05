@@ -83,19 +83,17 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         }
       });
     } else {
-      // Invite user to Supabase Auth (This sends the email)
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      // Create user instantly with the provided Temporary Password
+      const tempPassword = password || 'TempPass123!';
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
-        { 
-          data: { name },
-          redirectTo: process.env.FRONTEND_URL 
-            ? `${process.env.FRONTEND_URL}/login` 
-            : 'https://justhob.vercel.app/login'
-        }
-      );
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { name }
+      });
 
       if (authError || !authData.user) {
-        return reply.status(400).send({ error: authError?.message || 'Failed to send invitation' });
+        return reply.status(400).send({ error: authError?.message || 'Failed to create user authentication' });
       }
 
       // Create Prisma user linked to Supabase Auth UID
