@@ -64,11 +64,14 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       });
 
       if (authError) {
-        // If user already exists in Supabase, we just link them
-        if (authError.message.includes('already has been registered')) {
-          const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
-          const user = existingUser.users.find(u => u.email === email);
-          supabaseUserId = user?.id;
+        // If user already exists in Supabase, find and link them
+        if (authError.message.includes('already') && authError.message.includes('registered')) {
+          const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
+          const existingUser = listData.users.find(u => u.email === email);
+          supabaseUserId = existingUser?.id || null;
+          if (!supabaseUserId) {
+            return reply.status(400).send({ error: 'Could not find existing account. Please contact support.' });
+          }
         } else {
           return reply.status(400).send({ error: authError.message });
         }
@@ -92,15 +95,17 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       }
     }
 
-    const tenant = await prisma.tenant.create({
-      data: { 
-        id: supabaseUserId || undefined, // Use Supabase ID if available
-        name, 
-        email, 
-        phone, 
-        workspaceId 
-      }
-    });
+    // Use upsert to handle re-creation of previously deleted tenants
+    const tenantId = supabaseUserId || undefined;
+    const tenant = tenantId 
+      ? await prisma.tenant.upsert({
+          where: { id: tenantId },
+          update: { name, email, phone, workspaceId, deletedAt: null },
+          create: { id: tenantId, name, email, phone, workspaceId }
+        })
+      : await prisma.tenant.create({
+          data: { name, email, phone, workspaceId }
+        });
 
     // Return credentials once so the manager can share them with the tenant
     return reply.status(201).send({ 
