@@ -77,7 +77,7 @@ export function DashboardStats({ workspaceId }: DashboardStatsProps) {
     },
     {
       title: 'Rent Collected',
-      value: `₦${rentCollected.toLocaleString()}`,
+      value: rentCollected === 0 ? '₦0.00' : `₦${rentCollected.toLocaleString()}`,
       icon: Wallet,
       color: 'text-emerald-500',
       bg: 'bg-emerald-500/10',
@@ -108,7 +108,7 @@ export function DashboardStats({ workspaceId }: DashboardStatsProps) {
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1 truncate">{card.title}</p>
                 <div className="flex items-baseline gap-2">
-                  <h4 className="text-3xl sm:text-4xl font-bold tracking-tighter truncate">{card.value}</h4>
+                  <h4 className="text-3xl sm:text-4xl font-bold tracking-tighter truncate text-zinc-900 dark:text-white">{card.value}</h4>
                 </div>
                 <div className={`mt-2 flex items-center gap-1.5 text-[9px] font-bold px-2 py-0.5 rounded-full inline-flex whitespace-nowrap ${card.urgent ? 'bg-red-500/10 text-red-500' : 'bg-zinc-500/10 text-zinc-500'}`}>
                   <TrendingUp className="w-2.5 h-2.5" />
@@ -124,13 +124,13 @@ export function DashboardStats({ workspaceId }: DashboardStatsProps) {
       </div>
 
       <div className="relative rounded-[2.5rem] border border-white/20 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md p-8 shadow-2xl overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
+        <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none -z-10">
           <ArrowUpRight className="w-24 h-24 text-zinc-400 dark:text-zinc-500" />
         </div>
-        <div className="relative">
+        <div className="relative z-10">
           <div className="flex justify-between items-center mb-10">
             <div>
-              <h3 className="text-2xl font-bold tracking-tight">Revenue Overview</h3>
+              <h3 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Revenue Overview</h3>
               <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">Financial performance (Last 6 Months)</p>
             </div>
             <div className="flex items-center gap-4">

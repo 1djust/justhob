@@ -106,8 +106,8 @@ export default function DashboardPage() {
             <div className="w-20 h-20 bg-zinc-900 dark:bg-white rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-2xl">
               <Plus className="w-10 h-10 text-white dark:text-zinc-950" />
             </div>
-            <h3 className="text-3xl font-bold mb-4 tracking-tighter">Get Started</h3>
-            <p className="text-zinc-500 mb-10 leading-relaxed font-medium">
+            <h3 className="text-3xl font-bold mb-4 tracking-tighter text-zinc-900 dark:text-white">Get Started</h3>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-10 leading-relaxed font-medium">
               You need to create a Workspace to start managing your properties and tenants.
             </p>
             <button 
@@ -128,13 +128,13 @@ export default function DashboardPage() {
           <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="relative">
               <div className="absolute -left-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-3xl" />
-              <div className="relative">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-[1px] w-8 bg-zinc-300 dark:bg-zinc-800" />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Overview</span>
+              <div className="relative mt-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-[1px] w-8 bg-zinc-400 dark:bg-zinc-600" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">Overview</span>
                 </div>
-                <h2 className="text-5xl font-bold tracking-tighter sm:text-6xl">Dashboard</h2>
-                <p className="text-zinc-500 mt-4 text-lg font-medium max-w-2xl leading-relaxed">
+                <h2 className="text-5xl font-bold tracking-tighter sm:text-6xl text-zinc-900 dark:text-white">Dashboard</h2>
+                <p className="text-zinc-600 dark:text-zinc-400 mt-4 text-lg font-medium max-w-2xl leading-relaxed">
                   Welcome back, <span className="text-zinc-900 dark:text-white font-bold">{user?.name || user?.email?.split('@')[0]}</span>. 
                   Efficiency is the key to property management.
                 </p>
