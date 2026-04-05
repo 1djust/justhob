@@ -58,7 +58,7 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
   const payoutStrategyLabels: Record<string, string> = {
-    'DIRECT_TO_LANDLORD': 'Direct to Landlord',
+    'DIRECT_TO_LANDLORD': 'Landlord Receives Directly',
     'MANAGER_COLLECTS': 'Manager Collects First'
   };
 
@@ -290,8 +290,8 @@ function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComp
                 onChange={e => setFormData({ ...formData, payoutStrategy: e.target.value })} 
                 className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold appearance-none cursor-pointer"
               >
-                <option value="DIRECT_TO_LANDLORD">DIRECT SETTLEMENT (Automatic)</option>
-                <option value="MANAGER_COLLECTS">MANUAL DISBURSEMENT (Escrow)</option>
+                <option value="DIRECT_TO_LANDLORD">LANDLORD RECEIVES DIRECTLY (Tenant transfers to Landlord)</option>
+                <option value="MANAGER_COLLECTS">MANAGER COLLECTS FIRST (Tenant transfers to Manager)</option>
               </select>
             </div>
             <div className="space-y-2">
@@ -334,8 +334,8 @@ function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComp
              <Banknote className="w-4 h-4 text-zinc-400 mt-0.5" />
              <p className="text-[11px] font-medium text-zinc-500 leading-relaxed">
                {formData.payoutStrategy === 'DIRECT_TO_LANDLORD' 
-                 ? 'FUNDS PROTOCOL: Revenue will be automatically split at the source. Landlord receives net amount instantly upon successful tenant settlement.' 
-                 : 'FUNDS PROTOCOL: Revenue collected fully by agent. Periodic manual reconciliation and disbursement to landlord required.'}
+                 ? 'FUNDS PROTOCOL: Tenant pays to Landlord\'s account, sends proof to you, and you verify receipt in the system.' 
+                 : 'FUNDS PROTOCOL: Tenant pays to your account, sends proof, and you manually disburse to the Landlord later.'}
              </p>
           </div>
         </div>
