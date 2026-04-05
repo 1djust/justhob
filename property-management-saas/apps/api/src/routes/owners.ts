@@ -88,7 +88,9 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         email,
         { 
           data: { name },
-          redirectTo: 'http://localhost:3000/login'
+          redirectTo: process.env.FRONTEND_URL 
+            ? `${process.env.FRONTEND_URL}/login` 
+            : 'https://justhob.vercel.app/login'
         }
       );
 
