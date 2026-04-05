@@ -52,10 +52,10 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
     if (!name) return reply.status(400).send({ error: 'Tenant name is required' });
 
     let supabaseUserId = null;
+    const tempPassword = password || 'JustHub123!';
 
     // If email is provided, create a Supabase Auth account for the mobile app
     if (email) {
-      const tempPassword = password || 'JustHub123!';
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password: tempPassword,
@@ -101,7 +101,12 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         workspaceId 
       }
     });
-    return reply.status(201).send({ tenant });
+
+    // Return credentials once so the manager can share them with the tenant
+    return reply.status(201).send({ 
+      tenant,
+      credentials: email ? { email, tempPassword } : null
+    });
   });
 
   // Update tenant
@@ -120,17 +125,45 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Soft delete tenant
+  // Delete tenant (full cleanup including Supabase Auth)
   fastify.delete('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, id } = request.params as { workspaceId: string; id: string };
     try {
-      await prisma.tenant.update({
-        where: { id },
-        data: { deletedAt: new Date() }
+      // Find the tenant first to get their details
+      const tenant = await prisma.tenant.findFirst({
+        where: { id, workspaceId }
       });
+      if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
+
+      // Clean up Supabase Auth user so the email can be reused
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(id);
+        console.log(`[Tenant Delete] Supabase Auth user ${id} removed`);
+      } catch (authErr) {
+        // If auth user doesn't exist, that's fine — continue cleanup
+        console.log(`[Tenant Delete] No Supabase Auth user for ${id}, skipping`);
+      }
+
+      // Remove workspace membership
+      try {
+        await prisma.workspaceMember.deleteMany({
+          where: { userId: id, workspaceId }
+        });
+      } catch (_) { /* ignore if not found */ }
+
+      // Remove user record
+      try {
+        await prisma.user.delete({ where: { id } });
+      } catch (_) { /* ignore if not found */ }
+
+      // Hard-delete the tenant record so the ID/email is fully freed
+      await prisma.tenant.delete({ where: { id } });
+
+      console.log(`[Tenant Delete] Tenant ${tenant.name} (${tenant.email}) fully removed`);
       return reply.send({ success: true });
     } catch (e) {
-      return reply.status(404).send({ error: 'Tenant not found' });
+      console.error('[Tenant Delete Error]', e);
+      return reply.status(404).send({ error: 'Tenant not found or could not be deleted' });
     }
   });
 

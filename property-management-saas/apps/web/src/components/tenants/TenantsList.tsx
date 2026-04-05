@@ -240,24 +240,107 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantP
 function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComplete: () => void }) {
   const [formData, setFormData] = React.useState({ name: '', email: '', phone: '' });
   const [loading, setLoading] = React.useState(false);
+  const [credentials, setCredentials] = React.useState<{ email: string; tempPassword: string } | null>(null);
+  const [copied, setCopied] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
-      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include'
       });
-      onComplete();
+      const data = await res.json();
+      if (res.ok) {
+        if (data.credentials) {
+          setCredentials(data.credentials);
+        } else {
+          onComplete();
+        }
+      } else {
+        setError(data.error || 'Failed to create tenant. Please try again.');
+      }
     } catch (e) {
       console.error(e);
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleCopy = () => {
+    if (!credentials) return;
+    const text = `Welcome to Just Hub!\n\nYour tenant account has been created.\n\nEmail: ${credentials.email}\nTemporary Password: ${credentials.tempPassword}\n\nPlease download the Just Hub app and sign in with these credentials. Change your password after first login.`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Show credentials modal after successful creation
+  if (credentials) {
+    return (
+      <div className="mb-12 p-8 border-2 border-emerald-200 dark:border-emerald-800 rounded-[2rem] bg-emerald-50/50 dark:bg-emerald-950/20 space-y-6 animate-in zoom-in-95 fade-in duration-300">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+            <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          </div>
+          <div>
+            <h4 className="text-xl font-bold text-emerald-900 dark:text-emerald-100">Tenant Created Successfully!</h4>
+            <p className="text-sm text-emerald-700 dark:text-emerald-400">Share the login details below with the tenant</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <Mail className="w-4 h-4 text-zinc-400" />
+            <div>
+              <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest">Email</p>
+              <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 select-all">{credentials.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest">Temporary Password</p>
+              <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 font-mono select-all">{credentials.tempPassword}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleCopy}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all active:scale-95 ${
+              copied 
+                ? 'bg-emerald-600 text-white' 
+                : 'bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900 hover:scale-105'
+            }`}
+          >
+            {copied ? (
+              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> Copied to Clipboard</>
+            ) : (
+              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg> Copy Credentials for WhatsApp</>
+            )}
+          </button>
+          <button
+            onClick={() => { setCredentials(null); onComplete(); }}
+            className="px-6 py-2.5 rounded-full text-sm font-bold border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all"
+          >
+            Done
+          </button>
+        </div>
+        <p className="text-xs text-zinc-400 flex items-center gap-1.5">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          The tenant can use these credentials to sign in on the Just Hub mobile app.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="mb-12 p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-zinc-50/50 dark:bg-zinc-900/30 space-y-6">
@@ -265,6 +348,13 @@ function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComple
         <h4 className="text-xl font-bold mb-1">New Tenant Profile</h4>
         <p className="text-sm text-zinc-500">Basic contact information for the resident</p>
       </div>
+
+      {error && (
+        <div className="flex items-center gap-3 p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-2xl text-sm text-rose-700 dark:text-rose-300 animate-in fade-in duration-200">
+          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          <span className="font-medium">{error}</span>
+        </div>
+      )}
       
       <div className="grid gap-6 md:grid-cols-3">
         <div className="space-y-1.5">
