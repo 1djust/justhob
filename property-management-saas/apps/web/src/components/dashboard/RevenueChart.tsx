@@ -8,10 +8,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  defs,
-  linearGradient,
-  stop
+  ResponsiveContainer
 } from 'recharts';
 
 interface RevenueChartProps {
