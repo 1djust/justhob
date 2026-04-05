@@ -105,8 +105,64 @@ export default async function authRoutes(fastify: FastifyInstance) {
       select: { id: true, email: true, name: true, workspaces: { include: { workspace: true } } }
     });
 
-    if (!user) return reply.status(401).send({ error: 'User not synced' });
     return reply.send({ user });
+  });
+
+  // Login (called by mobile app)
+  fastify.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { email, password } = request.body as any;
+    if (!email || !password) {
+      return reply.status(400).send({ error: 'Email and password required' });
+    }
+
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error || !data.user || !data.session) {
+      return reply.status(401).send({ error: error?.message || 'Invalid credentials' });
+    }
+
+    // Get the user profile from Prisma to include roles/workspaces
+    const user = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      include: {
+        workspaces: {
+          include: { workspace: true }
+        }
+      }
+    });
+
+    if (!user) {
+      // If the user exists in Supabase but not Prisma, sync it now
+      // This can happen if they were invited/created via admin but never synced
+      const newUser = await prisma.user.create({
+        data: {
+          id: data.user.id,
+          email: data.user.email!,
+          name: data.user.user_metadata.name || null,
+        },
+        include: {
+          workspaces: {
+            include: { workspace: true }
+          }
+        }
+      });
+      
+      const role = data.user.user_metadata.role || 'TENANT';
+      return reply.send({
+        access_token: data.session.access_token,
+        user: { ...newUser, role }
+      });
+    }
+
+    const role = user.workspaces?.[0]?.role || data.user.user_metadata.role || 'USER';
+
+    return reply.send({
+      access_token: data.session.access_token,
+      user: { ...user, role }
+    });
   });
 
   // Logout (no-op since Supabase handles sessions, but kept for compatibility)

@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess } from '../lib/middleware';
+import { supabaseAdmin } from '../lib/supabase';
 
 export default async function tenantRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
@@ -47,11 +48,58 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
   // Create tenant
   fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId } = request.params as { workspaceId: string };
-    const { name, email, phone } = request.body as any;
+    const { name, email, phone, password } = request.body as any;
     if (!name) return reply.status(400).send({ error: 'Tenant name is required' });
 
+    let supabaseUserId = null;
+
+    // If email is provided, create a Supabase Auth account for the mobile app
+    if (email) {
+      const tempPassword = password || 'JustHub123!';
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { name, role: 'TENANT' }
+      });
+
+      if (authError) {
+        // If user already exists in Supabase, we just link them
+        if (authError.message.includes('already has been registered')) {
+          const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
+          const user = existingUser.users.find(u => u.email === email);
+          supabaseUserId = user?.id;
+        } else {
+          return reply.status(400).send({ error: authError.message });
+        }
+      } else {
+        supabaseUserId = authData.user.id;
+      }
+
+      // Also ensure they exist in the User table and WorkspaceMember table
+      if (supabaseUserId) {
+        await prisma.user.upsert({
+          where: { id: supabaseUserId },
+          update: { email, name },
+          create: { id: supabaseUserId, email, name }
+        });
+
+        await prisma.workspaceMember.upsert({
+          where: { userId_workspaceId: { userId: supabaseUserId, workspaceId } },
+          update: { role: 'TENANT' },
+          create: { userId: supabaseUserId, workspaceId, role: 'TENANT' }
+        });
+      }
+    }
+
     const tenant = await prisma.tenant.create({
-      data: { name, email, phone, workspaceId }
+      data: { 
+        id: supabaseUserId || undefined, // Use Supabase ID if available
+        name, 
+        email, 
+        phone, 
+        workspaceId 
+      }
     });
     return reply.status(201).send({ tenant });
   });
