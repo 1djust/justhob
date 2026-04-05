@@ -13,7 +13,30 @@ export function LoginForm() {
   const [errorDetails, setErrorDetails] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [resending, setResending] = React.useState(false);
+  const [isInviteFlow, setIsInviteFlow] = React.useState(false);
   const router = useRouter();
+
+  React.useEffect(() => {
+    // Check if the user is already authenticated (e.g. they just clicked an invite link)
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setIsInviteFlow(true);
+        setEmail(session.user.email || '');
+      }
+    };
+    checkSession();
+
+    // Listen for auth state changes (Supabase processing the #access_token from the URL)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user && event === 'SIGNED_IN') {
+        setIsInviteFlow(true);
+        setEmail(session.user.email || '');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +73,40 @@ export function LoginForm() {
     }
   };
 
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      // They are already authenticated via the magic link, so we just update their user profile
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password
+      });
+
+      if (updateError) {
+        throw new Error(updateError.message || 'Failed to set password');
+      }
+
+      // Sync with Prisma backend
+      const res = await apiFetch(`${API_BASE_URL}/api/auth/sync`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to sync user data to backend');
+      }
+
+      router.push('/dashboard');
+    } catch (err) {
+      console.error('Password setup error:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleResendConfirmation = async () => {
     if (!email) return;
     setResending(true);
@@ -66,6 +123,54 @@ export function LoginForm() {
       setResending(false);
     }
   };
+
+  if (isInviteFlow) {
+    return (
+      <form onSubmit={handleSetPassword} className="space-y-4">
+        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-4 rounded-xl text-sm mb-6">
+          <p className="font-bold">Email Verified Successfully! 🎉</p>
+          <p className="mt-1 opacity-90">Please set a permanent password for your account to complete your setup.</p>
+        </div>
+
+        {error && (
+          <div className="p-3 text-sm text-red-500 bg-red-500/10 rounded-md border border-red-500/20 space-y-2">
+            <p className="font-bold">{error}</p>
+          </div>
+        )}
+        
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none">Email Address</label>
+          <input
+            type="email"
+            value={email}
+            disabled
+            className="flex h-10 w-full rounded-md border border-input bg-zinc-100/50 dark:bg-zinc-800/50 px-3 py-2 text-sm text-zinc-500 cursor-not-allowed"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none">Create a Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            placeholder="Minimum 6 characters"
+            required
+            minLength={6}
+          />
+        </div>
+        
+        <button
+          type="submit"
+          disabled={loading || password.length < 6}
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-4 w-full mt-4"
+        >
+          {loading ? 'Setting Password...' : 'Save Password & Continue'}
+        </button>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
