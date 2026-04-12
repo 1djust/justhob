@@ -108,17 +108,15 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
 
     const payment = await prisma.payment.findUnique({
       where: { id },
-      include: { lease: { include: { tenant: { select: { id: true, userId: true } } } } }
+      include: { lease: { include: { tenant: { select: { id: true, email: true } } } } }
     });
 
     if (!payment) return reply.status(404).send({ error: 'Payment not found' });
     
-    // We get the original tenant userId to send a notification
-    // Wait, Tenant model doesn't have userId directly, it has email. Let's find the user.
-    // We can just use the tenant's email to find the matching User record.
-    const tenantUser = await prisma.user.findUnique({
-      where: { email: payment.lease.tenant.email || '' }
-    });
+    const tenantEmail = payment?.lease?.tenant?.email;
+    const tenantUser = tenantEmail 
+      ? await prisma.user.findUnique({ where: { email: tenantEmail } })
+      : null;
 
     let updatedPayment;
 
