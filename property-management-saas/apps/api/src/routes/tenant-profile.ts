@@ -176,19 +176,15 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     const lease = await prisma.lease.findFirst({
       where: { id: leaseId, tenantId: tenant.id },
       include: {
-        property: {
-          include: { workspace: true }
-        }
+        property: { select: { id: true, name: true } }
       }
     });
 
     if (!lease) return reply.status(404).send({ error: 'Lease not found' });
 
-    const workspace = lease.property.workspace;
+    // Note: Bank details check removed — not needed for proof-of-payment flow.
+    // Will be re-enabled when Remita gateway integration goes live.
 
-    if (!workspace.bankCode || !workspace.accountNumber) {
-      return reply.status(400).send({ error: 'Landlord has not configured a bank account for payouts. Please contact management.' });
-    }
 
     // Generate unique order ID
     const orderId = `RENT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;

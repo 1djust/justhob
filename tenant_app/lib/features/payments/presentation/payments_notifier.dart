@@ -32,7 +32,6 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
       // We don't fetch payments immediately because they need to complete it in browser first
       return url;
     } catch (e) {
-      // TODO: Handle error nicely in UI
       rethrow;
     }
   }
@@ -45,6 +44,36 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
         note: note,
       );
       // Fetch latest payments to reflect the UNDER_REVIEW status
+      await fetchPayments();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Creates a new payment record and immediately submits proof of payment.
+  /// This is the primary flow for tenants submitting rent proof.
+  Future<void> createAndSubmitProof({
+    required String leaseId,
+    required double amount,
+    required String base64Image,
+    String? note,
+  }) async {
+    try {
+      // Step 1: Create the payment record
+      final paymentId = await _repository.createPaymentRecord(
+        amount: amount,
+        leaseId: leaseId,
+        note: note,
+      );
+
+      // Step 2: Submit the proof image to the newly created payment
+      await _repository.uploadPaymentProof(
+        paymentId: paymentId,
+        base64Image: base64Image,
+        note: note,
+      );
+
+      // Refresh the list
       await fetchPayments();
     } catch (e) {
       rethrow;

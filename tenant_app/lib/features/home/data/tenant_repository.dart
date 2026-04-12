@@ -57,6 +57,24 @@ class TenantRepository {
     return response.data['paymentUrl'] as String;
   }
 
+  /// Creates a payment record and returns the payment ID.
+  /// Used for the submit-proof flow where we need the ID to attach proof to.
+  Future<String> createPaymentRecord({
+    required double amount,
+    required String leaseId,
+    String? note,
+  }) async {
+    final response = await _apiClient.dio.post(
+      '/tenant/payments',
+      data: {
+        'amount': amount,
+        'leaseId': leaseId,
+        'note': note,
+      },
+    );
+    return response.data['paymentId'] as String;
+  }
+
   Future<Payment> uploadPaymentProof({
     required String paymentId,
     required String base64Image,

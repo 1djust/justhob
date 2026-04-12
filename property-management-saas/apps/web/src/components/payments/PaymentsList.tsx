@@ -4,17 +4,21 @@ import * as React from 'react';
 import { 
   CreditCard, 
   Search, 
-  Plus, 
-  ArrowUpRight, 
-  ArrowDownRight, 
   Clock, 
   CheckCircle2, 
   AlertCircle,
-  MoreVertical,
   Calendar,
   Wallet,
   Building,
-  Building2
+  ArrowUpRight,
+  ArrowDownRight,
+  MoreVertical,
+  Eye,
+  ThumbsUp,
+  ThumbsDown,
+  X,
+  FileCheck,
+  Image as ImageIcon
 } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 
@@ -31,9 +35,13 @@ interface Payment {
   status: string;
   dueDate: string;
   paidDate?: string;
+  proofUrl?: string;
+  rejectionReason?: string;
+  receiptId?: string;
+  note?: string;
   lease?: {
-    tenant?: { name: string };
-    property?: { name: string };
+    tenant?: { id: string; name: string };
+    property?: { id: string; name: string };
   };
 }
 
@@ -48,6 +56,8 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
   const [filter, setFilter] = React.useState<string>('');
+  const [reviewingPayment, setReviewingPayment] = React.useState<Payment | null>(null);
+  const [proofViewPayment, setProofViewPayment] = React.useState<Payment | null>(null);
 
   const fetchPayments = async () => {
     try {
@@ -92,6 +102,42 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
 
   const totalPending = payments.filter(p => p.status === 'PENDING' || p.status === 'OVERDUE').reduce((sum, p) => sum + p.amount, 0);
   const totalPaid = payments.filter(p => p.status === 'PAID').reduce((sum, p) => sum + p.amount, 0);
+  const underReviewCount = payments.filter(p => p.status === 'UNDER_REVIEW').length;
+
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'PAID':
+        return {
+          className: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50',
+          icon: <CheckCircle2 className="w-3 h-3" />,
+          label: 'PAID',
+        };
+      case 'UNDER_REVIEW':
+        return {
+          className: 'bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50',
+          icon: <FileCheck className="w-3 h-3" />,
+          label: 'UNDER REVIEW',
+        };
+      case 'REJECTED':
+        return {
+          className: 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50',
+          icon: <AlertCircle className="w-3 h-3" />,
+          label: 'REJECTED',
+        };
+      case 'OVERDUE':
+        return {
+          className: 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50',
+          icon: <Clock className="w-3 h-3" />,
+          label: 'OVERDUE',
+        };
+      default:
+        return {
+          className: 'bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50',
+          icon: <Clock className="w-3 h-3" />,
+          label: 'PENDING',
+        };
+    }
+  };
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -110,7 +156,9 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
             >
               <option value="">All Status</option>
               <option value="PENDING">Pending</option>
+              <option value="UNDER_REVIEW">Under Review</option>
               <option value="PAID">Paid</option>
+              <option value="REJECTED">Rejected</option>
               <option value="OVERDUE">Overdue</option>
             </select>
           </div>
@@ -124,6 +172,31 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
           )}
         </div>
       </div>
+
+      {/* Notification Banner for Under Review */}
+      {underReviewCount > 0 && isPropertyManager && (
+        <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <FileCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-blue-900 dark:text-blue-200">
+                {underReviewCount} payment{underReviewCount > 1 ? 's' : ''} awaiting your review
+              </p>
+              <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-0.5">
+                Tenants have submitted proof of payment for verification
+              </p>
+            </div>
+            <button 
+              onClick={() => setFilter('UNDER_REVIEW')}
+              className="text-[10px] uppercase font-black px-4 py-2 rounded-full border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white transition-all active:scale-95"
+            >
+              Review Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Summary Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 mb-10">
@@ -190,69 +263,364 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900">
-                {payments.map(p => (
-                  <tr key={p.id} className="group hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors">
-                    <td className="py-5 px-6">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-zinc-900 dark:text-zinc-100">{p.lease?.tenant?.name}</span>
-                        <span className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5">
-                          <Building className="w-3 h-3" /> {p.lease?.property?.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-5 px-6">
-                      <span className={p.status === 'PAID' 
-                          ? 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50'
-                          : p.status === 'OVERDUE'
-                          ? 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50'
-                          : 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50'
-                        }>
-                        {p.status === 'PAID' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="py-5 px-6">
-                      <div className="flex items-center gap-2 text-zinc-500 font-medium">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {new Date(p.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                    </td>
-                    <td className="py-5 px-6">
-                      <span className="font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
-                        ₦{p.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </span>
-                    </td>
-                    <td className="py-5 px-6 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        {p.status === 'PENDING' && isPropertyManager && (
-                          <button
-                            onClick={() => handleMarkPaid(p.id)}
-                            className="text-[10px] uppercase font-black px-4 py-2 rounded-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-500/20 transition-all active:scale-95"
-                          >
-                            Mark Settled
-                          </button>
-                        )}
-                        {p.status === 'PAID' && p.paidDate && (
-                          <span className="text-[10px] font-bold text-emerald-500 uppercase bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-md">
-                            Paid {new Date(p.paidDate).toLocaleDateString()}
+                {payments.map(p => {
+                  const statusConfig = getStatusConfig(p.status);
+                  return (
+                    <tr key={p.id} className={`group hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors ${p.status === 'UNDER_REVIEW' ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''}`}>
+                      <td className="py-5 px-6">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100">{p.lease?.tenant?.name}</span>
+                          <span className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5">
+                            <Building className="w-3 h-3" /> {p.lease?.property?.name}
                           </span>
-                        )}
-                        <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors">
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </div>
+                      </td>
+                      <td className="py-5 px-6">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusConfig.className}`}>
+                          {statusConfig.icon}
+                          {statusConfig.label}
+                        </span>
+                      </td>
+                      <td className="py-5 px-6">
+                        <div className="flex items-center gap-2 text-zinc-500 font-medium">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {new Date(p.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+                      </td>
+                      <td className="py-5 px-6">
+                        <span className="font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
+                          ₦{p.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </span>
+                      </td>
+                      <td className="py-5 px-6 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* UNDER_REVIEW: Show View Proof + Review buttons */}
+                          {p.status === 'UNDER_REVIEW' && isPropertyManager && (
+                            <>
+                              {p.proofUrl && (
+                                <button
+                                  onClick={() => setProofViewPayment(p)}
+                                  className="text-[10px] uppercase font-black px-3 py-2 rounded-full border-2 border-blue-500 text-blue-600 hover:bg-blue-500 hover:text-white transition-all active:scale-95 flex items-center gap-1"
+                                >
+                                  <Eye className="w-3 h-3" /> View Proof
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setReviewingPayment(p)}
+                                className="text-[10px] uppercase font-black px-3 py-2 rounded-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all active:scale-95 flex items-center gap-1"
+                              >
+                                <ThumbsUp className="w-3 h-3" /> Review
+                              </button>
+                            </>
+                          )}
+                          {/* PENDING: Mark as settled */}
+                          {p.status === 'PENDING' && isPropertyManager && (
+                            <button
+                              onClick={() => handleMarkPaid(p.id)}
+                              className="text-[10px] uppercase font-black px-4 py-2 rounded-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-500/20 transition-all active:scale-95"
+                            >
+                              Mark Settled
+                            </button>
+                          )}
+                          {/* PAID: Show paid date */}
+                          {p.status === 'PAID' && p.paidDate && (
+                            <span className="text-[10px] font-bold text-emerald-500 uppercase bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-md">
+                              Paid {new Date(p.paidDate).toLocaleDateString()}
+                            </span>
+                          )}
+                          {/* REJECTED: Show reason */}
+                          {p.status === 'REJECTED' && p.rejectionReason && (
+                            <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/30 px-2 py-1 rounded-md max-w-[200px] truncate" title={p.rejectionReason}>
+                              {p.rejectionReason}
+                            </span>
+                          )}
+                          <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       )}
+
+      {/* Proof Viewer Modal */}
+      {proofViewPayment && (
+        <ProofViewerModal
+          payment={proofViewPayment}
+          onClose={() => setProofViewPayment(null)}
+        />
+      )}
+
+      {/* Review Modal */}
+      {reviewingPayment && (
+        <ReviewPaymentModal
+          payment={reviewingPayment}
+          workspaceId={workspaceId}
+          onClose={() => setReviewingPayment(null)}
+          onComplete={() => {
+            setReviewingPayment(null);
+            fetchPayments();
+          }}
+        />
+      )}
     </div>
   );
 }
 
+/* ─── Proof Viewer Modal ─── */
+function ProofViewerModal({ payment, onClose }: { payment: Payment; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+      <div 
+        className="relative bg-white dark:bg-zinc-950 rounded-[2rem] shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-300"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-zinc-100 dark:border-zinc-800">
+          <div>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Proof of Payment</h3>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Submitted by {payment.lease?.tenant?.name} • ₦{payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Proof Image */}
+        <div className="p-6 flex items-center justify-center overflow-auto max-h-[60vh]">
+          {payment.proofUrl ? (
+            <img
+              src={payment.proofUrl}
+              alt="Proof of payment"
+              className="max-w-full max-h-full rounded-xl object-contain border border-zinc-200 dark:border-zinc-800"
+            />
+          ) : (
+            <div className="flex flex-col items-center text-zinc-400 py-12">
+              <ImageIcon className="w-16 h-16 mb-4" />
+              <p className="font-medium">No proof image available</p>
+            </div>
+          )}
+        </div>
+
+        {/* Note if present */}
+        {payment.note && (
+          <div className="px-6 pb-6">
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Tenant Note</p>
+              <p className="text-sm text-zinc-700 dark:text-zinc-300">{payment.note}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Review Payment Modal (Approve / Reject) ─── */
+function ReviewPaymentModal({ payment, workspaceId, onClose, onComplete }: { 
+  payment: Payment; 
+  workspaceId: string;
+  onClose: () => void;
+  onComplete: () => void;
+}) {
+  const [action, setAction] = React.useState<'approve' | 'reject' | null>(null);
+  const [rejectionReason, setRejectionReason] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+  const handleReview = async (status: 'PAID' | 'REJECTED') => {
+    if (status === 'REJECTED' && !rejectionReason.trim()) return;
+
+    setLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments/${payment.id}/review`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          ...(status === 'REJECTED' ? { rejectionReason: rejectionReason.trim() } : {}),
+        }),
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        onComplete();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to review payment');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Network error while reviewing payment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+      <div
+        className="relative bg-white dark:bg-zinc-950 rounded-[2rem] shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-300"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Review Payment</h3>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Payment Info */}
+        <div className="p-6 space-y-4">
+          <div className="flex items-center gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-zinc-900 dark:text-white">{payment.lease?.tenant?.name}</p>
+              <p className="text-xs text-zinc-500 flex items-center gap-1">
+                <Building className="w-3 h-3" /> {payment.lease?.property?.name}
+              </p>
+            </div>
+            <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">
+              ₦{payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+
+          {/* Proof preview */}
+          {payment.proofUrl && (
+            <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
+              <img
+                src={payment.proofUrl}
+                alt="Proof"
+                className="w-full max-h-[200px] object-contain bg-zinc-50 dark:bg-zinc-900"
+              />
+            </div>
+          )}
+
+          {payment.note && (
+            <div className="p-3 bg-zinc-50 dark:bg-zinc-900/50 rounded-lg">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Note</p>
+              <p className="text-sm text-zinc-700 dark:text-zinc-300">{payment.note}</p>
+            </div>
+          )}
+
+          {/* Action selection */}
+          {action === null && (
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setAction('approve')}
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold border-2 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 transition-all active:scale-[0.98]"
+              >
+                <ThumbsUp className="w-5 h-5" />
+                Approve
+              </button>
+              <button
+                onClick={() => setAction('reject')}
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 font-bold border-2 border-rose-200 dark:border-rose-900/50 hover:bg-rose-100 dark:hover:bg-rose-950/40 transition-all active:scale-[0.98]"
+              >
+                <ThumbsDown className="w-5 h-5" />
+                Reject
+              </button>
+            </div>
+          )}
+
+          {/* Approve confirmation */}
+          {action === 'approve' && (
+            <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-900/50">
+                <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                  Approve this payment of ₦{payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}?
+                </p>
+                <p className="text-xs text-emerald-600/70 dark:text-emerald-400/60 mt-1">
+                  The tenant will be notified and a receipt will be generated.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAction(null)}
+                  disabled={loading}
+                  className="flex-1 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 font-bold hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => handleReview('PAID')}
+                  disabled={loading}
+                  className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" /> Confirm Approval
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Reject with reason */}
+          {action === 'reject' && (
+            <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Rejection Reason *</label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={e => setRejectionReason(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. Amount does not match, receipt is unclear..."
+                  className="w-full mt-1.5 px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 font-medium text-sm resize-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setAction(null); setRejectionReason(''); }}
+                  disabled={loading}
+                  className="flex-1 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 font-bold hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => handleReview('REJECTED')}
+                  disabled={loading || !rejectionReason.trim()}
+                  className="flex-1 py-3 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <ThumbsDown className="w-4 h-4" /> Reject Payment
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Payment Form (existing, for managers) ─── */
 function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string; leases: Lease[]; onComplete: () => void }) {
   const [formData, setFormData] = React.useState({ leaseId: '', amount: '', dueDate: '', status: 'PENDING', note: '' });
   const [loading, setLoading] = React.useState(false);
