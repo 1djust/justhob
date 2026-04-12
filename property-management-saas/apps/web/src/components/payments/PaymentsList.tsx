@@ -787,10 +787,10 @@ function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string;
             onChange={e => handleLeaseChange(e.target.value)} 
             className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all font-medium appearance-none"
           >
-            <option value="">Select active tenant lease...</option>
+            <option value="">{leases.length === 0 ? 'Loading leases...' : 'Select active tenant lease...'}</option>
             {leases.map(l => (
               <option key={l.id} value={l.id}>
-                {l.tenant?.name} @ {l.property?.name} (₦{l.yearlyRent?.toLocaleString()})
+                {l.tenant?.name} — {l.property?.name} {l.unit?.unitNumber ? `(Unit ${l.unit.unitNumber})` : ''} — ₦{l.yearlyRent?.toLocaleString()}
               </option>
             ))}
           </select>

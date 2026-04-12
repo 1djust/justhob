@@ -57,7 +57,7 @@ export default function DashboardPage() {
       })
       .then(data => {
         setUser(data.user);
-        if (data.user?.workspaces?.length > 0) {
+        if (data.user?.workspaces?.length > 0 && !selectedWorkspaceId) {
           setSelectedWorkspaceId(data.user.workspaces[0].workspace.id);
         }
         setLoading(false);
@@ -65,7 +65,23 @@ export default function DashboardPage() {
       .catch(() => {
         router.push('/login');
       });
-  }, [router]);
+  }, [router, selectedWorkspaceId]);
+
+  React.useEffect(() => {
+    if (selectedWorkspaceId) {
+      // Preload properties
+      apiFetch(`${API_BASE_URL}/api/workspaces/${selectedWorkspaceId}/properties`)
+        .then(res => res.ok ? res.json() : { properties: [] })
+        .then(data => setProperties(data.properties || []))
+        .catch(e => console.error('Failed to preload properties:', e));
+
+      // Preload leases
+      apiFetch(`${API_BASE_URL}/api/workspaces/${selectedWorkspaceId}/leases`)
+        .then(res => res.ok ? res.json() : { leases: [] })
+        .then(data => setLeases(data.leases || []))
+        .catch(e => console.error('Failed to preload leases:', e));
+    }
+  }, [selectedWorkspaceId]);
 
   const handleLogout = async () => {
     await apiFetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST' });

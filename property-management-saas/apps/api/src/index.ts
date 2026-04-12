@@ -31,6 +31,8 @@ import webhookRoutes from './routes/webhooks';
 import ownerRoutes from './routes/owners';
 import notificationRoutes from './routes/notifications';
 import bankVerificationRoutes from './routes/bank-verification';
+import leaseRoutes from './routes/leases';
+
 
 fastify.get('/health', async () => {
   return { status: 'ok' };
@@ -48,6 +50,8 @@ fastify.register(notificationRoutes, { prefix: '/api/notifications' });
 fastify.register(publicRoutes, { prefix: '/api/public' });
 fastify.register(webhookRoutes, { prefix: '/api/public/webhooks' });
 fastify.register(bankVerificationRoutes, { prefix: '/api/workspaces/:workspaceId/bank' });
+fastify.register(leaseRoutes, { prefix: '/api/workspaces/:workspaceId/leases' });
+
 
 const start = async () => {
   try {
