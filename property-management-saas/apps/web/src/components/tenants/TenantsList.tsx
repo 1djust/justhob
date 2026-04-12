@@ -203,25 +203,49 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantP
                 {t.leases.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {t.leases.map((l) => (
-                      <div key={l.id} className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-900/50 p-2.5 pr-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 group/lease hover:border-zinc-400 transition-colors">
-                        <div className="w-8 h-8 rounded-xl bg-white dark:bg-zinc-950 flex items-center justify-center text-[11px] font-bold border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                          {l.unit?.unitNumber || 'U'}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-200">{l.property?.name}</span>
-                          <div className="flex items-center gap-1.5 text-[9px] text-zinc-500">
-                            {l.status === 'ACTIVE' ? (
-                              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
-                                <span className="w-1 h-1 rounded-full bg-emerald-500" /> Active
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-2.5 h-2.5" /> {l.status}
-                              </span>
-                            )}
+                      <div key={l.id} className="flex items-center gap-4 bg-zinc-50 dark:bg-zinc-900/50 p-2.5 pl-3 pr-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 group/lease hover:border-zinc-400 transition-colors">
+                        <div className="flex items-center gap-3 min-w-[140px]">
+                          <div className="w-8 h-8 rounded-xl bg-white dark:bg-zinc-950 flex items-center justify-center text-[11px] font-bold border border-zinc-100 dark:border-zinc-800 shadow-sm shrink-0">
+                            {l.unit?.unitNumber || 'U'}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-200 line-clamp-1">{l.property?.name}</span>
+                            <div className="flex items-center gap-1.5 text-[9px] text-zinc-500">
+                              {l.status === 'ACTIVE' ? (
+                                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                                  <span className="w-1 h-1 rounded-full bg-emerald-500" /> Active
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5" /> {l.status}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <ChevronRight className="w-3 h-3 text-zinc-300 ml-1 group-hover/lease:translate-x-1 transition-transform" />
+
+                        {l.yearlyRent != null && (
+                          <div className="pl-4 border-l border-zinc-200 dark:border-zinc-700 flex flex-col justify-center">
+                            <div className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold mb-0.5">Rent</div>
+                            <div className="text-[11px] font-bold text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
+                              {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(Number(l.yearlyRent))}
+                              <span className="text-zinc-400 font-normal">/yr</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {(l.startDate || l.endDate) && (
+                          <div className="pl-4 border-l border-zinc-200 dark:border-zinc-700 flex flex-col justify-center hidden sm:flex">
+                            <div className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold mb-0.5">Lease Period</div>
+                            <div className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                              {l.startDate ? new Date(l.startDate).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : 'N/A'} - {l.endDate ? new Date(l.endDate).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : 'N/A'}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="ml-auto pl-2">
+                          <ChevronRight className="w-3.5 h-3.5 text-zinc-300 group-hover/lease:translate-x-1 group-hover/lease:text-zinc-500 transition-all" />
+                        </div>
                       </div>
                     ))}
                   </div>
