@@ -804,9 +804,10 @@ function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string;
             step="0.01" 
             min="0" 
             required 
+            readOnly
             value={formData.amount} 
             onChange={e => setFormData({ ...formData, amount: e.target.value })} 
-            className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-bold tracking-tight" 
+            className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 focus:outline-none cursor-not-allowed font-bold tracking-tight text-zinc-500" 
             placeholder="0.00" 
           />
         </div>
