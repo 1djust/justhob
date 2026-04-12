@@ -28,6 +28,7 @@ interface Lease {
   id: string;
   tenant?: { name: string };
   property?: { name: string };
+  unit?: { unitNumber: string };
   yearlyRent?: number;
 }
 
