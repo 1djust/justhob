@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'home_notifier.dart';
+import 'notifications_notifier.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -16,6 +17,47 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
+          IconButton(
+            onPressed: () => context.push('/notifications'),
+            icon: Stack(
+              children: [
+                const Icon(Icons.notifications_outlined),
+                ref.watch(notificationsProvider).maybeWhen(
+                  data: (notifications) {
+                    final unreadCount = notifications.where((n) => !n.isRead).length;
+                    if (unreadCount > 0) {
+                      return Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 12,
+                            minHeight: 12,
+                          ),
+                          child: Text(
+                            '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                  orElse: () => const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
           IconButton(
             onPressed: () => context.push('/profile'),
             icon: const Icon(Icons.person_outline),

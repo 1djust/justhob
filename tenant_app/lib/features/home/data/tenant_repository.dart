@@ -56,4 +56,19 @@ class TenantRepository {
     );
     return response.data['paymentUrl'] as String;
   }
+
+  Future<Payment> uploadPaymentProof({
+    required String paymentId,
+    required String base64Image,
+    String? note,
+  }) async {
+    final response = await _apiClient.dio.post(
+      '/tenant/payments/$paymentId/submit-proof',
+      data: {
+        'proofUrl': 'data:image/jpeg;base64,$base64Image',
+        'note': note,
+      },
+    );
+    return Payment.fromJson(response.data['payment']);
+  }
 }

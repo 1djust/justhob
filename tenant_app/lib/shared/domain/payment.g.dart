@@ -14,8 +14,12 @@ _$PaymentImpl _$$PaymentImplFromJson(Map<String, dynamic> json) =>
       paidDate: json['paidDate'] == null
           ? null
           : DateTime.parse(json['paidDate'] as String),
+      leaseId: json['leaseId'] as String,
       status: json['status'] as String,
       note: json['note'] as String?,
+      proofUrl: json['proofUrl'] as String?,
+      rejectionReason: json['rejectionReason'] as String?,
+      receiptId: json['receiptId'] as String?,
     );
 
 Map<String, dynamic> _$$PaymentImplToJson(_$PaymentImpl instance) =>
@@ -24,6 +28,10 @@ Map<String, dynamic> _$$PaymentImplToJson(_$PaymentImpl instance) =>
       'amount': instance.amount,
       'dueDate': instance.dueDate.toIso8601String(),
       'paidDate': instance.paidDate?.toIso8601String(),
+      'leaseId': instance.leaseId,
       'status': instance.status,
       'note': instance.note,
+      'proofUrl': instance.proofUrl,
+      'rejectionReason': instance.rejectionReason,
+      'receiptId': instance.receiptId,
     };

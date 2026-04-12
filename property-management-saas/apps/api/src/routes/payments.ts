@@ -96,4 +96,78 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
 
     return reply.send({ payments });
   });
+
+  // Review a submitted proof of payment (Manager only)
+  fastify.patch('/:id/review', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+    const { status, rejectionReason } = request.body as any; // status expected: 'PAID' or 'REJECTED'
+
+    if (status !== 'PAID' && status !== 'REJECTED') {
+      return reply.status(400).send({ error: 'Status must be PAID or REJECTED' });
+    }
+
+    const payment = await prisma.payment.findUnique({
+      where: { id },
+      include: { lease: { include: { tenant: { select: { id: true, userId: true } } } } }
+    });
+
+    if (!payment) return reply.status(404).send({ error: 'Payment not found' });
+    
+    // We get the original tenant userId to send a notification
+    // Wait, Tenant model doesn't have userId directly, it has email. Let's find the user.
+    // We can just use the tenant's email to find the matching User record.
+    const tenantUser = await prisma.user.findUnique({
+      where: { email: payment.lease.tenant.email || '' }
+    });
+
+    let updatedPayment;
+
+    if (status === 'PAID') {
+      const receiptId = `RCPT-${Date.now()}-${id.substring(0, 4)}`.toUpperCase();
+      updatedPayment = await prisma.payment.update({
+        where: { id },
+        data: {
+          status: 'PAID',
+          paidDate: new Date(),
+          receiptId,
+        }
+      });
+      
+      if (tenantUser) {
+        await prisma.notification.create({
+          data: {
+            userId: tenantUser.id,
+            title: 'Payment Approved',
+            message: `Your payment of ₦${updatedPayment.amount} has been approved. Receipt ID: ${receiptId}`,
+            type: 'PAYMENT_APPROVED'
+          }
+        });
+      }
+    } else {
+      // REJECTED
+      if (!rejectionReason) {
+        return reply.status(400).send({ error: 'Rejection reason is required' });
+      }
+      updatedPayment = await prisma.payment.update({
+        where: { id },
+        data: {
+          status: 'REJECTED',
+          rejectionReason,
+        }
+      });
+      
+      if (tenantUser) {
+        await prisma.notification.create({
+          data: {
+            userId: tenantUser.id,
+            title: 'Payment Proof Rejected',
+            message: `Your submitted proof of payment was rejected. Reason: ${rejectionReason}`,
+            type: 'PAYMENT_REJECTED'
+          }
+        });
+      }
+    }
+
+    return reply.send({ payment: updatedPayment });
+  });
 }

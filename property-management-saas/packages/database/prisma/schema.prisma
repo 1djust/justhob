@@ -18,6 +18,7 @@ model User {
 
   workspaces      WorkspaceMember[]
   propertiesOwned Property[]
+  notifications   Notification[]
 }
 
 model Workspace {
@@ -164,19 +165,24 @@ model Payment {
   dueDate       DateTime
   paidDate      DateTime?
   status        PaymentStatus @default(PENDING)
-  note          String?
-  rrr           String?       @unique // Remita Retrieval Reference
-  transactionId String?       @unique // Remita Transaction ID
-  paymentUrl    String? // Remita Hosted Checkout URL
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  note            String?
+  proofUrl        String?
+  rejectionReason String?
+  receiptId       String?       @unique
+  rrr             String?       @unique // Remita Retrieval Reference
+  transactionId   String?       @unique // Remita Transaction ID
+  paymentUrl      String? // Remita Hosted Checkout URL
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   lease Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
 }
 
 enum PaymentStatus {
   PENDING
+  UNDER_REVIEW
   PAID
+  REJECTED
   OVERDUE
 }
 
@@ -200,4 +206,16 @@ enum MaintenanceStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // e.g., 'PAYMENT_SUBMITTED', 'PAYMENT_APPROVED'
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'payments_notifier.dart';
 import 'package:intl/intl.dart';
@@ -111,16 +113,50 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
     }
   }
 
+  Future<void> _submitProofOfPayment() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    
+    if (image == null) return;
+    
+    final bytes = await image.readAsBytes();
+    final base64Str = base64Encode(bytes);
+    
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(paymentsProvider.notifier).submitProof(widget.payment.id, base64Str);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Proof submitted and is pending review.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error submitting proof: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final payment = widget.payment;
     final isPaid = payment.status == 'PAID' || payment.status == 'COMPLETED';
-    final isOverdue = !isPaid && payment.dueDate.isBefore(DateTime.now());
+    final isUnderReview = payment.status == 'UNDER_REVIEW';
+    final isRejected = payment.status == 'REJECTED';
+    final isOverdue = (!isPaid && !isUnderReview) && payment.dueDate.isBefore(DateTime.now());
 
     Color statusColor;
     if (isPaid) {
       statusColor = Colors.green.shade600;
-    } else if (isOverdue) {
+    } else if (isUnderReview) {
+      statusColor = Colors.blue.shade500;
+    } else if (isRejected || isOverdue) {
       statusColor = Colors.red.shade500;
     } else {
       statusColor = Colors.orange.shade500;
@@ -140,7 +176,9 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    isPaid ? Icons.check_circle_outline : (isOverdue ? Icons.warning_amber_rounded : Icons.pending_actions_outlined),
+                    isPaid ? Icons.check_circle_outline 
+                    : isUnderReview ? Icons.hourglass_top
+                    : (isOverdue ? Icons.warning_amber_rounded : Icons.pending_actions_outlined),
                     color: statusColor,
                     size: 28,
                   ),
@@ -169,7 +207,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    payment.status,
+                    payment.status.replaceAll('_', ' '),
                     style: TextStyle(
                       color: statusColor,
                       fontSize: 12,
@@ -180,24 +218,60 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                 ),
               ],
             ),
-            if (!isPaid) ...[
+            if (isRejected && payment.rejectionReason != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Rejected: ${payment.rejectionReason}',
+                        style: TextStyle(color: Colors.red.shade900, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (!isPaid && !isUnderReview) ...[
               const SizedBox(height: 16),
               const Divider(height: 1),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handlePayment,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _submitProofOfPayment,
+                      icon: const Icon(Icons.upload_file),
+                      label: const Text('Upload Proof'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
                   ),
-                  child: _isLoading 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Pay Now', style: TextStyle(fontSize: 15)),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handlePayment,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: _isLoading 
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Pay Online', style: TextStyle(fontSize: 15)),
+                    ),
+                  ),
+                ],
               ),
             ]
           ],

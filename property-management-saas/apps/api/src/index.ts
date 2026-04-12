@@ -5,7 +5,10 @@ import cookie from '@fastify/cookie';
 import { prisma } from './lib/database';
 
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({ 
+  logger: true,
+  bodyLimit: 10 * 1024 * 1024 // 10MB for image uploads
+});
 
 fastify.register(cors, {
   origin: true,
@@ -26,6 +29,7 @@ import publicRoutes from './routes/public';
 import tenantProfileRoutes from './routes/tenant-profile';
 import webhookRoutes from './routes/webhooks';
 import ownerRoutes from './routes/owners';
+import notificationRoutes from './routes/notifications';
 import bankVerificationRoutes from './routes/bank-verification';
 
 fastify.get('/health', async () => {
@@ -40,6 +44,7 @@ fastify.register(paymentRoutes, { prefix: '/api/workspaces/:workspaceId/payments
 fastify.register(maintenanceRoutes, { prefix: '/api/workspaces/:workspaceId/maintenance' });
 fastify.register(ownerRoutes, { prefix: '/api/workspaces/:workspaceId/owners' });
 fastify.register(tenantProfileRoutes, { prefix: '/api/tenant' });
+fastify.register(notificationRoutes, { prefix: '/api/notifications' });
 fastify.register(publicRoutes, { prefix: '/api/public' });
 fastify.register(webhookRoutes, { prefix: '/api/public/webhooks' });
 fastify.register(bankVerificationRoutes, { prefix: '/api/workspaces/:workspaceId/bank' });

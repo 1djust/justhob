@@ -243,4 +243,69 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: 'Failed to create payment record: ' + e.message });
     }
   });
+
+  // Submit proof of manual payment
+  fastify.post('/payments/:id/submit-proof', async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = (request as any).userId;
+    const { id } = request.params as { id: string };
+    const { proofUrl, note } = request.body as any;
+
+    if (!proofUrl) {
+      return reply.status(400).send({ error: 'Proof image URL (or Base64 string) is required' });
+    }
+
+    const membership = await prisma.workspaceMember.findFirst({
+      where: { userId, role: 'TENANT' }
+    });
+    if (!membership) return reply.status(403).send({ error: 'No tenant profile found' });
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return reply.status(401).send({ error: 'User not found' });
+
+    const tenant = await prisma.tenant.findFirst({
+      where: { workspaceId: membership.workspaceId, email: user.email, deletedAt: null }
+    });
+    if (!tenant) return reply.status(404).send({ error: 'Tenant profile not found' });
+
+    try {
+      const payment = await prisma.payment.findFirst({
+        where: { id, lease: { tenantId: tenant.id } },
+        include: { lease: { include: { property: { select: { workspaceId: true, name: true } } } } }
+      });
+
+      if (!payment) return reply.status(404).send({ error: 'Payment not found' });
+
+      const updatedPayment = await prisma.payment.update({
+        where: { id },
+        data: {
+          status: 'UNDER_REVIEW',
+          proofUrl,
+          ...(note ? { note } : {})
+        }
+      });
+
+      // Notify all managers in this workspace
+      const managers = await prisma.workspaceMember.findMany({
+        where: { workspaceId: membership.workspaceId, role: 'PROPERTY_MANAGER' },
+        select: { userId: true }
+      });
+
+      const notifications = managers.map((m: any) => ({
+        userId: m.userId,
+        title: 'Payment Proof Submitted',
+        message: `Tenant has submitted proof of payment for ${payment.lease.property.name}.`,
+        type: 'PAYMENT_SUBMITTED'
+      }));
+
+      if (notifications.length > 0) {
+        await prisma.notification.createMany({ data: notifications });
+      }
+
+      return reply.send({ success: true, payment: updatedPayment });
+    } catch (error: any) {
+      console.error('[SubmitProofError]', error);
+      return reply.status(500).send({ error: 'Internal Server Error: ' + error.message });
+    }
+  });
+
 }

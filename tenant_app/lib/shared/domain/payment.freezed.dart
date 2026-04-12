@@ -25,8 +25,12 @@ mixin _$Payment {
   double get amount => throw _privateConstructorUsedError;
   DateTime get dueDate => throw _privateConstructorUsedError;
   DateTime? get paidDate => throw _privateConstructorUsedError;
+  String get leaseId => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
   String? get note => throw _privateConstructorUsedError;
+  String? get proofUrl => throw _privateConstructorUsedError;
+  String? get rejectionReason => throw _privateConstructorUsedError;
+  String? get receiptId => throw _privateConstructorUsedError;
 
   /// Serializes this Payment to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -47,8 +51,12 @@ abstract class $PaymentCopyWith<$Res> {
     double amount,
     DateTime dueDate,
     DateTime? paidDate,
+    String leaseId,
     String status,
     String? note,
+    String? proofUrl,
+    String? rejectionReason,
+    String? receiptId,
   });
 }
 
@@ -71,8 +79,12 @@ class _$PaymentCopyWithImpl<$Res, $Val extends Payment>
     Object? amount = null,
     Object? dueDate = null,
     Object? paidDate = freezed,
+    Object? leaseId = null,
     Object? status = null,
     Object? note = freezed,
+    Object? proofUrl = freezed,
+    Object? rejectionReason = freezed,
+    Object? receiptId = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -92,6 +104,10 @@ class _$PaymentCopyWithImpl<$Res, $Val extends Payment>
                 ? _value.paidDate
                 : paidDate // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
+            leaseId: null == leaseId
+                ? _value.leaseId
+                : leaseId // ignore: cast_nullable_to_non_nullable
+                      as String,
             status: null == status
                 ? _value.status
                 : status // ignore: cast_nullable_to_non_nullable
@@ -99,6 +115,18 @@ class _$PaymentCopyWithImpl<$Res, $Val extends Payment>
             note: freezed == note
                 ? _value.note
                 : note // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            proofUrl: freezed == proofUrl
+                ? _value.proofUrl
+                : proofUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            rejectionReason: freezed == rejectionReason
+                ? _value.rejectionReason
+                : rejectionReason // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            receiptId: freezed == receiptId
+                ? _value.receiptId
+                : receiptId // ignore: cast_nullable_to_non_nullable
                       as String?,
           )
           as $Val,
@@ -119,8 +147,12 @@ abstract class _$$PaymentImplCopyWith<$Res> implements $PaymentCopyWith<$Res> {
     double amount,
     DateTime dueDate,
     DateTime? paidDate,
+    String leaseId,
     String status,
     String? note,
+    String? proofUrl,
+    String? rejectionReason,
+    String? receiptId,
   });
 }
 
@@ -142,8 +174,12 @@ class __$$PaymentImplCopyWithImpl<$Res>
     Object? amount = null,
     Object? dueDate = null,
     Object? paidDate = freezed,
+    Object? leaseId = null,
     Object? status = null,
     Object? note = freezed,
+    Object? proofUrl = freezed,
+    Object? rejectionReason = freezed,
+    Object? receiptId = freezed,
   }) {
     return _then(
       _$PaymentImpl(
@@ -163,6 +199,10 @@ class __$$PaymentImplCopyWithImpl<$Res>
             ? _value.paidDate
             : paidDate // ignore: cast_nullable_to_non_nullable
                   as DateTime?,
+        leaseId: null == leaseId
+            ? _value.leaseId
+            : leaseId // ignore: cast_nullable_to_non_nullable
+                  as String,
         status: null == status
             ? _value.status
             : status // ignore: cast_nullable_to_non_nullable
@@ -170,6 +210,18 @@ class __$$PaymentImplCopyWithImpl<$Res>
         note: freezed == note
             ? _value.note
             : note // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        proofUrl: freezed == proofUrl
+            ? _value.proofUrl
+            : proofUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        rejectionReason: freezed == rejectionReason
+            ? _value.rejectionReason
+            : rejectionReason // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        receiptId: freezed == receiptId
+            ? _value.receiptId
+            : receiptId // ignore: cast_nullable_to_non_nullable
                   as String?,
       ),
     );
@@ -184,8 +236,12 @@ class _$PaymentImpl implements _Payment {
     required this.amount,
     required this.dueDate,
     this.paidDate,
+    required this.leaseId,
     required this.status,
     this.note,
+    this.proofUrl,
+    this.rejectionReason,
+    this.receiptId,
   });
 
   factory _$PaymentImpl.fromJson(Map<String, dynamic> json) =>
@@ -200,13 +256,21 @@ class _$PaymentImpl implements _Payment {
   @override
   final DateTime? paidDate;
   @override
+  final String leaseId;
+  @override
   final String status;
   @override
   final String? note;
+  @override
+  final String? proofUrl;
+  @override
+  final String? rejectionReason;
+  @override
+  final String? receiptId;
 
   @override
   String toString() {
-    return 'Payment(id: $id, amount: $amount, dueDate: $dueDate, paidDate: $paidDate, status: $status, note: $note)';
+    return 'Payment(id: $id, amount: $amount, dueDate: $dueDate, paidDate: $paidDate, leaseId: $leaseId, status: $status, note: $note, proofUrl: $proofUrl, rejectionReason: $rejectionReason, receiptId: $receiptId)';
   }
 
   @override
@@ -219,14 +283,32 @@ class _$PaymentImpl implements _Payment {
             (identical(other.dueDate, dueDate) || other.dueDate == dueDate) &&
             (identical(other.paidDate, paidDate) ||
                 other.paidDate == paidDate) &&
+            (identical(other.leaseId, leaseId) || other.leaseId == leaseId) &&
             (identical(other.status, status) || other.status == status) &&
-            (identical(other.note, note) || other.note == note));
+            (identical(other.note, note) || other.note == note) &&
+            (identical(other.proofUrl, proofUrl) ||
+                other.proofUrl == proofUrl) &&
+            (identical(other.rejectionReason, rejectionReason) ||
+                other.rejectionReason == rejectionReason) &&
+            (identical(other.receiptId, receiptId) ||
+                other.receiptId == receiptId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, amount, dueDate, paidDate, status, note);
+  int get hashCode => Object.hash(
+    runtimeType,
+    id,
+    amount,
+    dueDate,
+    paidDate,
+    leaseId,
+    status,
+    note,
+    proofUrl,
+    rejectionReason,
+    receiptId,
+  );
 
   /// Create a copy of Payment
   /// with the given fields replaced by the non-null parameter values.
@@ -248,8 +330,12 @@ abstract class _Payment implements Payment {
     required final double amount,
     required final DateTime dueDate,
     final DateTime? paidDate,
+    required final String leaseId,
     required final String status,
     final String? note,
+    final String? proofUrl,
+    final String? rejectionReason,
+    final String? receiptId,
   }) = _$PaymentImpl;
 
   factory _Payment.fromJson(Map<String, dynamic> json) = _$PaymentImpl.fromJson;
@@ -263,9 +349,17 @@ abstract class _Payment implements Payment {
   @override
   DateTime? get paidDate;
   @override
+  String get leaseId;
+  @override
   String get status;
   @override
   String? get note;
+  @override
+  String? get proofUrl;
+  @override
+  String? get rejectionReason;
+  @override
+  String? get receiptId;
 
   /// Create a copy of Payment
   /// with the given fields replaced by the non-null parameter values.

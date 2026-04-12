@@ -36,4 +36,18 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
       rethrow;
     }
   }
+
+  Future<void> submitProof(String paymentId, String base64Image, {String? note}) async {
+    try {
+      await _repository.uploadPaymentProof(
+        paymentId: paymentId,
+        base64Image: base64Image,
+        note: note,
+      );
+      // Fetch latest payments to reflect the UNDER_REVIEW status
+      await fetchPayments();
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
