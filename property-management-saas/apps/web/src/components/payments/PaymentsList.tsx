@@ -12,13 +12,15 @@ import {
   Building,
   ArrowUpRight,
   ArrowDownRight,
-  MoreVertical,
-  Eye,
-  ThumbsUp,
   ThumbsDown,
   X,
   FileCheck,
-  Image as ImageIcon
+  FileText,
+  Image as ImageIcon,
+  QrCode,
+  Eye,
+  ThumbsUp,
+  MoreVertical
 } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 
@@ -58,6 +60,7 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
   const [filter, setFilter] = React.useState<string>('');
   const [reviewingPayment, setReviewingPayment] = React.useState<Payment | null>(null);
   const [proofViewPayment, setProofViewPayment] = React.useState<Payment | null>(null);
+  const [receiptViewPayment, setReceiptViewPayment] = React.useState<Payment | null>(null);
 
   const fetchPayments = async () => {
     try {
@@ -322,11 +325,23 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
                               Mark Settled
                             </button>
                           )}
-                          {/* PAID: Show paid date */}
-                          {p.status === 'PAID' && p.paidDate && (
-                            <span className="text-[10px] font-bold text-emerald-500 uppercase bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-md">
-                              Paid {new Date(p.paidDate).toLocaleDateString()}
-                            </span>
+                          {/* PAID: Show paid date + View Receipt */}
+                          {p.status === 'PAID' && (
+                            <div className="flex items-center gap-2">
+                              {p.receiptId && (
+                                <button
+                                  onClick={() => setReceiptViewPayment(p)}
+                                  className="text-[10px] uppercase font-black px-3 py-2 rounded-full border-2 border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-900 hover:text-white dark:hover:bg-zinc-100 dark:hover:text-zinc-900 transition-all active:scale-95 flex items-center gap-1"
+                                >
+                                  <FileText className="w-3 h-3" /> Receipt
+                                </button>
+                              )}
+                              {p.paidDate && (
+                                <span className="text-[10px] font-bold text-emerald-500 uppercase bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-md">
+                                  Paid {new Date(p.paidDate).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
                           )}
                           {/* REJECTED: Show reason */}
                           {p.status === 'REJECTED' && p.rejectionReason && (
@@ -366,6 +381,13 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
             setReviewingPayment(null);
             fetchPayments();
           }}
+        />
+      )}
+      {/* Receipt Modal */}
+      {receiptViewPayment && (
+        <ReceiptModal
+          payment={receiptViewPayment}
+          onClose={() => setReceiptViewPayment(null)}
         />
       )}
     </div>
@@ -620,7 +642,104 @@ function ReviewPaymentModal({ payment, workspaceId, onClose, onComplete }: {
   );
 }
 
-/* ─── Payment Form (existing, for managers) ─── */
+/* ─── Receipt Modal ─── */
+function ReceiptModal({ payment, onClose }: { payment: Payment; onClose: () => void }) {
+  const printReceipt = () => {
+    window.print();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+      <div 
+        className="relative bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300 print:shadow-none print:rounded-none"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Decorative Top Bar */}
+        <div className="h-2 bg-gradient-to-r from-emerald-400 via-zinc-900 to-emerald-400 dark:from-emerald-500 dark:via-zinc-100 dark:to-emerald-500" />
+        
+        <div className="p-10 pt-8">
+          {/* Close Button (Hidden on Print) */}
+          <button
+            onClick={onClose}
+            className="absolute top-6 right-6 w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-zinc-400 hover:text-emerald-600 transition-all print:hidden"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          {/* Receipt Header */}
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center mb-4 shadow-xl">
+              <Building className="w-8 h-8 text-white dark:text-zinc-900" />
+            </div>
+            <h3 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter">Just Hub Settlement</h3>
+            <p className="text-[10px] font-black text-emerald-500 tracking-[0.2em] uppercase mt-1">Certified Digital Receipt</p>
+          </div>
+
+          {/* Amount Display */}
+          <div className="text-center mb-10 pb-10 border-b-2 border-dashed border-zinc-100 dark:border-zinc-800">
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Total Amount Paid</p>
+            <div className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
+              ₦{payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </div>
+            <div className="inline-flex items-center gap-1.5 mt-4 text-[10px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-full border border-emerald-100 dark:border-emerald-900/50 uppercase">
+              <CheckCircle2 className="w-3 h-3" /> Transaction Success
+            </div>
+          </div>
+
+          {/* Details Table */}
+          <div className="space-y-5 mb-10">
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Tenant</span>
+              <span className="text-sm font-black text-zinc-900 dark:text-white">{payment.lease?.tenant?.name}</span>
+            </div>
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Property</span>
+              <span className="text-sm font-black text-zinc-900 dark:text-white">{payment.lease?.property?.name}</span>
+            </div>
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Payment Date</span>
+              <span className="text-sm font-black text-zinc-900 dark:text-white">
+                {payment.paidDate ? new Date(payment.paidDate).toLocaleDateString(undefined, { dateStyle: 'long' }) : 'N/A'}
+              </span>
+            </div>
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Method</span>
+              <span className="text-sm font-black text-zinc-900 dark:text-white">Manual Verification</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center">
+             <div className="w-full flex items-center justify-center gap-4 mb-4">
+                <div className="h-px flex-1 bg-zinc-100 dark:bg-zinc-800" />
+                <QrCode className="w-8 h-8 text-zinc-200 dark:text-zinc-800" />
+                <div className="h-px flex-1 bg-zinc-100 dark:bg-zinc-800" />
+             </div>
+             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Receipt Number</p>
+             <p className="text-xs font-mono font-black text-zinc-900 dark:text-zinc-100 tracking-wider">
+               {payment.receiptId || 'PENDING GENERATION'}
+             </p>
+          </div>
+        </div>
+
+        {/* Footer Actions (Hidden on Print) */}
+        <div className="flex gap-4 p-8 bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800 print:hidden">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3.5 rounded-2xl bg-white dark:bg-zinc-950 border-2 border-zinc-200 dark:border-zinc-800 text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 transition-all active:scale-[0.98]"
+          >
+            Close
+          </button>
+          <button
+            onClick={printReceipt}
+            className="flex-1 py-3.5 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-sm font-black hover:scale-[1.02] transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2"
+          >
+            <FileText className="w-4 h-4" /> Print PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string; leases: Lease[]; onComplete: () => void }) {
   const [formData, setFormData] = React.useState({ leaseId: '', amount: '', dueDate: '', status: 'PENDING', note: '' });
   const [loading, setLoading] = React.useState(false);

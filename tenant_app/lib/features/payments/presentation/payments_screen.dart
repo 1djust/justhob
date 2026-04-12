@@ -631,20 +631,38 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
             // Receipt ID for paid payments
             if (isPaid && payment.receiptId != null) ...[
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8)),
-                child: Row(
-                  children: [
-                    Icon(Icons.receipt_outlined, color: Colors.green.shade700, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Receipt: ${payment.receiptId}',
-                        style: TextStyle(color: Colors.green.shade900, fontSize: 13, fontWeight: FontWeight.w600),
+              InkWell(
+                onTap: () => _showReceiptDialog(context, payment),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade100),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.receipt_outlined, color: Colors.green.shade700, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Payment Receipt Issued',
+                              style: TextStyle(color: Colors.green.shade900, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'ID: ${payment.receiptId}',
+                              style: TextStyle(color: Colors.green.shade700, fontSize: 11),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      Icon(Icons.arrow_forward_ios, color: Colors.green.shade300, size: 12),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -715,6 +733,160 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
             ]
           ],
         ),
+      ),
+    );
+  }
+
+  void _showReceiptDialog(BuildContext context, dynamic payment) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF18181B),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: const Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green, size: 48),
+                      SizedBox(height: 12),
+                      Text(
+                        'PAYMENT RECEIPT',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    const Text(
+                      'TOTAL AMOUNT PAID',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF71717A), letterSpacing: 1),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      NumberFormat.currency(symbol: '₦ ', decimalDigits: 2).format(payment.amount),
+                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    _ReceiptRow(label: 'TENANT', value: 'Nureni Oje'), // In real app, get from auth state
+                    _ReceiptRow(label: 'DATE', value: DateFormat.yMMMMd().format(payment.paidDate ?? payment.dueDate)),
+                    _ReceiptRow(label: 'PROPERTY', value: 'Destiny Villa'),
+                    _ReceiptRow(label: 'REFERENCE', value: payment.note ?? 'Rent Payment'),
+                    
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Row(
+                        children: [
+                          Expanded(child: Divider(color: Color(0xFFE4E4E7), thickness: 2)),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Icon(Icons.qr_code_2, color: Color(0xFFD4D4D8), size: 32),
+                          ),
+                          Expanded(child: Divider(color: Color(0xFFE4E4E7), thickness: 2)),
+                        ],
+                      ),
+                    ),
+                    
+                    const Text(
+                      'RECEIPT NUMBER',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF71717A), letterSpacing: 1),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      payment.receiptId ?? 'N/A',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFamily: 'monospace'),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Actions
+              Padding(
+                padding: const EdgeInsets.only(left: 32, right: 32, bottom: 32),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Close', style: TextStyle(color: Color(0xFF71717A), fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // TODO: Implement actual sharing/PDF generation in a real production app
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Receipt image generated and ready to share!')),
+                          );
+                        },
+                        icon: const Icon(Icons.share_rounded, size: 18),
+                        label: const Text('Share'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF18181B),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReceiptRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ReceiptRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFA1A1AA)),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }
