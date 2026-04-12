@@ -26,9 +26,11 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+type DashboardView = 'dashboard' | 'properties' | 'tenants' | 'owners' | 'payments' | 'maintenance' | 'settings';
+
 interface SidebarProps {
   activeView: string;
-  onViewChange: (view: string) => void;
+  onViewChange: (view: DashboardView) => void;
   isPropertyManager: boolean;
   userEmail?: string;
   onLogout: () => void;
@@ -110,7 +112,7 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
               <button
                 key={item.id}
                 onClick={() => {
-                  onViewChange(item.id);
+                  onViewChange(item.id as DashboardView);
                   if (isMobileOpen) setIsMobileOpen(false);
                 }}
                 className={cn(
