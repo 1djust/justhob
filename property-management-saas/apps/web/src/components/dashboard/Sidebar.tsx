@@ -28,7 +28,7 @@ function cn(...inputs: ClassValue[]) {
 
 interface SidebarProps {
   activeView: string;
-  onViewChange: (view: any) => void;
+  onViewChange: (view: string) => void;
   isPropertyManager: boolean;
   userEmail?: string;
   onLogout: () => void;
