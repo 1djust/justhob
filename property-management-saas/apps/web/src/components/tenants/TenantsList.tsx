@@ -162,17 +162,19 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantP
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setAssigningTenantId(assigningTenantId === t.id ? null : t.id)}
-                    className={`flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full border transition-all ${
-                      assigningTenantId === t.id 
-                        ? 'bg-zinc-100 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700' 
-                        : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400'
-                    }`}
-                  >
-                    <Building className="w-3.5 h-3.5" />
-                    {assigningTenantId === t.id ? 'Cancel' : 'Assign Unit'}
-                  </button>
+                  {!t.leases?.some(l => l.status === 'ACTIVE') && (
+                    <button
+                      onClick={() => setAssigningTenantId(assigningTenantId === t.id ? null : t.id)}
+                      className={`flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full border transition-all ${
+                        assigningTenantId === t.id 
+                          ? 'bg-zinc-100 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700' 
+                          : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400'
+                      }`}
+                    >
+                      <Building className="w-3.5 h-3.5" />
+                      {assigningTenantId === t.id ? 'Cancel' : 'Assign Unit'}
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDelete(t.id)}
                     className="p-2 rounded-full text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
