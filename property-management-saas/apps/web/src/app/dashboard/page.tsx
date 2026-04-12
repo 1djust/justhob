@@ -57,15 +57,15 @@ export default function DashboardPage() {
       })
       .then(data => {
         setUser(data.user);
-        if (data.user?.workspaces?.length > 0 && !selectedWorkspaceId) {
-          setSelectedWorkspaceId(data.user.workspaces[0].workspace.id);
+        if (data.user?.workspaces?.length > 0) {
+          setSelectedWorkspaceId(prev => prev || data.user.workspaces[0].workspace.id);
         }
         setLoading(false);
       })
       .catch(() => {
         router.push('/login');
       });
-  }, [router, selectedWorkspaceId]);
+  }, [router]);
 
   React.useEffect(() => {
     if (selectedWorkspaceId) {
