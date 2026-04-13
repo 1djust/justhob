@@ -43,6 +43,27 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Name and address are required' });
     }
 
+    // Subscription Limits Check
+    const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+    if (workspace?.plan === 'FREE') {
+      const propertiesCount = await prisma.property.count({
+        where: { workspaceId, deletedAt: null }
+      });
+      
+      if (propertiesCount >= 1) {
+        return reply.status(402).send({ error: 'Free plan limit reached: Maximum 1 property allowed. Please upgrade your plan.' });
+      }
+
+      const newUnitsCount = units ? units.length : 0;
+      const currentUnitsCount = await prisma.unit.count({
+        where: { workspaceId }
+      });
+
+      if (currentUnitsCount + newUnitsCount > 3) {
+        return reply.status(402).send({ error: 'Free plan limit reached: Maximum 3 units allowed. Please upgrade your plan.' });
+      }
+    }
+
     const property = await prisma.property.create({
       data: {
         name,

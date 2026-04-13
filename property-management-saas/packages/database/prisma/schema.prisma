@@ -24,6 +24,7 @@ model User {
 model Workspace {
   id        String   @id @default(uuid())
   name      String
+  plan      SubscriptionPlan @default(FREE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -54,6 +55,12 @@ model WorkspaceMember {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  ENTERPRISE
 }
 
 enum PayoutStrategy {

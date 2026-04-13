@@ -51,6 +51,17 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
     const { name, email, phone, password } = request.body as any;
     if (!name) return reply.status(400).send({ error: 'Tenant name is required' });
 
+    // Subscription Limits Check
+    const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+    if (workspace?.plan === 'FREE') {
+      const tenantCount = await prisma.tenant.count({
+        where: { workspaceId, deletedAt: null }
+      });
+      if (tenantCount >= 3) {
+        return reply.status(402).send({ error: 'Free plan limit reached: Maximum 3 tenants allowed. Please upgrade your plan.' });
+      }
+    }
+
     let supabaseUserId = null;
     const tempPassword = password || 'JustHub123!';
 
