@@ -219,3 +219,13 @@ model Notification {
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model ErrorLog {
+  id        String   @id @default(uuid())
+  level     String   @default("error") // error, warn, info
+  message   String
+  stack     String?
+  context   Json?    // Request info, user info, etc.
+  source    String   // 'api' or 'web'
+  createdAt DateTime @default(now())
+}

@@ -4,12 +4,33 @@ import 'package:go_router/go_router.dart';
 import 'home_notifier.dart';
 import 'notifications_notifier.dart';
 import 'package:intl/intl.dart';
+import '../../../core/services/update_service.dart';
+import '../../../core/widgets/app_update_dialog.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkForUpdates();
+  }
+
+  Future<void> _checkForUpdates() async {
+    final updateService = UpdateService();
+    final updateInfo = await updateService.checkForUpdate();
+    if (updateInfo != null && mounted) {
+      AppUpdateDialog.show(context, updateInfo);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final homeState = ref.watch(homeStateProvider);
     final theme = Theme.of(context);
 

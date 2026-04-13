@@ -12,7 +12,7 @@ Follow these steps to set up and run the application locally.
 The `DATABASE_URL` format is: `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`
 
 ### Option A: Cloud (Recommended for speed, 100% Free)
-Create a free project on [Neon](https://neon.tech), [Supabase](https://supabase.com), or [Railway](https://railway.app). They all offer **generous free tiers** that require **$0 upfront** and are perfect for development. They will provide you with a connection string immediately.
+Create a free project on [Supabase](https://supabase.com) (Recommended) or [Neon](https://neon.tech). They provide connection strings immediately.
 
 ### Option B: Local Installation
 If you have Postgres installed locally:
@@ -20,39 +20,23 @@ If you have Postgres installed locally:
 - **PASSWORD**: the password you set during installation
 - **HOST**: `localhost`
 - **PORT**: `5432`
-- **DATABASE**: any name (e.g., `property_mgmt`). *Note: You may need to create this database first using `psql` or a GUI like pgAdmin.*
+- **DATABASE**: any name (e.g., `property_mgmt`).
 
 Example: `postgresql://postgres:mysecretpassword@localhost:5432/property_mgmt`
 
-### Option C: Docker
-Run this command to start a local Postgres container:
-```bash
-docker run --name pg-mgmt -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres
-```
-Your URL: `postgresql://postgres:password@localhost:5432/postgres`
-
 ---
-
-## 💡 Zero Cost Recommendation
-
-If you want to keep costs at **strictly $0 forever** with no platform limits:
-1.  **Install PostgreSQL locally** (Search for "PostgreSQL download" for Windows).
-2.  **Use Docker** (if you have Docker Desktop installed).
-
-Both options run on your own hardware, so they are completely free!
 
 ## 1. Environment Configuration
 
 You need to create `.env` files for the database and the API.
 
 ### Database (`packages/database/.env`)
-Create a file at `packages/database/.env`:
 ```env
 DATABASE_URL="postgresql://username:password@localhost:5432/property_mgmt"
+DIRECT_URL="postgresql://username:password@localhost:5432/property_mgmt"
 ```
 
 ### API (`apps/api/.env`)
-Create a file at `apps/api/.env`:
 ```env
 DATABASE_URL="postgresql://username:password@localhost:5432/property_mgmt"
 JWT_SECRET="your-secret-key-here"
@@ -60,25 +44,31 @@ FRONTEND_URL="http://localhost:3000"
 COOKIE_SECRET="another-secret-key-here"
 ```
 
-## 2. Installation
+---
 
-Install all dependencies from the root directory:
-```bash
-npm install
-```
+## 2. Installation & Setup
 
-## 3. Database Sync
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-Push the schema to your PostgreSQL database:
-```bash
-# From the root
-npm run push --workspace=@property-management/database
-```
-*Note: This will create the tables in your database.*
+2. **Database Sync**:
+   Push the schema to your PostgreSQL database:
+   ```bash
+   npm run push --workspace=@property-management/database
+   ```
 
-## 4. Run the Application
+3. **Install Browser Engines** (Required for Web E2E tests):
+   ```bash
+   npx playwright install
+   ```
 
-Start both the backend API and the frontend web app using Turbo:
+---
+
+## 3. Run the Application
+
+Start both the backend API and the frontend web app:
 ```bash
 npm run dev
 ```
@@ -86,8 +76,35 @@ npm run dev
 - **Frontend**: [http://localhost:3000](http://localhost:3000)
 - **Backend API**: [http://localhost:3001](http://localhost:3001)
 
-## 5. First Steps
+---
 
-1. Go to [http://localhost:3000/register](http://localhost:3000/register) and create an account.
-2. Registration will automatically create a default workspace for you.
-3. You can then start adding properties, tenants, and recording rent payments from the dashboard.
+## 4. Automated Testing (Regression Tests)
+
+We have established a robust suite of regression tests.
+
+- **Run all tests**: `npm run test`
+- **API Tests (Vitest)**: Fast integration tests using Fastify's `inject`.
+- **Web Tests (Playwright)**: End-to-end browser tests.
+
+---
+
+## 5. Production Monitoring (Free Alternative)
+
+The system uses a custom, zero-cost monitoring solution instead of Sentry.
+
+- **Error Logs**: All API crashes and client-side errors are logged to the `ErrorLog` table in your database.
+- **Performance**: Slow API responses (>3s) are logged as warnings.
+- **How to view logs**: Open your database dashboard (e.g., Supabase) and inspect the `ErrorLog` table.
+
+---
+
+## 6. Releasing Mobile App Updates (OTA)
+
+The application bypassed traditional App Stores by implementing a modern Over-The-Air (OTA) direct downloader pipeline from the web frontend.
+
+When you want to deploy a new version of the Flutter Mobile app:
+1. Bump the release version mapping in `tenant_app/pubspec.yaml` (e.g., `version: 0.1.0+2`).
+2. Construct the Android APK (`flutter build apk`).
+3. Take your `app-release.apk` output and copy it to `apps/web/public/downloads/justhub-tenant-latest.apk`.
+4. Update `apps/web/public/downloads/version.json` and change `"latestBuildNumber"` to match your new `+2` build code.
+5. Tenants will automatically experience an update prompt upon their next `HomeScreen` launch.

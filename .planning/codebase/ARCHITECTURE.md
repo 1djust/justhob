@@ -8,4 +8,4 @@ The system involves three primary deployment targets linked by a Turbo monorepo 
 
 3. **Web Client (Next.js)**: Server Components by default using Next.js App Router for landlord/manager facing "Property Management SaaS" web interfaces. Accesses the API or Prisma directly using Next.js server actions.
 
-4. **Mobile App (Flutter)**: A standalone `tenant_app` built with Flutter targeting iOS/Android. Interfaces with the Fastify REST backend. Adopts a feature-driven architecture using Riverpod and GoRouter.
+4. **Mobile App (Flutter)**: A standalone `tenant_app` built with Flutter targeting iOS/Android. Interfaces with the Fastify REST backend. Adopts a feature-driven architecture using Riverpod and GoRouter. It leverages a custom Over-The-Air (OTA) update checker mapped automatically against the Web Application's hosted `version.json` registry to enforce downloads of new releases bypassing standard app stores.

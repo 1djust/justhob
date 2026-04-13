@@ -8,9 +8,10 @@
     - `src/services/`: Core logic and integration services.
     - `src/lib/`: Internal api utilities.
   - **`apps/web/`**: Next.js frontend GUI.
-    - `src/app/`: Next.js App Router endpoints and pages.
-    - `src/components/`: Reusable React components (auth, themes).
+    - `src/app/`: Next.js App Router endpoints and pages, including the root landing page.
+    - `src/components/`: Reusable React components (auth, themes, landing).
     - `src/lib/`: Common Web GUI utilities.
+    - `public/downloads/`: Contains `version.json` and `.apk` files powering the mobile Over-The-Air (OTA) updater.
   - **`packages/database/`**: Prisma schemas and database configurations serving as a shared resource.
 
 - **`tenant_app/`**: Flutter application.
