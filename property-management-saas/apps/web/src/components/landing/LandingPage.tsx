@@ -15,6 +15,7 @@ import {
   Download
 } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
+import { DashboardCarousel } from './DashboardCarousel';
 
 export function LandingPage() {
   const fadeInUp = {
@@ -208,11 +209,9 @@ export function LandingPage() {
               className="lg:w-1/2 relative"
             >
               <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-[2rem] opacity-20 blur-2xl" />
-              <img 
-                src="/manager-dashboard.png" 
-                alt="Property Manager Dashboard Mockup" 
-                className="relative rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 object-cover"
-              />
+              <div className="relative">
+                <DashboardCarousel />
+              </div>
             </motion.div>
           </div>
 
