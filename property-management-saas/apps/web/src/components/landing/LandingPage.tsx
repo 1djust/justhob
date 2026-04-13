@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
 import { DashboardCarousel } from './DashboardCarousel';
+import { PricingSection } from './PricingSection';
 
 export function LandingPage() {
   const fadeInUp = {
@@ -326,6 +327,9 @@ export function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Pricing Section */}
+      <PricingSection />
 
       {/* CTA Section */}
       <section className="py-24 relative overflow-hidden">
