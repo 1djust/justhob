@@ -85,6 +85,14 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     await apiFetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST' });
+    if (typeof window !== 'undefined') {
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.error('Local signout failed', e);
+      }
+    }
     router.push('/login');
   };
 
