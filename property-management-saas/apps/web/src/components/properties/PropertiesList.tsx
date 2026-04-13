@@ -73,6 +73,24 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
     if (workspaceId) fetchProperties();
   }, [workspaceId]);
 
+  const handleDeleteProperty = async (propertyId: string) => {
+    if (!window.confirm('Are you sure you want to delete this property? This action cannot be undone.')) return;
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/properties/${propertyId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        fetchProperties();
+      } else {
+        const error = await res.json();
+        alert(`Error deleting property: ${error.error || 'Unknown error'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Network error while deleting property');
+    }
+  };
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -125,9 +143,23 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
                   <Building className="w-5 h-5" />
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-2 py-0.5 border border-zinc-200 dark:border-zinc-800 rounded-full">
-                    {p.units?.length || 0} Units
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-2 py-0.5 border border-zinc-200 dark:border-zinc-800 rounded-full">
+                      {p.units?.length || 0} Units
+                    </span>
+                    {isPropertyManager && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteProperty(p.id);
+                        }}
+                        className="text-zinc-400 hover:text-rose-500 transition-colors p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                        title="Delete Property"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
