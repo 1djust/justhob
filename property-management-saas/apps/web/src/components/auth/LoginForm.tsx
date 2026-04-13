@@ -17,26 +17,36 @@ export function LoginForm() {
   const router = useRouter();
 
   React.useEffect(() => {
-    // Check if the user is already authenticated (e.g. they just clicked an invite link)
+    const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
+    const isRecoveryUrl = initialHash.includes('type=recovery') || initialHash.includes('type=invite');
+
+    // Check if the user is already authenticated
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        setIsInviteFlow(true);
-        setEmail(session.user.email || '');
+        if (isRecoveryUrl) {
+          setIsInviteFlow(true);
+          setEmail(session.user.email || '');
+        } else {
+          // If already logged in normally, skip login block and go straight to dashboard
+          router.push('/dashboard');
+        }
       }
     };
     checkSession();
 
     // Listen for auth state changes (Supabase processing the #access_token from the URL)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user && event === 'SIGNED_IN') {
-        setIsInviteFlow(true);
-        setEmail(session.user.email || '');
+      if (session?.user) {
+        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && isRecoveryUrl)) {
+          setIsInviteFlow(true);
+          setEmail(session.user.email || '');
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
