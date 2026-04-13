@@ -31,7 +31,7 @@ class UpdateInfo {
 
 class UpdateService {
   final Dio _dio = ApiClient().dio;
-  
+
   // We infer the base web URL from the api url
   // e.g. https://justhob.onrender.com/api -> https://justhob.onrender.com
   String get _webBaseUrl {
@@ -42,10 +42,10 @@ class UpdateService {
   Future<UpdateInfo?> checkForUpdate() async {
     try {
       final response = await _dio.get('$_webBaseUrl/downloads/version.json');
-      
+
       if (response.statusCode == 200 && response.data != null) {
         final serverInfo = UpdateInfo.fromJson(response.data);
-        
+
         final packageInfo = await PackageInfo.fromPlatform();
         // pubspec version is '0.1.0+1'. The buildNumber here is '1'
         final localBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
