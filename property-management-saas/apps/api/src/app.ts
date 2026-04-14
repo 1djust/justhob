@@ -42,12 +42,14 @@ export function buildApp() {
     // Determine status code
     const statusCode = error.statusCode || (error as any).status || 500;
     
-    // Determine error details
-    const message = error.message || 'Internal Server Error';
-    const code = (error as any).code || (statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
-    const details = (error as any).details || undefined;
-
-    // Log the error (Fastify's logger)
+    // Extract error details safely
+    const errorMessage = error.message || 'Internal Server Error';
+    const errorCode = (error as any).code || (statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
+    
+    // Safely handle details (ensure it's not nested if already structured)
+    let errorDetails = (error as any).details || undefined;
+    
+    // Log the error
     request.log.error({ 
       err: error, 
       requestId: request.id,
@@ -56,13 +58,13 @@ export function buildApp() {
     });
 
     // Send structured response
-    reply.status(statusCode).send({
+    return reply.status(statusCode).send({
       success: false,
       error: {
-        message,
-        code,
-        details,
-        requestId: request.id // Useful for debugging/support
+        message: errorMessage,
+        code: String(errorCode),
+        details: errorDetails,
+        requestId: request.id
       }
     });
   });

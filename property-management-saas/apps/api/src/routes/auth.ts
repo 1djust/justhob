@@ -1,26 +1,25 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
 import { supabaseAdmin } from '../lib/supabase';
+import { AppError, UnauthorizedError, ValidationError, NotFoundError } from '../lib/errors';
 
 export default async function authRoutes(fastify: FastifyInstance) {
   // Sync Supabase user to Prisma (called after frontend login/register)
   fastify.post('/sync', async (request: FastifyRequest, reply: FastifyReply) => {
     const token = request.headers.authorization?.replace('Bearer ', '');
-    // console.log('[Sync] Token present:', !!token);
     if (!token) {
-      console.error('[Sync] No token in request headers');
-      return reply.status(401).send({ error: 'Authentication required. Please sign in.' });
+      throw new UnauthorizedError('Authentication required. Please sign in.');
     }
-    try {
-      if (!prisma) {
-        return reply.status(500).send({ error: "Database client failed to initialize." });
-      }
 
-      const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
-      
-      if (supaError || !supaData || !supaData.user) {
-        return reply.status(401).send({ error: supaError?.message || 'Invalid session.' });
-      }
+    if (!prisma) {
+      throw new AppError("Database client failed to initialize.", 500);
+    }
+
+    const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (supaError || !supaData || !supaData.user) {
+      throw new UnauthorizedError(supaError?.message || 'Invalid session.');
+    }
 
       const supaUser = supaData.user;
       const { name } = (request.body as any) || {};
@@ -68,10 +67,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             }
           });
         } catch (createErr: any) {
-          return reply.status(500).send({ 
-            error: "Database profile setup failed.", 
-            details: createErr.message 
-          });
+          throw new AppError("Database profile setup failed.", 500, "SYNC_DB_ERROR", createErr.message);
         }
       }
 
@@ -83,25 +79,18 @@ export default async function authRoutes(fastify: FastifyInstance) {
         mustChangePassword: mustChange
       };
 
-      return reply.send({ user: userWithWorkspaces });
-
-    } catch (e: any) {
-      return reply.status(500).send({ 
-        error: "Internal Server Error during sync.", 
-        details: e.message 
-      });
-    }
+      return { user: userWithWorkspaces };
   });
 
   // Get current user
   fastify.get('/me', async (request: FastifyRequest, reply: FastifyReply) => {
     const token = request.headers.authorization?.replace('Bearer ', '');
-    if (!token) return reply.status(401).send({ error: 'Unauthorized' });
-
+    if (!token) throw new UnauthorizedError();
+ 
     // First verify the token is valid
     const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
     const supaUser = supaData?.user;
-    if (supaError || !supaUser) return reply.status(401).send({ error: 'Invalid token' });
+    if (supaError || !supaUser) throw new UnauthorizedError('Invalid token');
 
     // Run both the Prisma query and the Admin API query concurrently to save time
     const [freshDataResponse, user] = await Promise.all([
@@ -124,7 +113,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {
     const { email, password } = request.body as any;
     if (!email || !password) {
-      return reply.status(400).send({ error: 'Email and password required' });
+      throw new ValidationError('Email and password required');
     }
 
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
@@ -133,7 +122,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     });
 
     if (error || !data.user || !data.session) {
-      return reply.status(401).send({ error: error?.message || 'Invalid credentials' });
+      throw new UnauthorizedError(error?.message || 'Invalid credentials', 'AUTH_INVALID_CREDENTIALS');
     }
 
     // Get the user profile from Prisma to include roles/workspaces
@@ -182,17 +171,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
   // Change password (for first-login forced password change)
   fastify.post('/change-password', async (request: FastifyRequest, reply: FastifyReply) => {
     const token = request.headers.authorization?.replace('Bearer ', '');
-    if (!token) return reply.status(401).send({ error: 'Unauthorized' });
+    if (!token) throw new UnauthorizedError();
 
     const { newPassword } = request.body as { newPassword?: string };
     if (!newPassword || newPassword.length < 6) {
-      return reply.status(400).send({ error: 'Password must be at least 6 characters' });
+      throw new ValidationError('Password must be at least 6 characters');
     }
 
     // Verify the token and get the user
     const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
     if (supaError || !supaData?.user) {
-      return reply.status(401).send({ error: 'Invalid session' });
+      throw new UnauthorizedError('Invalid session');
     }
 
     const userEmail = supaData.user.email;
@@ -204,7 +193,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     });
 
     if (updateError) {
-      return reply.status(500).send({ error: updateError.message });
+      throw new AppError(updateError.message, 500);
     }
 
     // Re-authenticate with the new password to get a fresh token
@@ -237,7 +226,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/reset-password-request', async (request: FastifyRequest, reply: FastifyReply) => {
     const { email } = request.body as { email?: string };
     if (!email) {
-      return reply.status(400).send({ error: 'Email is required' });
+      throw new ValidationError('Email is required');
     }
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -246,7 +235,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     });
 
     if (error) {
-      return reply.status(500).send({ error: error.message });
+      throw new AppError(error.message, 500);
     }
 
     return reply.send({ success: true, message: 'Reset link sent to your email.' });

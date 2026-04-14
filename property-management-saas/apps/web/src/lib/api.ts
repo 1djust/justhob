@@ -44,28 +44,43 @@ export async function apiFetch(url: string, options: ApiOptions = {}) {
     headers,
   });
 
-  const contentType = response.headers.get('content-type');
-  let result: any;
-
-  if (contentType?.includes('application/json')) {
-    result = await response.json();
-  } else {
-    result = await response.text();
-  }
-
   if (!response.ok) {
-    const errorData = result?.error || {};
-    const message = errorData.message || (typeof result === 'string' ? result : response.statusText);
-    const code = errorData.code;
-    const details = errorData.details;
+    let errorMessage = 'API request failed';
+    let errorCode = undefined;
+    let errorDetails = undefined;
+
+    try {
+      const errorData = await response.json();
+      
+      // Handle new standard format: { error: { message, code, details } }
+      if (errorData.error && typeof errorData.error === 'object') {
+        errorMessage = errorData.error.message || errorMessage;
+        errorCode = errorData.error.code;
+        errorDetails = errorData.error.details;
+      } 
+      // Handle legacy format: { error: "message" }
+      else if (typeof errorData.error === 'string') {
+        errorMessage = errorData.error;
+      }
+      // Fallback or some other shape
+      else if (errorData.message) {
+        errorMessage = errorData.message;
+      }
+    } catch (e) {
+      // Not JSON or empty body
+    }
 
     // Trigger automatic toast for mutations unless silent is requested
     if (!options.silent && (options.method && options.method !== 'GET')) {
-      toast.error(message || 'Request failed');
+      toast.error(errorMessage);
     }
 
-    throw new ApiError(message, response.status, code, details);
+    throw new ApiError(errorMessage, response.status, errorCode, errorDetails);
   }
 
-  return result;
+  const contentType = response.headers.get('content-type');
+  if (contentType?.includes('application/json')) {
+    return await response.json();
+  }
+  return await response.text();
 }
