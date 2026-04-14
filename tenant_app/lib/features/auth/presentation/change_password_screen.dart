@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+
 import 'auth_notifier.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {

@@ -24,7 +24,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isLoggingIn ? null : '/login';
       }
 
-      if (authStateValue!.mustChangePassword) {
+      if (authStateValue.mustChangePassword) {
         return isChangingPassword ? null : '/change-password';
       }
 

@@ -233,6 +233,25 @@ export default async function authRoutes(fastify: FastifyInstance) {
     });
   });
 
+  // Trigger password reset email
+  fastify.post('/reset-password-request', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { email } = request.body as { email?: string };
+    if (!email) {
+      return reply.status(400).send({ error: 'Email is required' });
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+      redirectTo: `${frontendUrl}/reset-password`,
+    });
+
+    if (error) {
+      return reply.status(500).send({ error: error.message });
+    }
+
+    return reply.send({ success: true, message: 'Reset link sent to your email.' });
+  });
+
   // Logout (no-op since Supabase handles sessions, but kept for compatibility)
   fastify.post('/logout', async (request: FastifyRequest, reply: FastifyReply) => {
     return reply.send({ success: true });

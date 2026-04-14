@@ -65,4 +65,9 @@ class AuthRepository {
       return null;
     }
   }
+  Future<void> requestPasswordReset(String email) async {
+    await _apiClient.dio.post('/auth/reset-password-request', data: {
+      'email': email,
+    });
+  }
 }

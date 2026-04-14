@@ -3,9 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'payments_notifier.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 import '../../home/presentation/home_notifier.dart';
+import '../../../shared/domain/payment.dart';
+import '../../../shared/domain/property.dart';
+import '../presentation/payments_notifier.dart';
+import '../../../core/services/receipt_service.dart';
 
 class PaymentsScreen extends ConsumerWidget {
   const PaymentsScreen({super.key});
@@ -737,7 +741,23 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
     );
   }
 
-  void _showReceiptDialog(BuildContext context, dynamic payment) {
+  void _showReceiptDialog(BuildContext context, Payment payment) {
+    final homeState = ref.read(homeStateProvider);
+    final tenant = homeState.valueOrNull;
+    
+    // Find the property name/address from the lease
+    String propertyName = 'N/A';
+    Property? property;
+
+    if (tenant != null && tenant.leases != null) {
+      final lease = tenant.leases!.firstWhere(
+        (l) => l.id == payment.leaseId,
+        orElse: () => tenant.leases!.first, // Fallback to first if not found (should not happen)
+      );
+      property = lease.property;
+      propertyName = property?.name ?? 'Property';
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -793,9 +813,9 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                     ),
                     const SizedBox(height: 32),
                     
-                    _ReceiptRow(label: 'TENANT', value: 'Nureni Oje'), // In real app, get from auth state
+                    _ReceiptRow(label: 'TENANT', value: tenant?.name ?? 'N/A'),
                     _ReceiptRow(label: 'DATE', value: DateFormat.yMMMMd().format(payment.paidDate ?? payment.dueDate)),
-                    _ReceiptRow(label: 'PROPERTY', value: 'Destiny Villa'),
+                    _ReceiptRow(label: 'PROPERTY', value: propertyName),
                     _ReceiptRow(label: 'REFERENCE', value: payment.note ?? 'Rent Payment'),
                     
                     const Padding(
@@ -839,11 +859,32 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          // TODO: Implement actual sharing/PDF generation in a real production app
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Receipt image generated and ready to share!')),
-                          );
+                        onPressed: () async {
+                          if (tenant == null || property == null) return;
+                          
+                          try {
+                            // Show loading
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Generating official receipt PDF...')),
+                            );
+
+                            final pdfBytes = await ReceiptService.generateReceipt(
+                              payment: payment,
+                              tenant: tenant,
+                              property: property,
+                            );
+
+                            await Printing.sharePdf(
+                              bytes: pdfBytes,
+                              filename: 'Receipt-${payment.receiptId ?? payment.id}.pdf',
+                            );
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to share receipt: $e')),
+                              );
+                            }
+                          }
                         },
                         icon: const Icon(Icons.share_rounded, size: 18),
                         label: const Text('Share'),

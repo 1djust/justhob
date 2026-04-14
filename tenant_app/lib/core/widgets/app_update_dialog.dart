@@ -11,8 +11,8 @@ class AppUpdateDialog extends StatelessWidget {
     return showDialog(
       context: context,
       barrierDismissible: !updateInfo.isMandatory,
-      builder: (context) => WillPopScope(
-        onWillPop: () async => !updateInfo.isMandatory,
+      builder: (context) => PopScope(
+        canPop: !updateInfo.isMandatory,
         child: AppUpdateDialog(updateInfo: updateInfo),
       ),
     );

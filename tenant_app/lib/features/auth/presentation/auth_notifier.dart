@@ -48,4 +48,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     }
     return false;
   }
+  Future<void> resetPassword(String email) async {
+    try {
+      await _repository.requestPasswordReset(email);
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
