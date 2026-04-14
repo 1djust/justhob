@@ -64,20 +64,17 @@ export function LoginForm() {
       }
 
       // Sync with Prisma backend
-      const res = await apiFetch(`${API_BASE_URL}/api/auth/sync`, {
+      await apiFetch('/api/auth/sync', {
         method: 'POST',
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        setErrorDetails(errorData.details || '');
-        throw new Error(errorData.error || 'Failed to sync user data to backend');
-      }
-
       router.push('/dashboard');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setError(err.message || 'An unexpected error occurred');
+      if (err.details) {
+        setErrorDetails(typeof err.details === 'string' ? err.details : JSON.stringify(err.details));
+      }
     } finally {
       setLoading(false);
     }
@@ -99,19 +96,14 @@ export function LoginForm() {
       }
 
       // Sync with Prisma backend
-      const res = await apiFetch(`${API_BASE_URL}/api/auth/sync`, {
+      await apiFetch('/api/auth/sync', {
         method: 'POST',
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to sync user data to backend');
-      }
-
       router.push('/dashboard');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Password setup error:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setError(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }

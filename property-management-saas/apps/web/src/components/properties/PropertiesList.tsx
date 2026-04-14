@@ -17,8 +17,11 @@ import {
   MapPin,
   CheckCircle2,
   XCircle,
-  UserCircle
+  UserCircle,
+  AlertCircle,
+  X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Unit {
   id: string;
@@ -50,19 +53,18 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
   const [properties, setProperties] = React.useState<Property[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
+  const [propertyToDelete, setPropertyToDelete] = React.useState<Property | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   const fetchProperties = async () => {
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/properties`, {
+      const data = await apiFetch(`/api/workspaces/${workspaceId}/properties`, {
         credentials: 'include'
       });
-      if (res.ok) {
-        const data = await res.json();
-        setProperties(data.properties || []);
-        onPropertiesLoaded?.(data.properties || []);
-      }
+      setProperties(data.properties || []);
+      onPropertiesLoaded?.(data.properties || []);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to fetch properties:', e);
     } finally {
       setLoading(false);
     }
@@ -74,21 +76,19 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
   }, [workspaceId]);
 
   const handleDeleteProperty = async (propertyId: string) => {
-    if (!window.confirm('Are you sure you want to delete this property? This action cannot be undone.')) return;
+    setDeleting(true);
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/properties/${propertyId}`, {
+      await apiFetch(`/api/workspaces/${workspaceId}/properties/${propertyId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
-      if (res.ok) {
-        fetchProperties();
-      } else {
-        const error = await res.json();
-        alert(`Error deleting property: ${error.error || 'Unknown error'}`);
-      }
+      setPropertyToDelete(null);
+      fetchProperties();
     } catch (e) {
-      console.error(e);
-      alert('Network error while deleting property');
+      console.error('Failed to delete property:', e);
+      // No need to alert() here, apiFetch automatically shows a toast
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -100,7 +100,8 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
   );
 
   return (
-    <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <>
+      <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex justify-between items-center mb-8 pb-6 border-b border-zinc-100 dark:border-zinc-800">
         <div>
           <h3 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-zinc-50 dark:to-zinc-400 bg-clip-text text-transparent">Properties</h3>
@@ -151,7 +152,7 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteProperty(p.id);
+                          setPropertyToDelete(p);
                         }}
                         className="text-zinc-400 hover:text-rose-500 transition-colors p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20"
                         title="Delete Property"
@@ -214,6 +215,101 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
           ))}
         </div>
       )}
+      </div>
+
+      <AnimatePresence>
+        {propertyToDelete && (
+          <DeleteConfirmationModal 
+            property={propertyToDelete} 
+            isDeleting={deleting}
+            onConfirm={() => handleDeleteProperty(propertyToDelete.id)} 
+            onClose={() => setPropertyToDelete(null)} 
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function DeleteConfirmationModal({ property, isDeleting, onConfirm, onClose }: { property: Property, isDeleting: boolean, onConfirm: () => void, onClose: () => void }) {
+  const [confirmName, setConfirmName] = React.useState('');
+  const isConfirmed = confirmName === property.name;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative w-full max-w-md bg-white dark:bg-zinc-950 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden"
+      >
+        <div className="p-8">
+          <div className="flex justify-between items-start mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
+              <AlertCircle className="w-6 h-6 animate-pulse" />
+            </div>
+            <button 
+              onClick={onClose}
+              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl text-zinc-400 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">Delete Property?</h3>
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-8">
+            This action is <span className="text-rose-500 font-bold uppercase tracking-tight">permanent</span>.
+            Deleting <span className="font-bold text-zinc-900 dark:text-zinc-100">&quot;{property.name}&quot;</span> will also remove all associated units, leases, and payment history.
+          </p>
+
+          <div className="space-y-4 mb-8">
+            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] ml-1">
+              Type property name to confirm
+            </label>
+            <input 
+              autoFocus
+              value={confirmName}
+              onChange={(e) => setConfirmName(e.target.value)}
+              placeholder={property.name}
+              className="w-full px-5 py-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-500/50 dark:focus:ring-rose-400/50 transition-all font-medium text-zinc-900 dark:text-zinc-100"
+            />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <button
+              disabled={!isConfirmed || isDeleting}
+              onClick={onConfirm}
+              className={`w-full py-4 rounded-2xl font-bold text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                isConfirmed && !isDeleting
+                  ? 'bg-rose-600 text-white hover:bg-rose-700 hover:shadow-rose-500/25'
+                  : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
+              }`}
+            >
+              {isDeleting ? (
+                <div className="w-4 h-4 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              {isDeleting ? 'Deleting...' : 'Permanently Delete Property'}
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-4 rounded-2xl font-bold text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+        
+        <div className="h-1.5 bg-rose-600 dark:bg-rose-500 w-full" />
+      </motion.div>
     </div>
   );
 }
@@ -243,10 +339,9 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
   };
 
   React.useEffect(() => {
-    apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, { credentials: 'include' })
-      .then(res => res.ok ? res.json() : { owners: [] })
+    apiFetch(`/api/workspaces/${workspaceId}/owners`, { credentials: 'include' })
       .then(data => setOwners(data.owners || []))
-      .catch(e => console.error(e));
+      .catch(e => console.error('Failed to fetch owners:', e));
   }, [workspaceId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -254,7 +349,7 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
     setLoading(true);
     try {
       const payload = { ...formData, units, ownerId: formData.ownerId || undefined };
-      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/properties`, {
+      await apiFetch(`/api/workspaces/${workspaceId}/properties`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -262,7 +357,7 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
       });
       onComplete();
     } catch (e) {
-      console.error(e);
+      console.error('Failed to create property:', e);
     } finally {
       setLoading(false);
     }

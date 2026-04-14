@@ -37,6 +37,36 @@ export function buildApp() {
   // Production monitoring — custom zero-cost logger using Supabase
   fastify.register(errorLoggerPlugin);
 
+  // Global Error Handler
+  fastify.setErrorHandler((error, request, reply) => {
+    // Determine status code
+    const statusCode = error.statusCode || (error as any).status || 500;
+    
+    // Determine error details
+    const message = error.message || 'Internal Server Error';
+    const code = (error as any).code || (statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
+    const details = (error as any).details || undefined;
+
+    // Log the error (Fastify's logger)
+    request.log.error({ 
+      err: error, 
+      requestId: request.id,
+      url: request.url,
+      method: request.method
+    });
+
+    // Send structured response
+    reply.status(statusCode).send({
+      success: false,
+      error: {
+        message,
+        code,
+        details,
+        requestId: request.id // Useful for debugging/support
+      }
+    });
+  });
+
   fastify.get('/health', async () => {
     return { status: 'ok' };
   });
