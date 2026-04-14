@@ -1,0 +1,21 @@
+{
+  "manager": {
+    "email": "manager@justhob.com",
+    "password": "Test1234!",
+    "role": "PROPERTY_MANAGER",
+    "description": "Full access to properties, units, tenants, and dashboards."
+  },
+  "landlord": {
+    "email": "landlord@justhob.com",
+    "password": "Test1234!",
+    "role": "LANDLORD",
+    "description": "Owner of the property. Can view payments and property performance."
+  },
+  "tenant": {
+    "email": "tenant@justhob.com",
+    "password": "Test1234!",
+    "role": "TENANT",
+    "description": "Occupant of Unit A1. Can view lease and submit maintenance requests."
+  },
+  "common_password": "Test1234!"
+}

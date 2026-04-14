@@ -16,17 +16,25 @@ export function LoginForm() {
   const [isInviteFlow, setIsInviteFlow] = React.useState(false);
   const router = useRouter();
 
+  const isManualLogin = React.useRef(false);
+
   React.useEffect(() => {
     const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
-    const isRecoveryUrl = initialHash.includes('type=recovery') || initialHash.includes('type=invite');
+    const hasHashParams = initialHash.includes('type=recovery') || initialHash.includes('type=invite');
+    const hasAccessToken = initialHash.includes('access_token=');
+    const isRecoveryOrInviteViaUrl = hasHashParams && hasAccessToken;
 
     // Check if the user is already authenticated
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        if (isRecoveryUrl) {
+        if (isRecoveryOrInviteViaUrl) {
           setIsInviteFlow(true);
           setEmail(session.user.email || '');
+          // Clean up the URL to prevent subsequent accidental redirects
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
         } else {
           // If already logged in normally, skip login block and go straight to dashboard
           router.push('/dashboard');
@@ -38,9 +46,17 @@ export function LoginForm() {
     // Listen for auth state changes (Supabase processing the #access_token from the URL)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && isRecoveryUrl)) {
+        if (event === 'PASSWORD_RECOVERY') {
           setIsInviteFlow(true);
           setEmail(session.user.email || '');
+        } else if (event === 'SIGNED_IN' && isRecoveryOrInviteViaUrl && !isManualLogin.current) {
+          setIsInviteFlow(true);
+          setEmail(session.user.email || '');
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        } else if (event === 'SIGNED_IN' && isManualLogin.current) {
+          // Manual login, do nothing here as handleSubmit handles redirect
         }
       }
     });
@@ -50,6 +66,7 @@ export function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    isManualLogin.current = true;
     setLoading(true);
     setError('');
 
