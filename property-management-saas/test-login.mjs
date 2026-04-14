@@ -9,7 +9,7 @@ console.log("Login Status:", res.status);
 if (data.access_token) {
   const syncRes = await fetch("http://localhost:3001/api/auth/sync", {
     method: "POST",
-    headers: { "Authorization": `Bearer ${data.access_token}`, "Content-Type": "application/json" }
+    headers: { "Authorization": `Bearer ${data.access_token}` }
   });
   const syncData = await syncRes.json();
   console.log("Sync Status:", syncRes.status);
