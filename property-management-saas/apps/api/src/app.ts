@@ -73,6 +73,18 @@ export function buildApp() {
     return { status: 'ok' };
   });
 
+  // Backward compatibility route for older mobile app clients (v0.1.3 and below).
+  // These clients still look at onrender.com/downloads/version.json due to hardcoded logic.
+  fastify.get('/downloads/version.json', async () => {
+    return {
+      latestVersion: "0.1.4",
+      latestBuildNumber: 5,
+      isMandatory: true,
+      downloadUrl: "https://justhob.vercel.app/downloads/estateos-tenant.apk",
+      releaseNotes: "• Fixed silent authentication failure on physical devices\n• Added precise login error messages\n• Enhanced hardware secure storage configuration\n• Fixed update system URL"
+    };
+  });
+
   fastify.register(authRoutes, { prefix: '/api/auth' });
   fastify.register(workspaceRoutes, { prefix: '/api/workspaces' });
   fastify.register(propertiesRoutes, { prefix: '/api/workspaces/:workspaceId/properties' });
