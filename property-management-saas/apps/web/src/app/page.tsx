@@ -1,7 +1,7 @@
 import { LandingPage } from '@/components/landing/LandingPage';
 
 export const metadata = {
-  title: 'Just Hub - Property Management, Simplified',
+  title: 'EstateOS - Property Management, Simplified',
   description: 'The modern property management platform for landlords and tenants.',
 };
 

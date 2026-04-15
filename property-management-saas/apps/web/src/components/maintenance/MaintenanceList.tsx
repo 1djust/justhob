@@ -42,11 +42,8 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
   const fetchRequests = React.useCallback(async () => {
     try {
       const url = `${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance${filter ? `?status=${filter}` : ''}`;
-      const res = await apiFetch(url, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setRequests(data.requests || []);
-      }
+      const data = await apiFetch(url, { credentials: 'include' });
+      setRequests(data.requests || []);
     } catch (e) {
       console.error(e);
     } finally {

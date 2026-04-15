@@ -64,13 +64,10 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
 
   const fetchOwners = async () => {
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, {
+      const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, {
         credentials: 'include'
       });
-      if (res.ok) {
-        const data = await res.json();
-        setOwners(data.owners || []);
-      }
+      setOwners(data.owners || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -226,20 +223,15 @@ function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComp
     setLoading(true);
     setError('');
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include'
       });
-      if (res.ok) {
-        onComplete();
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to add owner');
-      }
-    } catch {
-      setError('Network error');
+      onComplete();
+    } catch (e: any) {
+      setError(e.message || 'Failed to add owner');
     } finally {
       setLoading(false);
     }

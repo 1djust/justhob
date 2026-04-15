@@ -36,7 +36,6 @@ export function DashboardStats({ workspaceId }: DashboardStatsProps) {
     apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/stats`, {
       credentials: 'include'
     })
-      .then(res => res.json())
       .then(data => {
         setStats(data);
       })

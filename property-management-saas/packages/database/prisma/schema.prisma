@@ -37,6 +37,7 @@ model Workspace {
   units               Unit[]
   tenants             Tenant[]
   maintenanceRequests MaintenanceRequest[]
+  payments            Payment[]
 }
 
 model WorkspaceMember {
@@ -90,6 +91,8 @@ model Property {
   units               Unit[]
   leases              Lease[]
   maintenanceRequests MaintenanceRequest[]
+
+  @@unique([id, workspaceId], name: "property_workspace_id")
 }
 
 model Unit {
@@ -107,6 +110,7 @@ model Unit {
   leases    Lease[]
 
   @@unique([propertyId, unitNumber])
+  @@unique([id, workspaceId], name: "unit_workspace_id")
 }
 
 enum PropertyType {
@@ -139,6 +143,8 @@ model Tenant {
   workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   leases              Lease[]
   maintenanceRequests MaintenanceRequest[]
+
+  @@unique([id, workspaceId], name: "tenant_workspace_id")
 }
 
 model Lease {
@@ -183,6 +189,11 @@ model Payment {
   updatedAt       DateTime      @updatedAt
 
   lease Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  workspaceId String? // Added for IDOR protection
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+
+  @@unique([id, workspaceId], name: "payment_workspace_id")
 }
 
 enum PaymentStatus {
@@ -207,6 +218,8 @@ model MaintenanceRequest {
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property  Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([id, workspaceId], name: "maintenance_workspace_id")
 }
 
 enum MaintenanceStatus {

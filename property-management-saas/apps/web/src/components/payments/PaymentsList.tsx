@@ -66,11 +66,8 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
   const fetchPayments = async () => {
     try {
       const url = `${API_BASE_URL}/api/workspaces/${workspaceId}/payments${filter ? `?status=${filter}` : ''}`;
-      const res = await apiFetch(url, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setPayments(data.payments || []);
-      }
+      const data = await apiFetch(url, { credentials: 'include' });
+      setPayments(data.payments || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -465,7 +462,7 @@ function ReviewPaymentModal({ payment, workspaceId, onClose, onComplete }: {
 
     setLoading(true);
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments/${payment.id}/review`, {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments/${payment.id}/review`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -475,15 +472,10 @@ function ReviewPaymentModal({ payment, workspaceId, onClose, onComplete }: {
         credentials: 'include',
       });
 
-      if (res.ok) {
-        onComplete();
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to review payment');
-      }
-    } catch (e) {
+      onComplete();
+    } catch (e: any) {
       console.error(e);
-      alert('Network error while reviewing payment');
+      alert(e.message || 'Failed to review payment');
     } finally {
       setLoading(false);
     }

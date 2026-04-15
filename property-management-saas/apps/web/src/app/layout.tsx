@@ -7,7 +7,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Property Management SaaS',
+  title: 'EstateOS - Property Management',
   description: 'Manage your properties with ease',
 };
 

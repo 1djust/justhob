@@ -43,16 +43,10 @@ export function RegisterForm() {
         return;
       }
 
-      const res = await apiFetch(`${API_BASE_URL}/api/auth/sync`, {
+      await apiFetch(`${API_BASE_URL}/api/auth/sync`, {
         method: 'POST',
         body: JSON.stringify({ name }),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        setErrorDetails(errorData.details || '');
-        throw new Error(errorData.error || 'Failed to sync user data to backend');
-      }
 
       router.push('/dashboard');
     } catch (err) {

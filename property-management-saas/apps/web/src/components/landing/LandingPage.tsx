@@ -12,7 +12,11 @@ import {
   ShieldCheck,
   Smartphone,
   PieChart,
-  Download
+  Download,
+  Sparkles,
+  Zap,
+  Camera,
+  LogOut
 } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
 import { DashboardCarousel } from './DashboardCarousel';
@@ -44,7 +48,7 @@ export function LandingPage() {
               <div className="bg-indigo-600 p-2 rounded-lg">
                 <Building2 className="h-6 w-6 text-white" />
               </div>
-              <span className="font-bold text-xl tracking-tight">Just hub</span>
+              <span className="font-bold text-xl tracking-tight">EstateOS</span>
             </div>
             <div className="flex items-center space-x-4">
               <div className="hidden md:block">
@@ -90,7 +94,7 @@ export function LandingPage() {
                 <span>Start for Free</span>
                 <ArrowRight className="h-5 w-5" />
               </Link>
-              <a href="/downloads/justhub-tenant-latest.apk" download className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-4 rounded-full font-semibold text-lg text-slate-700 dark:text-slate-200 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 transition-all shadow-sm">
+              <a href="/downloads/estateos-tenant.apk" download className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-4 rounded-full font-semibold text-lg text-slate-700 dark:text-slate-200 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 transition-all shadow-sm">
                 <Download className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 <span>Download App (APK)</span>
               </a>
@@ -156,6 +160,103 @@ export function LandingPage() {
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{feature.desc}</p>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* What's New Section */}
+      <section className="py-24 relative overflow-hidden bg-white dark:bg-slate-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+            className="flex flex-col md:flex-row md:items-center justify-between mb-12 border-b border-indigo-100 dark:border-indigo-900/50 pb-6 gap-4"
+          >
+            <div>
+               <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-indigo-500 to-violet-500 text-white px-4 py-1.5 rounded-full text-sm font-bold mb-4">
+                 <Sparkles className="h-4 w-4" />
+                 <span>Release 2026 Update</span>
+               </div>
+               <h2 className="text-3xl md:text-4xl font-bold">What's New in EstateOS</h2>
+            </div>
+            <div className="hidden md:block">
+              <Link href="/register" className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center space-x-1 hover:text-indigo-700 dark:hover:text-indigo-300">
+                <span>Explore all updates</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <motion.div 
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={{ hidden: { opacity: 0, x: -20 }, visible: { opacity: 1, x: 0, transition: { duration: 0.5 } } }}
+              className="bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-6 items-start hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
+            >
+               <div className="p-4 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                 <Smartphone className="h-8 w-8" />
+               </div>
+               <div>
+                 <h3 className="text-xl font-bold mb-2">Dedicated Tenant App</h3>
+                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-4">Our massively updated Android app is now available. Tenants can securely login, review open balances, and coordinate with management seamlessly from their phones.</p>
+                 <a href="/downloads/estateos-tenant.apk" download className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm hover:underline flex items-center space-x-1">
+                   <span>Download directly</span>
+                   <Download className="h-4 w-4" />
+                 </a>
+               </div>
+            </motion.div>
+            
+            <motion.div 
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={{ hidden: { opacity: 0, x: 20 }, visible: { opacity: 1, x: 0, transition: { duration: 0.5, delay: 0.1 } } }}
+              className="bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-6 items-start hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
+            >
+               <div className="p-4 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                 <Receipt className="h-8 w-8" />
+               </div>
+               <div>
+                 <h3 className="text-xl font-bold mb-2">Instant Digital Receipts</h3>
+                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">No more manual invoicing. Automatically generate formal, printable PDF receipts the second a rental payment is approved online or offline.</p>
+               </div>
+            </motion.div>
+
+            <motion.div 
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={{ hidden: { opacity: 0, x: -20 }, visible: { opacity: 1, x: 0, transition: { duration: 0.5, delay: 0.2 } } }}
+              className="bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-6 items-start hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
+            >
+               <div className="p-4 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400">
+                 <Camera className="h-8 w-8" />
+               </div>
+               <div>
+                 <h3 className="text-xl font-bold mb-2">Visual Maintenance Reporting</h3>
+                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">Tenants can now skip the lengthy descriptions and snap direct photos of maintenance issues from the updated Android app to accelerate resolution times.</p>
+               </div>
+            </motion.div>
+
+            <motion.div 
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={{ hidden: { opacity: 0, x: 20 }, visible: { opacity: 1, x: 0, transition: { duration: 0.5, delay: 0.3 } } }}
+              className="bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-6 items-start hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
+            >
+               <div className="p-4 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400">
+                 <ShieldCheck className="h-8 w-8" />
+               </div>
+               <div>
+                 <h3 className="text-xl font-bold mb-2">Advanced Security Controls</h3>
+                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">Manager dashboards now include strict database isolation and animated safety prompts for destructive actions, preventing accidental property scale changes.</p>
+               </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -250,7 +351,7 @@ export function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <a href="/downloads/justhub-tenant-latest.apk" download className="inline-flex items-center justify-center w-full sm:w-auto space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50">
+              <a href="/downloads/estateos-tenant.apk" download className="inline-flex items-center justify-center w-full sm:w-auto space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50">
                 <Download className="h-5 w-5" />
                 <span>Download Android App (.apk)</span>
               </a>
@@ -338,7 +439,7 @@ export function LandingPage() {
         
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Ready to scale your portfolio?</h2>
-          <p className="text-xl text-indigo-100 mb-10">Join thousands of property managers modernizing their operations with Just hub.</p>
+          <p className="text-xl text-indigo-100 mb-10">Join thousands of property managers modernizing their operations with EstateOS.</p>
           <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
             <Link href="/register" className="bg-white text-indigo-600 hover:bg-slate-100 px-8 py-4 rounded-full font-bold text-lg transition-colors w-full sm:w-auto shadow-xl">
               Create Free Account
@@ -352,10 +453,10 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
           <div className="flex items-center space-x-2 mb-4 md:mb-0">
             <Building2 className="h-6 w-6 text-indigo-600" />
-            <span className="font-bold text-xl">Just hub</span>
+            <span className="font-bold text-xl">EstateOS</span>
           </div>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            &copy; {new Date().getFullYear()} Just hub. All rights reserved.
+            &copy; {new Date().getFullYear()} EstateOS. All rights reserved.
           </p>
         </div>
       </footer>

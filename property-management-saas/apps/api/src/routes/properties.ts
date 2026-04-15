@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
-import { authenticate, verifyWorkspaceAccess } from '../lib/middleware';
+import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
+import { Prisma } from '@prisma/client';
 
 export default async function propertiesRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
@@ -29,75 +30,76 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
   });
 
   // Create Property
-  fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId } = request.params as { workspaceId: string };
-    const userRole = (request as any).userRole;
-    
-    if (userRole === 'LANDLORD') {
-      return reply.status(403).send({ error: 'Only Property Managers can create properties' });
-    }
-
     const { name, address, ownerId, units } = request.body as any;
 
     if (!name || !address) {
       return reply.status(400).send({ error: 'Name and address are required' });
     }
 
-    // Subscription Limits Check
-    const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
-    if (workspace?.plan === 'FREE') {
-      const propertiesCount = await prisma.property.count({
-        where: { workspaceId, deletedAt: null }
-      });
-      
-      if (propertiesCount >= 1) {
-        return reply.status(402).send({ error: 'Free plan limit reached: Maximum 1 property allowed. Please upgrade your plan.' });
-      }
+    // Atomic subscription limit check and creation with row-level locking
+    const property = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Lock the workspace record to prevent race conditions on limit checks
+      await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
 
-      const newUnitsCount = units ? units.length : 0;
-      const currentUnitsCount = await prisma.unit.count({
-        where: { workspaceId }
-      });
-
-      if (currentUnitsCount + newUnitsCount > 3) {
-        return reply.status(402).send({ error: 'Free plan limit reached: Maximum 3 units allowed. Please upgrade your plan.' });
-      }
-    }
-
-    const property = await prisma.property.create({
-      data: {
-        name,
-        address,
-        ownerId: ownerId || null,
-        workspaceId,
-        units: {
-          create: (units || []).map((u: any) => ({
-            unitNumber: u.unitNumber,
-            type: u.type,
-            workspaceId
-          }))
+      const workspace = await tx.workspace.findUnique({ where: { id: workspaceId } });
+      if (workspace?.plan === 'FREE') {
+        const propertiesCount = await tx.property.count({
+          where: { workspaceId, deletedAt: null }
+        });
+        
+        if (propertiesCount >= 1) {
+          throw new Error('LIMIT_PROPERTIES');
         }
-      },
-      include: { units: true }
+
+        const newUnitsCount = units ? units.length : 0;
+        const currentUnitsCount = await tx.unit.count({
+          where: { workspaceId }
+        });
+
+        if (currentUnitsCount + newUnitsCount > 3) {
+          throw new Error('LIMIT_UNITS');
+        }
+      }
+
+      return await tx.property.create({
+        data: {
+          name,
+          address,
+          ownerId: ownerId || null,
+          workspaceId,
+          units: {
+            create: (units || []).map((u: any) => ({
+              unitNumber: u.unitNumber,
+              type: u.type,
+              workspaceId
+            }))
+          }
+        },
+        include: { units: true }
+      });
+    }).catch((err: any) => {
+      if (err.message === 'LIMIT_PROPERTIES') {
+        throw { statusCode: 402, message: 'Free plan limit reached: Maximum 1 property allowed. Please upgrade your plan.' };
+      }
+      if (err.message === 'LIMIT_UNITS') {
+        throw { statusCode: 402, message: 'Free plan limit reached: Maximum 3 units allowed. Please upgrade your plan.' };
+      }
+      throw err;
     });
 
     return reply.status(201).send({ property });
   });
 
   // Update Property
-  fastify.put('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string, id: string };
-    const userRole = (request as any).userRole;
-    
-    if (userRole === 'LANDLORD') {
-      return reply.status(403).send({ error: 'Only Property Managers can update properties' });
-    }
-
+  fastify.put('/:id', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
     const { name, address, ownerId } = request.body as any;
 
     try {
       const property = await prisma.property.update({
-        where: { id, workspaceId },
+        where: { property_workspace_id: { id, workspaceId } },
         data: { 
           name, 
           address, 
@@ -111,17 +113,12 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
   });
 
   // Delete Property (Soft Delete)
-  fastify.delete('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string, id: string };
-    const userRole = (request as any).userRole;
-    
-    if (userRole === 'LANDLORD') {
-      return reply.status(403).send({ error: 'Only Property Managers can delete properties' });
-    }
+  fastify.delete('/:id', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
 
     try {
       await prisma.property.update({
-        where: { id, workspaceId },
+        where: { property_workspace_id: { id, workspaceId } },
         data: { deletedAt: new Date() }
       });
       return reply.send({ success: true });

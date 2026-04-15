@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
-import { authenticate, verifyWorkspaceAccess } from '../lib/middleware';
+import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
 
 export default async function maintenanceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
@@ -27,13 +27,13 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
   });
 
   // Update maintenance request status
-  fastify.put('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/:id', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, id } = request.params as { workspaceId: string; id: string };
     const { status } = request.body as { status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' };
 
     try {
       const maintenanceRequest = await prisma.maintenanceRequest.update({
-        where: { id, workspaceId },
+        where: { maintenance_workspace_id: { id, workspaceId } },
         data: { status }
       });
       return reply.send({ request: maintenanceRequest });

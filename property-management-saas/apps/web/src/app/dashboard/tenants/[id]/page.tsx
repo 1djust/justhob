@@ -38,10 +38,6 @@ export default function TenantProfilePage() {
     apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants/${tenantId}`, {
       credentials: 'include'
     })
-      .then(res => {
-        if (!res.ok) throw new Error('Not found');
-        return res.json();
-      })
       .then(data => {
         setTenant(data.tenant);
         setFormData({

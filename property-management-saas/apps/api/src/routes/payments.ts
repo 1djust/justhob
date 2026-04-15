@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
-import { authenticate, verifyWorkspaceAccess } from '../lib/middleware';
+import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
 
 export default async function paymentRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
@@ -13,10 +13,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
 
     const payments = await prisma.payment.findMany({
       where: {
-        lease: {
-          tenant: { workspaceId, deletedAt: null },
-          ...(status ? {} : {})
-        },
+        workspaceId,
         ...(status ? { status: status as any } : {})
       },
       include: {
@@ -51,6 +48,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     const payment = await prisma.payment.create({
       data: {
         leaseId,
+        workspaceId,
         amount: parseFloat(amount),
         dueDate: new Date(dueDate),
         paidDate: paidDate ? new Date(paidDate) : null,
@@ -76,7 +74,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
 
     try {
       const payment = await prisma.payment.update({
-        where: { id },
+        where: { payment_workspace_id: { id, workspaceId } },
         data: { status: 'PAID', paidDate: new Date() }
       });
       return reply.send({ payment });
@@ -98,7 +96,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   });
 
   // Review a submitted proof of payment (Manager only)
-  fastify.patch('/:id/review', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.patch('/:id/review', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, id } = request.params as { workspaceId: string; id: string };
     const { status, rejectionReason } = request.body as any; // status expected: 'PAID' or 'REJECTED'
 
@@ -107,7 +105,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     }
 
     const payment = await prisma.payment.findUnique({
-      where: { id },
+      where: { payment_workspace_id: { id, workspaceId } },
       include: { lease: { include: { tenant: { select: { id: true, email: true } } } } }
     });
 
@@ -123,7 +121,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     if (status === 'PAID') {
       const receiptId = `RCPT-${Date.now()}-${id.substring(0, 4)}`.toUpperCase();
       updatedPayment = await prisma.payment.update({
-        where: { id },
+        where: { payment_workspace_id: { id, workspaceId } },
         data: {
           status: 'PAID',
           paidDate: new Date(),
@@ -147,7 +145,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'Rejection reason is required' });
       }
       updatedPayment = await prisma.payment.update({
-        where: { id },
+        where: { payment_workspace_id: { id, workspaceId } },
         data: {
           status: 'REJECTED',
           rejectionReason,

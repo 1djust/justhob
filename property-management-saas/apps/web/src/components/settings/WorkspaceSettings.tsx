@@ -44,7 +44,6 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
   // Load existing data
   React.useEffect(() => {
     apiFetch(`${API_BASE_URL}/api/workspaces`, { credentials: 'include' })
-      .then(res => res.json())
       .then(data => {
         const ws = data.workspaces?.find((w: { id: string; bankCode?: string; accountNumber?: string; accountName?: string }) => w.id === workspaceId);
         if (ws) {
@@ -60,16 +59,14 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
     setLoading(true);
     setSuccess(false);
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}`, {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bankCode, accountNumber, accountName }),
         credentials: 'include'
       });
-      if (res.ok) {
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
-      }
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (e) {
       console.error(e);
     } finally {

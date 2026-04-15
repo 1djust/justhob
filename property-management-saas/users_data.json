@@ -1,134 +1,279 @@
 [
   {
-    "id": "957d1c98-bdc6-43af-a1e0-8569cd16bcd9",
+    "id": "2cc3aa38-6fe2-4f70-ad64-8109a4fa2b35",
     "email": "ogunduyijustus@gmail.com",
-    "password": "$2a$10$vkjJyqy1cIrDnviUITblR.ac/bdAVsfni4xnQPJaGwT5bQWbrvWTm",
-    "name": "user test",
-    "createdAt": "2026-03-25T11:04:33.472Z",
-    "updatedAt": "2026-03-25T11:04:33.472Z",
+    "name": "Justus Manager",
+    "createdAt": "2026-04-04T17:38:52.842Z",
+    "updatedAt": "2026-04-04T17:38:52.842Z",
     "workspaces": [
       {
-        "id": "1c9e7e9d-8ff4-4c84-9d3a-03af3255db7d",
-        "role": "LANDLORD",
-        "userId": "957d1c98-bdc6-43af-a1e0-8569cd16bcd9",
-        "workspaceId": "50535c85-a73b-4c76-93e7-21aa97e78c4e",
-        "createdAt": "2026-03-25T11:13:59.119Z",
-        "updatedAt": "2026-03-25T11:13:59.119Z",
+        "id": "107aa6f4-8e8b-4235-9eb9-20ea8579274b",
+        "role": "PROPERTY_MANAGER",
+        "userId": "2cc3aa38-6fe2-4f70-ad64-8109a4fa2b35",
+        "workspaceId": "8c74c7ca-12c8-42e6-9e2a-1b54889f84e1",
+        "payoutStrategy": null,
+        "bankCode": null,
+        "accountNumber": null,
+        "accountName": null,
+        "createdAt": "2026-04-04T17:38:52.842Z",
+        "updatedAt": "2026-04-04T17:38:52.842Z",
         "workspace": {
-          "id": "50535c85-a73b-4c76-93e7-21aa97e78c4e",
+          "id": "8c74c7ca-12c8-42e6-9e2a-1b54889f84e1",
           "name": "My Properties",
-          "createdAt": "2026-03-25T11:13:59.119Z",
-          "updatedAt": "2026-03-25T11:13:59.119Z"
+          "plan": "FREE",
+          "createdAt": "2026-04-04T17:38:52.842Z",
+          "updatedAt": "2026-04-04T17:38:52.842Z",
+          "bankCode": null,
+          "accountNumber": null,
+          "accountName": null
         }
       }
     ]
   },
   {
-    "id": "b747fa02-41da-40ae-8018-bf09f2593b89",
-    "email": "landlord@test.com",
-    "password": "$2a$10$PuVASu.37vbEHl.m1JAHIum8gUyAu3tFg9ZNQN5RfnEbGv2UsepUe",
-    "name": "Test Landlord",
-    "createdAt": "2026-03-26T08:42:53.958Z",
-    "updatedAt": "2026-03-26T08:42:53.958Z",
+    "id": "a61cd9b2-1de2-4a24-b20f-3858a080902a",
+    "email": "test@example.com",
+    "name": "Test User",
+    "createdAt": "2026-04-04T19:08:30.612Z",
+    "updatedAt": "2026-04-04T19:08:30.612Z",
     "workspaces": [
       {
-        "id": "d76fb662-dfe2-4109-a020-895a1ff0a162",
-        "role": "LANDLORD",
-        "userId": "b747fa02-41da-40ae-8018-bf09f2593b89",
-        "workspaceId": "d2d21a0c-c206-4d2e-a667-443837952e95",
-        "createdAt": "2026-03-26T08:42:53.958Z",
-        "updatedAt": "2026-03-26T08:42:53.958Z",
+        "id": "a1cd142b-dede-4e38-80ab-27d0758743ef",
+        "role": "PROPERTY_MANAGER",
+        "userId": "a61cd9b2-1de2-4a24-b20f-3858a080902a",
+        "workspaceId": "4763f9d1-9e2a-4c4a-ac3e-0a57f429e756",
+        "payoutStrategy": null,
+        "bankCode": null,
+        "accountNumber": null,
+        "accountName": null,
+        "createdAt": "2026-04-04T19:08:30.612Z",
+        "updatedAt": "2026-04-04T19:08:30.612Z",
         "workspace": {
-          "id": "d2d21a0c-c206-4d2e-a667-443837952e95",
+          "id": "4763f9d1-9e2a-4c4a-ac3e-0a57f429e756",
           "name": "My Properties",
-          "createdAt": "2026-03-26T08:42:53.958Z",
-          "updatedAt": "2026-03-26T08:42:53.958Z"
+          "plan": "FREE",
+          "createdAt": "2026-04-04T19:08:30.612Z",
+          "updatedAt": "2026-04-04T19:08:30.612Z",
+          "bankCode": null,
+          "accountNumber": null,
+          "accountName": null
         }
       }
     ]
   },
   {
-    "id": "6ee9fba0-1345-4948-a6ec-31e426eb041a",
-    "email": "tenant@test.com",
-    "password": "$2a$10$hi2NoYW/t16GfhoB9BYkc.XFB.rgR3flipH8J6/f.V9FW/ptE.15a",
-    "name": "Test Tenant",
-    "createdAt": "2026-03-26T09:23:14.582Z",
-    "updatedAt": "2026-03-26T09:23:14.582Z",
+    "id": "80d1d63b-a522-43cf-af4e-73f671c9580e",
+    "email": "demo123@example.com",
+    "name": "Demo User",
+    "createdAt": "2026-04-04T19:10:29.223Z",
+    "updatedAt": "2026-04-04T19:10:29.223Z",
     "workspaces": [
       {
-        "id": "a74a0590-35c6-418b-b529-da9fa2b204e4",
-        "role": "LANDLORD",
-        "userId": "6ee9fba0-1345-4948-a6ec-31e426eb041a",
-        "workspaceId": "00a5c46b-d8a7-4c1a-a8ec-6fecb14fcfea",
-        "createdAt": "2026-03-26T09:23:14.582Z",
-        "updatedAt": "2026-03-26T09:23:14.582Z",
+        "id": "e9673286-5ca1-461f-b133-f6e1e30a303e",
+        "role": "PROPERTY_MANAGER",
+        "userId": "80d1d63b-a522-43cf-af4e-73f671c9580e",
+        "workspaceId": "f0b745e5-8b4a-4132-9a0f-7f4fc4929f2e",
+        "payoutStrategy": null,
+        "bankCode": null,
+        "accountNumber": null,
+        "accountName": null,
+        "createdAt": "2026-04-04T19:10:29.223Z",
+        "updatedAt": "2026-04-04T19:10:29.223Z",
         "workspace": {
-          "id": "00a5c46b-d8a7-4c1a-a8ec-6fecb14fcfea",
+          "id": "f0b745e5-8b4a-4132-9a0f-7f4fc4929f2e",
           "name": "My Properties",
-          "createdAt": "2026-03-26T09:23:14.582Z",
-          "updatedAt": "2026-03-26T09:23:14.582Z"
+          "plan": "FREE",
+          "createdAt": "2026-04-04T19:10:29.223Z",
+          "updatedAt": "2026-04-04T19:10:29.223Z",
+          "bankCode": null,
+          "accountNumber": null,
+          "accountName": null
         }
       }
     ]
   },
   {
-    "id": "1e3f6f7a-787c-4f69-8585-4e511c6d0ceb",
-    "email": "tenant-mobile-new@test.com",
-    "password": "$2a$10$oAkry2WYsm3meOF.Br1S8eqHTOhj4cfa7bzsM6Xhpry5zrywWjscy",
-    "name": "Tenant Mobile",
-    "createdAt": "2026-03-26T09:34:58.433Z",
-    "updatedAt": "2026-03-26T09:34:58.433Z",
+    "id": "0a9d9aaf-a5ab-4461-9723-2f169fc2dbe5",
+    "email": "tester@example.com",
+    "name": "Browser Tester",
+    "createdAt": "2026-04-04T19:11:30.216Z",
+    "updatedAt": "2026-04-04T19:11:30.216Z",
     "workspaces": [
       {
-        "id": "49576295-e209-4356-8e30-4f336e63198d",
-        "role": "LANDLORD",
-        "userId": "1e3f6f7a-787c-4f69-8585-4e511c6d0ceb",
-        "workspaceId": "559777ec-220b-485b-93ef-0e1e4fb4a81f",
-        "createdAt": "2026-03-26T09:34:58.433Z",
-        "updatedAt": "2026-03-26T09:34:58.433Z",
+        "id": "0718c626-68b3-4f4f-b893-e77230c9ee22",
+        "role": "PROPERTY_MANAGER",
+        "userId": "0a9d9aaf-a5ab-4461-9723-2f169fc2dbe5",
+        "workspaceId": "0e8343be-0dc0-4bfa-82b4-8936a19821e5",
+        "payoutStrategy": null,
+        "bankCode": null,
+        "accountNumber": null,
+        "accountName": null,
+        "createdAt": "2026-04-04T19:11:30.216Z",
+        "updatedAt": "2026-04-04T19:11:30.216Z",
         "workspace": {
-          "id": "559777ec-220b-485b-93ef-0e1e4fb4a81f",
+          "id": "0e8343be-0dc0-4bfa-82b4-8936a19821e5",
           "name": "My Properties",
-          "createdAt": "2026-03-26T09:34:58.433Z",
-          "updatedAt": "2026-03-26T09:34:58.433Z"
+          "plan": "FREE",
+          "createdAt": "2026-04-04T19:11:30.216Z",
+          "updatedAt": "2026-04-04T19:11:30.216Z",
+          "bankCode": null,
+          "accountNumber": null,
+          "accountName": null
         }
       }
     ]
   },
   {
-    "id": "38404bbc-1321-4274-acff-69e576b41d5c",
-    "email": "tenant-final@test.com",
-    "password": "$2a$10$kjbCBv0DOCkdkVzVMPC5KO6q9UoGCgOa8UfxOjrN4jetweBIzcSBy",
-    "name": "Tenant Final",
-    "createdAt": "2026-03-26T09:44:59.994Z",
-    "updatedAt": "2026-03-26T09:44:59.994Z",
+    "id": "9ab58a6c-64b3-442e-a426-d311dc9bd6cf",
+    "email": "justusolawole@gmail.com",
+    "name": "Justus Landlord",
+    "createdAt": "2026-04-05T14:01:02.321Z",
+    "updatedAt": "2026-04-05T14:01:02.321Z",
     "workspaces": [
       {
-        "id": "e7051f6d-7e9a-46e0-a134-d23b577d3d81",
+        "id": "b43f434c-424d-4357-a02f-d30443f3c03e",
         "role": "LANDLORD",
-        "userId": "38404bbc-1321-4274-acff-69e576b41d5c",
-        "workspaceId": "2b078149-d964-4537-b0bb-7e3b50920d0b",
-        "createdAt": "2026-03-26T09:44:59.994Z",
-        "updatedAt": "2026-03-26T09:44:59.994Z",
+        "userId": "9ab58a6c-64b3-442e-a426-d311dc9bd6cf",
+        "workspaceId": "8c74c7ca-12c8-42e6-9e2a-1b54889f84e1",
+        "payoutStrategy": "DIRECT_TO_LANDLORD",
+        "bankCode": "044",
+        "accountNumber": "1212121122",
+        "accountName": "Just Land",
+        "createdAt": "2026-04-05T14:01:03.096Z",
+        "updatedAt": "2026-04-05T14:01:03.096Z",
         "workspace": {
-          "id": "2b078149-d964-4537-b0bb-7e3b50920d0b",
+          "id": "8c74c7ca-12c8-42e6-9e2a-1b54889f84e1",
           "name": "My Properties",
-          "createdAt": "2026-03-26T09:44:59.994Z",
-          "updatedAt": "2026-03-26T09:44:59.994Z"
+          "plan": "FREE",
+          "createdAt": "2026-04-04T17:38:52.842Z",
+          "updatedAt": "2026-04-04T17:38:52.842Z",
+          "bankCode": null,
+          "accountNumber": null,
+          "accountName": null
         }
-      },
+      }
+    ]
+  },
+  {
+    "id": "cc041cff-af1b-4f80-a1a9-29d644afce09",
+    "email": "nureniadeotioje@gmail.com",
+    "name": "Nureni Oje",
+    "createdAt": "2026-04-05T21:29:16.699Z",
+    "updatedAt": "2026-04-05T21:29:16.699Z",
+    "workspaces": [
       {
-        "id": "b3d2e092-d551-4a0e-8e34-e4cd23f80bd9",
+        "id": "3f3015fe-96e5-4ae7-b72d-9e1b69348b5c",
         "role": "TENANT",
-        "userId": "38404bbc-1321-4274-acff-69e576b41d5c",
-        "workspaceId": "d2d21a0c-c206-4d2e-a667-443837952e95",
-        "createdAt": "2026-03-26T09:51:12.490Z",
-        "updatedAt": "2026-03-26T09:51:12.490Z",
+        "userId": "cc041cff-af1b-4f80-a1a9-29d644afce09",
+        "workspaceId": "8c74c7ca-12c8-42e6-9e2a-1b54889f84e1",
+        "payoutStrategy": null,
+        "bankCode": null,
+        "accountNumber": null,
+        "accountName": null,
+        "createdAt": "2026-04-05T21:29:17.477Z",
+        "updatedAt": "2026-04-05T21:29:17.477Z",
         "workspace": {
-          "id": "d2d21a0c-c206-4d2e-a667-443837952e95",
+          "id": "8c74c7ca-12c8-42e6-9e2a-1b54889f84e1",
           "name": "My Properties",
-          "createdAt": "2026-03-26T08:42:53.958Z",
-          "updatedAt": "2026-03-26T08:42:53.958Z"
+          "plan": "FREE",
+          "createdAt": "2026-04-04T17:38:52.842Z",
+          "updatedAt": "2026-04-04T17:38:52.842Z",
+          "bankCode": null,
+          "accountNumber": null,
+          "accountName": null
+        }
+      }
+    ]
+  },
+  {
+    "id": "338ca507-a0e9-4238-8e4e-42af46c42889",
+    "email": "manager@justhob.com",
+    "name": "Test Manager",
+    "createdAt": "2026-04-14T11:22:00.006Z",
+    "updatedAt": "2026-04-14T11:22:00.006Z",
+    "workspaces": [
+      {
+        "id": "7528a882-e80d-4dec-93c6-e56da0e0d274",
+        "role": "PROPERTY_MANAGER",
+        "userId": "338ca507-a0e9-4238-8e4e-42af46c42889",
+        "workspaceId": "ecc4deee-5c19-4797-b6d4-68460f67b26c",
+        "payoutStrategy": null,
+        "bankCode": null,
+        "accountNumber": null,
+        "accountName": null,
+        "createdAt": "2026-04-14T11:22:01.625Z",
+        "updatedAt": "2026-04-14T11:22:01.625Z",
+        "workspace": {
+          "id": "ecc4deee-5c19-4797-b6d4-68460f67b26c",
+          "name": "Seed Workspace",
+          "plan": "FREE",
+          "createdAt": "2026-04-14T11:21:53.661Z",
+          "updatedAt": "2026-04-14T11:21:53.661Z",
+          "bankCode": null,
+          "accountNumber": null,
+          "accountName": null
+        }
+      }
+    ]
+  },
+  {
+    "id": "4b26bad2-6348-4163-b12b-7dc675c0873d",
+    "email": "landlord@justhob.com",
+    "name": "Test Landlord",
+    "createdAt": "2026-04-14T11:22:03.706Z",
+    "updatedAt": "2026-04-14T11:22:03.706Z",
+    "workspaces": [
+      {
+        "id": "c2b93193-09ae-47f0-a3c1-a2034e6b62ee",
+        "role": "LANDLORD",
+        "userId": "4b26bad2-6348-4163-b12b-7dc675c0873d",
+        "workspaceId": "ecc4deee-5c19-4797-b6d4-68460f67b26c",
+        "payoutStrategy": null,
+        "bankCode": null,
+        "accountNumber": null,
+        "accountName": null,
+        "createdAt": "2026-04-14T11:22:05.339Z",
+        "updatedAt": "2026-04-14T11:22:05.339Z",
+        "workspace": {
+          "id": "ecc4deee-5c19-4797-b6d4-68460f67b26c",
+          "name": "Seed Workspace",
+          "plan": "FREE",
+          "createdAt": "2026-04-14T11:21:53.661Z",
+          "updatedAt": "2026-04-14T11:21:53.661Z",
+          "bankCode": null,
+          "accountNumber": null,
+          "accountName": null
+        }
+      }
+    ]
+  },
+  {
+    "id": "e7379abf-dae3-4e14-ad0d-1cc07b025bde",
+    "email": "tenant@justhob.com",
+    "name": "Test Tenant",
+    "createdAt": "2026-04-14T11:22:14.765Z",
+    "updatedAt": "2026-04-14T11:22:14.765Z",
+    "workspaces": [
+      {
+        "id": "d06e9c40-b784-432f-877a-10fabbd1c6db",
+        "role": "TENANT",
+        "userId": "e7379abf-dae3-4e14-ad0d-1cc07b025bde",
+        "workspaceId": "ecc4deee-5c19-4797-b6d4-68460f67b26c",
+        "payoutStrategy": null,
+        "bankCode": null,
+        "accountNumber": null,
+        "accountName": null,
+        "createdAt": "2026-04-14T11:22:17.134Z",
+        "updatedAt": "2026-04-14T11:22:17.134Z",
+        "workspace": {
+          "id": "ecc4deee-5c19-4797-b6d4-68460f67b26c",
+          "name": "Seed Workspace",
+          "plan": "FREE",
+          "createdAt": "2026-04-14T11:21:53.661Z",
+          "updatedAt": "2026-04-14T11:21:53.661Z",
+          "bankCode": null,
+          "accountNumber": null,
+          "accountName": null
         }
       }
     ]

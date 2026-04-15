@@ -52,10 +52,6 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     apiFetch(`${API_BASE_URL}/api/auth/me`)
-      .then(res => {
-        if (!res.ok) throw new Error('Unauthorized');
-        return res.json();
-      })
       .then(data => {
         setUser(data.user);
         if (data.user?.workspaces?.length > 0) {
@@ -72,13 +68,11 @@ export default function DashboardPage() {
     if (selectedWorkspaceId) {
       // Preload properties
       apiFetch(`${API_BASE_URL}/api/workspaces/${selectedWorkspaceId}/properties`)
-        .then(res => res.ok ? res.json() : { properties: [] })
         .then(data => setProperties(data.properties || []))
         .catch(e => console.error('Failed to preload properties:', e));
 
       // Preload leases
       apiFetch(`${API_BASE_URL}/api/workspaces/${selectedWorkspaceId}/leases`)
-        .then(res => res.ok ? res.json() : { leases: [] })
         .then(data => setLeases(data.leases || []))
         .catch(e => console.error('Failed to preload leases:', e));
     }
@@ -100,14 +94,12 @@ export default function DashboardPage() {
   const createInitialWorkspace = async () => {
     setCreatingWorkspace(true);
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/workspaces`, {
+      await apiFetch(`${API_BASE_URL}/api/workspaces`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'My Properties' })
       });
-      if (res.ok) {
-        window.location.reload();
-      }
+      window.location.reload();
     } catch (e) {
       console.error(e);
     } finally {

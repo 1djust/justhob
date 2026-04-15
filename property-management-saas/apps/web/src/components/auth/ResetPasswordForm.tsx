@@ -38,14 +38,9 @@ export function ResetPasswordForm() {
       }
 
       // Sync with Prisma backend
-      const res = await apiFetch(`${API_BASE_URL}/api/auth/sync`, {
+      await apiFetch(`${API_BASE_URL}/api/auth/sync`, {
         method: 'POST',
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to sync user data to backend');
-      }
 
       setSuccess(true);
       setTimeout(() => {

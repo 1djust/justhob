@@ -54,15 +54,12 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantP
 
   const fetchTenants = async () => {
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
+      const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
         credentials: 'include'
       });
-      if (res.ok) {
-        const data = await res.json();
-        setTenants(data.tenants || []);
-        const allLeases = (data.tenants || []).flatMap((t: Tenant) => t.leases || []);
-        onLeasesLoaded?.(allLeases);
-      }
+      setTenants(data.tenants || []);
+      const allLeases = (data.tenants || []).flatMap((t: Tenant) => t.leases || []);
+      onLeasesLoaded?.(allLeases);
     } catch (e) {
       console.error(e);
     } finally {
@@ -275,25 +272,20 @@ function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComple
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
+      const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include'
       });
-      const data = await res.json();
-      if (res.ok) {
-        if (data.credentials) {
-          setCredentials(data.credentials);
-        } else {
-          onComplete();
-        }
+      if (data.credentials) {
+        setCredentials(data.credentials);
       } else {
-        setError(data.error || 'Failed to create tenant. Please try again.');
+        onComplete();
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      setError('Network error. Please check your connection and try again.');
+      setError(e.message || 'Failed to create tenant. Please try again.');
     } finally {
       setLoading(false);
     }
