@@ -20,8 +20,12 @@ class AppUpdateDialog extends StatelessWidget {
 
   Future<void> _launchDownloadUrl() async {
     final uri = Uri.parse(updateInfo.downloadUrl);
-    if (await canLaunchUrl(uri)) {
+    try {
+      // Direct launch without checking canLaunchUrl helps bypass Android 11+ query restrictions
+      // if the developer forgets to add the intent in AndroidManifest.xml
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Could not launch \$uri: \$e');
     }
   }
 
