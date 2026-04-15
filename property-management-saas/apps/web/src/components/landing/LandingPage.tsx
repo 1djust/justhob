@@ -177,7 +177,7 @@ export function LandingPage() {
             <div>
                <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-indigo-500 to-violet-500 text-white px-4 py-1.5 rounded-full text-sm font-bold mb-4">
                  <Sparkles className="h-4 w-4" />
-                 <span>Version 0.1.0 Released</span>
+                 <span>Version 0.1.1 Released</span>
                </div>
                <h2 className="text-3xl md:text-4xl font-bold">What's New in EstateOS</h2>
             </div>
@@ -204,7 +204,7 @@ export function LandingPage() {
                  <h3 className="text-xl font-bold mb-2">Dedicated Tenant App</h3>
                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-4">Our massively updated Android app is now available. Tenants can securely login, review open balances, and coordinate with management seamlessly from their phones.</p>
                  <a href="/downloads/estateos-tenant.apk" download className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm hover:underline flex items-center space-x-1">
-                   <span>Download v0.1.0 directly</span>
+                   <span>Download v0.1.1 directly</span>
                    <Download className="h-4 w-4" />
                  </a>
                </div>
