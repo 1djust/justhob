@@ -20,8 +20,14 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
 
   Future<void> checkAuth() async {
     state = const AsyncValue.loading();
-    final user = await _repository.getMe();
-    state = AsyncValue.data(user);
+    try {
+      final user = await _repository.getMe();
+      state = AsyncValue.data(user);
+    } catch (e) {
+      // If checkAuth fails (e.g. 401), we treat it as not logged in
+      // instead of crashing with an error state.
+      state = const AsyncValue.data(null);
+    }
   }
 
   Future<void> login(String email, String password) async {
@@ -35,8 +41,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   }
 
   Future<void> logout() async {
-    await _repository.logout();
-    state = const AsyncValue.data(null);
+    try {
+      await _repository.logout();
+    } finally {
+      // Transitions to null state regardless of server response
+      state = const AsyncValue.data(null);
+    }
   }
 
   Future<bool> changePassword(String newPassword) async {

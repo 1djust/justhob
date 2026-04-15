@@ -44,9 +44,14 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    await _apiClient.dio.post('/auth/logout');
-    await _apiClient.cookieJar.deleteAll();
-    await _apiClient.storage.delete(key: 'access_token');
+    try {
+      await _apiClient.dio.post('/auth/logout');
+    } catch (e) {
+      // Ignore server errors during logout to ensure local cleanup continues
+    } finally {
+      await _apiClient.cookieJar.deleteAll();
+      await _apiClient.storage.delete(key: 'access_token');
+    }
   }
 
   Future<User?> changePassword(String newPassword) async {
