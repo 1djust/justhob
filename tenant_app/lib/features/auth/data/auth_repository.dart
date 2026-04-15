@@ -19,13 +19,39 @@ class AuthRepository {
         final token = response.data['access_token'];
         
         if (token != null) {
-          await _apiClient.storage.write(key: 'access_token', value: token);
+          try {
+            await _apiClient.storage.write(key: 'access_token', value: token);
+          } catch (storageError) {
+            // Token save failed (Keystore issue on some physical devices)
+            // Login still succeeds but session won't persist after app restart
+          }
         }
 
         return User.fromJson(userData);
       }
-    } on DioException {
-      rethrow;
+    } on DioException catch (e) {
+      // Extract the actual server error message for display
+      String message = 'Login failed. Please check your credentials.';
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        message = 'Server is taking too long to respond. Please try again.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        message = 'Cannot reach the server. Please check your internet connection.';
+      } else if (e.response != null) {
+        // Try to extract structured error from API response
+        final data = e.response?.data;
+        if (data is Map) {
+          final error = data['error'];
+          if (error is Map && error['message'] != null) {
+            message = error['message'].toString();
+          } else if (data['message'] != null) {
+            message = data['message'].toString();
+          }
+        }
+      }
+      throw Exception(message);
+    } catch (e) {
+      throw Exception('An unexpected error occurred: ${e.toString()}');
     }
     return null;
   }

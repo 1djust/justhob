@@ -59,9 +59,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (mounted) context.go('/');
       } else if (authState.hasError) {
         if (mounted) {
+          // Extract the actual error message instead of showing a generic one
+          String errorMsg = 'Login failed. Please try again.';
+          final error = authState.error;
+          if (error is Exception) {
+            errorMsg = error.toString().replaceFirst('Exception: ', '');
+          } else if (error != null) {
+            errorMsg = error.toString();
+          }
           setState(() {
             _isSubmitting = false;
-            _errorMessage = 'Login failed. Please check your credentials.';
+            _errorMessage = errorMsg;
             _shakeCounter++;
           });
         }
