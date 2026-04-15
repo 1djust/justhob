@@ -17,6 +17,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  bool _isSubmitting = false;
   String? _errorMessage;
   int _shakeCounter = 0;
 
@@ -45,6 +46,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _errorMessage = null;
+        _isSubmitting = true;
       });
 
       await ref.read(authStateProvider.notifier).login(
@@ -58,8 +60,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       } else if (authState.hasError) {
         if (mounted) {
           setState(() {
+            _isSubmitting = false;
             _errorMessage = 'Login failed. Please check your credentials.';
             _shakeCounter++;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
           });
         }
       }
@@ -105,8 +114,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-    final isLoading = authState.isLoading;
+    // Watch auth state for navigation redirect, but use local _isSubmitting for UI
+    ref.watch(authStateProvider);
+    final isLoading = _isSubmitting;
     final theme = Theme.of(context);
 
     return Scaffold(

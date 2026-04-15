@@ -31,6 +31,12 @@ class AuthRepository {
   }
 
   Future<User?> getMe() async {
+    // Immediately return null if we have no token, skipping the long network wait on cold start.
+    final token = await _apiClient.storage.read(key: 'access_token');
+    if (token == null) {
+      return null;
+    }
+
     try {
       final response = await _apiClient.dio.get('/auth/me');
       if (response.statusCode == 200) {
