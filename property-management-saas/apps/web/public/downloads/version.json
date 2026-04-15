@@ -1,7 +1,7 @@
 {
-  "latestVersion": "0.1.3",
-  "latestBuildNumber": 4,
+  "latestVersion": "0.1.4",
+  "latestBuildNumber": 5,
   "isMandatory": true,
-  "downloadUrl": "https://justhob.onrender.com/downloads/estateos-tenant.apk",
-  "releaseNotes": "• Fixed silent authentication failure on physical devices\n• Added precise login error messages\n• Enhanced hardware secure storage configuration"
+  "downloadUrl": "https://justhob.vercel.app/downloads/estateos-tenant.apk",
+  "releaseNotes": "• Fixed silent authentication failure on physical devices\n• Added precise login error messages\n• Enhanced hardware secure storage configuration\n• Fixed update system URL"
 }

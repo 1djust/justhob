@@ -32,11 +32,13 @@ class UpdateInfo {
 class UpdateService {
   final Dio _dio = ApiClient().dio;
 
-  // We infer the base web URL from the api url
-  // e.g. https://justhob.onrender.com/api -> https://justhob.onrender.com
+  // We fetch updates from the web frontend directly, as it hosts the static files
   String get _webBaseUrl {
-    final apiUrl = ApiConfig.baseUrl;
-    return apiUrl.replaceAll('/api', '');
+    if (ApiConfig.isProduction) {
+      return 'https://justhob.vercel.app';
+    }
+    // For local dev, you might want to point this to your local next.js if running
+    return 'http://10.0.2.2:3000';
   }
 
   Future<UpdateInfo?> checkForUpdate() async {
