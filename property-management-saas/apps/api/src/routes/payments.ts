@@ -13,7 +13,10 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
 
     const payments = await prisma.payment.findMany({
       where: {
-        workspaceId,
+        OR: [
+          { workspaceId },
+          { lease: { tenant: { workspaceId } } }
+        ],
         ...(status ? { status: status as any } : {})
       },
       include: {
@@ -77,6 +80,14 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         where: { payment_workspace_id: { id, workspaceId } },
         data: { status: 'PAID', paidDate: new Date() }
       });
+
+      // Emit real-time update to all members in the workspace room
+      (fastify as any).io.to(`workspace:${workspaceId}`).emit('PAYMENT_UPDATED', {
+        paymentId: id,
+        status: 'PAID',
+        message: 'A payment has been marked as settled.'
+      });
+
       return reply.send({ payment });
     } catch (e) {
       return reply.status(404).send({ error: 'Payment not found' });
@@ -163,6 +174,13 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         });
       }
     }
+
+    // Emit real-time update to all members in the workspace room (Manager, Tenant, Landlord)
+    (fastify as any).io.to(`workspace:${workspaceId}`).emit('PAYMENT_UPDATED', {
+      paymentId: id,
+      status: updatedPayment.status,
+      message: status === 'PAID' ? 'Payment approved' : 'Payment proof rejected'
+    });
 
     return reply.send({ payment: updatedPayment });
   });

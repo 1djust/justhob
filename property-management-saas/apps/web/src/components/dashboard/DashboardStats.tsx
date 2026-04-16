@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { RevenueChart } from './RevenueChart';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
+import { useRealtime } from '@/components/providers/RealtimeProvider';
 
 interface DashboardStatsProps {
   workspaceId: string;
@@ -29,10 +30,10 @@ interface StatsData {
 export function DashboardStats({ workspaceId }: DashboardStatsProps) {
   const [stats, setStats] = React.useState<StatsData | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const { socket, joinWorkspace } = useRealtime();
 
-  React.useEffect(() => {
+  const fetchStats = React.useCallback(() => {
     if (!workspaceId) return;
-    
     apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/stats`, {
       credentials: 'include'
     })
@@ -42,6 +43,33 @@ export function DashboardStats({ workspaceId }: DashboardStatsProps) {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [workspaceId]);
+
+  React.useEffect(() => {
+    fetchStats();
+    if (workspaceId) {
+      joinWorkspace(workspaceId);
+    }
+  }, [workspaceId, fetchStats, joinWorkspace]);
+
+  // Real-time listener
+  React.useEffect(() => {
+    if (socket) {
+      const handleUpdate = () => {
+        console.log('[Realtime] Stats update triggered');
+        fetchStats();
+      };
+
+      socket.on('PAYMENT_UPDATED', handleUpdate);
+      socket.on('PAYMENT_SUBMITTED', handleUpdate);
+      socket.on('MAINTENANCE_CREATED', handleUpdate);
+
+      return () => {
+        socket.off('PAYMENT_UPDATED', handleUpdate);
+        socket.off('PAYMENT_SUBMITTED', handleUpdate);
+        socket.off('MAINTENANCE_CREATED', handleUpdate);
+      };
+    }
+  }, [socket, fetchStats]);
 
   if (loading) {
     return (

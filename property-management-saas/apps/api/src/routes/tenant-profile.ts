@@ -112,6 +112,13 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       }
     });
 
+    // Emit real-time update to the workspace room
+    (fastify as any).io.to(`workspace:${membership.workspaceId}`).emit('MAINTENANCE_CREATED', {
+      requestId: maintenanceRequest.id,
+      propertyId,
+      message: 'A new maintenance request has been submitted.'
+    });
+
     return reply.status(201).send({ request: maintenanceRequest });
   });
 
@@ -194,6 +201,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       const payment = await prisma.payment.create({
         data: {
           leaseId,
+          workspaceId: membership.workspaceId,
           amount: parseFloat(amount),
           dueDate: new Date(),
           status: 'PENDING',
@@ -297,11 +305,83 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         await prisma.notification.createMany({ data: notifications });
       }
 
+      // Emit real-time update to the workspace room
+      (fastify as any).io.to(`workspace:${membership.workspaceId}`).emit('PAYMENT_SUBMITTED', {
+        paymentId: id,
+        message: 'A tenant has submitted proof of payment.'
+      });
+
       return reply.send({ success: true, payment: updatedPayment });
     } catch (error: any) {
       console.error('[SubmitProofError]', error);
       return reply.status(500).send({ error: 'Internal Server Error: ' + error.message });
     }
+  });
+
+  // Get maintenance request conversation history for the authenticated tenant
+  fastify.get('/maintenance/:id/messages', async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = (request as any).userId;
+    const { id } = request.params as { id: string };
+
+    const membership = await prisma.workspaceMember.findFirst({
+      where: { userId, role: 'TENANT' }
+    });
+    if (!membership) return reply.status(403).send({ error: 'No tenant profile found' });
+
+    const messages = await prisma.maintenanceMessage.findMany({
+      where: { 
+        requestId: id, 
+        workspaceId: membership.workspaceId 
+      },
+      include: {
+        sender: {
+          select: { id: true, name: true }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    return reply.send({ messages });
+  });
+
+  // Send a message in a maintenance request for the authenticated tenant
+  fastify.post('/maintenance/:id/messages', async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = (request as any).userId;
+    const { id } = request.params as { id: string };
+    const { content } = request.body as any;
+
+    if (!content) return reply.status(400).send({ error: 'Message content is required' });
+
+    const membership = await prisma.workspaceMember.findFirst({
+      where: { userId, role: 'TENANT' }
+    });
+    if (!membership) return reply.status(403).send({ error: 'No tenant profile found' });
+
+    const message = await prisma.maintenanceMessage.create({
+      data: {
+        content,
+        requestId: id,
+        workspaceId: membership.workspaceId,
+        senderId: userId,
+        type: 'USER'
+      },
+      include: {
+        sender: {
+          select: { id: true, name: true }
+        }
+      }
+    });
+
+    // Broadcast to the maintenance room
+    (fastify as any).io.to(`maintenance:${id}`).emit('maintenance-message', message);
+    
+    // Notify the workspace (managers) for unread badges
+    (fastify as any).io.to(`workspace:${membership.workspaceId}`).emit('maintenance-notification', {
+      requestId: id,
+      message: content
+    });
+
+    return reply.status(201).send({ message });
   });
 
 }

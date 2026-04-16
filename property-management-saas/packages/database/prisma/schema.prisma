@@ -19,6 +19,7 @@ model User {
   workspaces      WorkspaceMember[]
   propertiesOwned Property[]
   notifications   Notification[]
+  maintenanceMessages MaintenanceMessage[]
 }
 
 model Workspace {
@@ -38,6 +39,7 @@ model Workspace {
   tenants             Tenant[]
   maintenanceRequests MaintenanceRequest[]
   payments            Payment[]
+  maintenanceMessages MaintenanceMessage[]
 }
 
 model WorkspaceMember {
@@ -215,6 +217,8 @@ model MaintenanceRequest {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
+  messages    MaintenanceMessage[]
+
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property  Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -248,4 +252,19 @@ model ErrorLog {
   context   Json?    // Request info, user info, etc.
   source    String   // 'api' or 'web'
   createdAt DateTime @default(now())
+}
+
+model MaintenanceMessage {
+  id          String   @id @default(uuid())
+  content     String
+  type        String   @default("USER") // USER, SYSTEM
+  requestId   String
+  senderId    String?  // Null for system messages
+  workspaceId String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  request   MaintenanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  sender    User?              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }

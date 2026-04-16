@@ -15,9 +15,13 @@ import {
   ExternalLink,
   ChevronRight,
   Filter,
-  Image as ImageIcon
+  Image as ImageIcon,
+  MessageSquare,
+  X
 } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
+import { MaintenanceChat } from './MaintenanceChat';
+import { useRealtime } from '@/components/providers/RealtimeProvider';
 
 interface MaintenanceListProps {
   workspaceId: string;
@@ -38,6 +42,9 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
   const [requests, setRequests] = React.useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [filter, setFilter] = React.useState<string>('');
+  const [selectedRequestId, setSelectedRequestId] = React.useState<string | null>(null);
+  const [unreadRequests, setUnreadRequests] = React.useState<Set<string>>(new Set());
+  const { socket } = useRealtime();
 
   const fetchRequests = React.useCallback(async () => {
     try {
@@ -54,6 +61,23 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
   React.useEffect(() => {
     if (workspaceId) fetchRequests();
   }, [workspaceId, filter, fetchRequests]);
+
+  React.useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = ({ requestId }: { requestId: string }) => {
+      // Only mark as unread if the drawer isn't already open for this request
+      if (selectedRequestId !== requestId) {
+        setUnreadRequests(prev => new Set([...Array.from(prev), requestId]));
+      }
+    };
+
+    socket.on('maintenance-notification', handleNotification);
+
+    return () => {
+      socket.off('maintenance-notification', handleNotification);
+    };
+  }, [socket, selectedRequestId]);
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
@@ -124,10 +148,15 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
                   {req.status === 'COMPLETED' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                   {req.status.replace('_', ' ')}
                 </span>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(req.createdAt).toLocaleDateString()}
-                </span>
+                <div className="flex items-center gap-3">
+                  {unreadRequests.has(req.id) && (
+                    <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse outline outline-4 outline-blue-600/20" />
+                  )}
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(req.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
               </div>
               
               <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3 leading-relaxed group-hover:text-zinc-600 dark:group-hover:text-zinc-400 transition-colors">
@@ -192,6 +221,20 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
                          <Clock className="w-4 h-4 text-zinc-400 group-hover/btn:text-zinc-900 dark:group-hover/btn:text-zinc-100 transition-colors" />
                       </button>
                     )}
+                     <button 
+                       onClick={() => {
+                         setSelectedRequestId(req.id);
+                         setUnreadRequests(prev => {
+                           const next = new Set(prev);
+                           next.delete(req.id);
+                           return next;
+                         });
+                       }}
+                       className="flex-1 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all flex items-center justify-center gap-2 group/msg"
+                     >
+                       <MessageSquare className="w-4 h-4 text-zinc-400 group-hover/msg:text-zinc-900 dark:group-hover/msg:text-zinc-100 transition-colors" />
+                       <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 group-hover/msg:text-zinc-900 dark:group-hover/msg:text-zinc-100 italic">Timeline</span>
+                     </button>
                     <button className="flex-none p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                       <ChevronRight className="w-4 h-4 text-zinc-400" />
                     </button>
@@ -200,6 +243,31 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Maintenance Chat Drawer */}
+      {selectedRequestId && (
+        <div className="fixed inset-0 z-50 flex justify-end animate-in fade-in duration-300">
+          <div 
+            className="absolute inset-0 bg-zinc-950/20 backdrop-blur-sm cursor-pointer"
+            onClick={() => setSelectedRequestId(null)}
+          />
+          <div className="relative w-full max-w-md h-full shadow-2xl animate-in slide-in-from-right duration-500">
+            <button 
+              onClick={() => setSelectedRequestId(null)}
+              className="absolute -left-12 top-6 p-3 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl hover:scale-110 active:scale-95 transition-all text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="h-full border-l border-zinc-100 dark:border-zinc-800 overflow-hidden rounded-l-[3rem]">
+              <MaintenanceChat 
+                workspaceId={workspaceId} 
+                requestId={selectedRequestId}
+                isPropertyManager={isPropertyManager}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

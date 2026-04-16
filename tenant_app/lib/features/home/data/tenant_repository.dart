@@ -2,6 +2,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../shared/domain/tenant.dart';
 import '../../../../shared/domain/maintenance_request.dart';
 import '../../../../shared/domain/payment.dart';
+import '../../../../shared/domain/maintenance_message.dart';
 
 class TenantRepository {
   final ApiClient _apiClient;
@@ -88,5 +89,19 @@ class TenantRepository {
       },
     );
     return Payment.fromJson(response.data['payment']);
+  }
+
+  Future<List<MaintenanceMessage>> getMaintenanceMessages(String requestId) async {
+    final response = await _apiClient.dio.get('/tenant/maintenance/$requestId/messages');
+    final List data = response.data['messages'];
+    return data.map((json) => MaintenanceMessage.fromJson(json)).toList();
+  }
+
+  Future<MaintenanceMessage> sendMaintenanceMessage(String requestId, String content) async {
+    final response = await _apiClient.dio.post(
+      '/tenant/maintenance/$requestId/messages',
+      data: {'content': content},
+    );
+    return MaintenanceMessage.fromJson(response.data['message']);
   }
 }

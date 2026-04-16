@@ -16,8 +16,12 @@
     "@prisma/client": "^5.22.0",
     "@property-management/database": "*",
     "@supabase/supabase-js": "^2.100.1",
+    "@types/pdfkit": "^0.17.5",
     "dotenv": "^16.4.5",
-    "fastify": "^4.26.2"
+    "fastify": "^4.26.2",
+    "fastify-socket.io": "^5.1.0",
+    "pdfkit": "^0.18.0",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/dotenv": "^6.1.1",

@@ -3,6 +3,7 @@ import '../../auth/presentation/auth_notifier.dart';
 import '../data/tenant_repository.dart';
 import '../../../../shared/domain/tenant.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/socket_service.dart';
 
 final tenantRepositoryProvider = Provider<TenantRepository>((ref) {
   return TenantRepository(ApiClient());
@@ -34,6 +35,7 @@ class HomeNotifier extends StateNotifier<AsyncValue<Tenant?>> {
 
       if (tenantMember != null) {
         final tenant = await _repository.getTenantProfile();
+        SocketService().joinWorkspace(tenant.workspaceId);
         state = AsyncValue.data(tenant);
       } else {
         state = const AsyncValue.data(null);

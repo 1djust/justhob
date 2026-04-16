@@ -23,6 +23,7 @@ import {
   MoreVertical
 } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
+import { useRealtime } from '@/components/providers/RealtimeProvider';
 
 interface Lease {
   id: string;
@@ -56,6 +57,7 @@ interface PaymentsListProps {
 
 export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: PaymentsListProps) {
   const [payments, setPayments] = React.useState<Payment[]>([]);
+  const { socket, joinWorkspace, leaveWorkspace } = useRealtime();
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
   const [filter, setFilter] = React.useState<string>('');
@@ -75,10 +77,30 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
     }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
-    if (workspaceId) fetchPayments();
-  }, [workspaceId, filter]);
+    if (workspaceId) {
+      fetchPayments();
+      joinWorkspace(workspaceId);
+    }
+  }, [workspaceId, filter, joinWorkspace]);
+
+  // Real-time listener
+  React.useEffect(() => {
+    if (socket) {
+      const handleUpdate = (data: any) => {
+        console.log('[Realtime] Payment event received:', data);
+        fetchPayments();
+      };
+
+      socket.on('PAYMENT_UPDATED', handleUpdate);
+      socket.on('PAYMENT_SUBMITTED', handleUpdate);
+
+      return () => {
+        socket.off('PAYMENT_UPDATED', handleUpdate);
+        socket.off('PAYMENT_SUBMITTED', handleUpdate);
+      };
+    }
+  }, [socket, filter]);
 
   const handleMarkPaid = async (paymentId: string) => {
     try {
@@ -315,7 +337,17 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
                       </td>
                       <td className="py-5 px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {/* UNDER_REVIEW actions removed from standard list as they have their own inbox */}
+                          {/* Proof Log (Audit Trail) - Show for ANY payment that has a proofUrl */}
+                          {p.proofUrl && (
+                            <button
+                              onClick={() => setProofViewPayment(p)}
+                              title="View proof of payment"
+                              className="w-9 h-9 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all border border-zinc-200 dark:border-zinc-800"
+                            >
+                              <ImageIcon className="w-4 h-4" />
+                            </button>
+                          )}
+
                           {/* PENDING: Mark as settled */}
                           {p.status === 'PENDING' && isPropertyManager && (
                             <button
@@ -328,17 +360,17 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
                           {/* PAID: Show paid date + View Receipt */}
                           {p.status === 'PAID' && (
                             <div className="flex items-center gap-2">
+                              {p.paidDate && (
+                                <span className="text-[10px] font-bold text-emerald-500 uppercase bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-md hidden lg:inline-block">
+                                  Paid {new Date(p.paidDate).toLocaleDateString()}
+                                </span>
+                              )}
                               <button
                                 onClick={() => setReceiptViewPayment(p)}
                                 className="text-[10px] uppercase font-black px-3 py-2 rounded-full border-2 border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-900 hover:text-white dark:hover:bg-zinc-100 dark:hover:text-zinc-900 transition-all active:scale-95 flex items-center gap-1"
                               >
                                 <FileText className="w-3 h-3" /> Receipt
                               </button>
-                              {p.paidDate && (
-                                <span className="text-[10px] font-bold text-emerald-500 uppercase bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-md">
-                                  Paid {new Date(p.paidDate).toLocaleDateString()}
-                                </span>
-                              )}
                             </div>
                           )}
                           {/* REJECTED: Show reason */}

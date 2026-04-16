@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'maintenance_notifier.dart';
 import 'package:intl/intl.dart';
 import 'create_maintenance_screen.dart';
+import 'maintenance_chat_screen.dart';
 
 class MaintenanceListScreen extends ConsumerWidget {
   const MaintenanceListScreen({super.key});
@@ -53,43 +54,56 @@ class _MaintenanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MaintenanceChatScreen(
+            requestId: request.id,
+            description: request.description,
+          ),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Request #${request.id.substring(0, 8)}',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
-              ),
-              _StatusChip(status: request.status),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            request.description,
-            style: const TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text(
-                DateFormat.yMMMd().format(request.createdAt),
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-            ],
-          ),
-        ],
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Request #${request.id.substring(0, 8)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+                ),
+                _StatusChip(status: request.status),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              request.description,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(
+                  DateFormat.yMMMd().format(request.createdAt),
+                  style: const TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+                const Spacer(),
+                const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

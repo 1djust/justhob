@@ -18,6 +18,7 @@ import ownerRoutes from './routes/owners';
 import notificationRoutes from './routes/notifications';
 import bankVerificationRoutes from './routes/bank-verification';
 import leaseRoutes from './routes/leases';
+import socketPlugin from './plugins/socket';
 
 export function buildApp() {
   const fastify = Fastify({ 
@@ -30,12 +31,23 @@ export function buildApp() {
     credentials: true,
   });
 
+  // PRODUCTION HARDENING: Check for mandatory secrets
+  const isProd = process.env.NODE_ENV === 'production';
+  const cookieSecret = process.env.COOKIE_SECRET;
+  
+  if (isProd && (!cookieSecret || cookieSecret === 'super-secret-cookie-key')) {
+    throw new Error('PRODUCTION ERROR: COOKIE_SECRET must be set to a secure unique value in production environments.');
+  }
+
   fastify.register(cookie, {
-    secret: process.env.COOKIE_SECRET || 'super-secret-cookie-key',
+    secret: cookieSecret || 'super-secret-cookie-key',
   });
 
   // Production monitoring — custom zero-cost logger using Supabase
   fastify.register(errorLoggerPlugin);
+
+  // Real-time synchronization
+  fastify.register(socketPlugin);
 
   // Global Error Handler
   fastify.setErrorHandler((error, request, reply) => {
