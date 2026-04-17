@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
+import { Prisma } from '@prisma/client';
 
 export default async function publicRoutes(fastify: FastifyInstance) {
   // Get tenant public profile (for the portal)
@@ -53,15 +54,39 @@ export default async function publicRoutes(fastify: FastifyInstance) {
     // Determine the workspace
     const workspaceId = tenant.workspaceId;
 
-    const maintenanceRequest = await prisma.maintenanceRequest.create({
-      data: {
-        tenantId,
-        propertyId,
-        workspaceId,
-        description,
-        imageUrl,
-        status: 'PENDING'
+    const maintenanceRequest = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Lock the workspace record to prevent race conditions on limit checks
+      await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
+
+      const workspace = await tx.workspace.findUnique({ where: { id: workspaceId } });
+      if (workspace?.plan === 'FREE') {
+        const activeCount = await tx.maintenanceRequest.count({
+          where: { 
+            workspaceId, 
+            status: { in: ['PENDING', 'IN_PROGRESS'] } 
+          }
+        });
+        
+        if (activeCount >= 3) {
+          throw new Error('LIMIT_MAINTENANCE');
+        }
       }
+
+      return await tx.maintenanceRequest.create({
+        data: {
+          tenantId,
+          propertyId,
+          workspaceId,
+          description,
+          imageUrl,
+          status: 'PENDING'
+        }
+      });
+    }).catch((err: any) => {
+      if (err.message === 'LIMIT_MAINTENANCE') {
+        throw { statusCode: 402, message: 'Free plan limit reached: Maximum 3 active maintenance tickets allowed. Please upgrade your plan.' };
+      }
+      throw err;
     });
 
     return reply.status(201).send({ request: maintenanceRequest });

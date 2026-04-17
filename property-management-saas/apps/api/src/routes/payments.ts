@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
+import { Prisma } from '@prisma/client';
 
 export default async function paymentRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
@@ -48,27 +49,52 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     });
     if (!lease) return reply.status(404).send({ error: 'Lease not found in this workspace' });
 
-    const payment = await prisma.payment.create({
-      data: {
-        leaseId,
-        workspaceId,
-        amount: parseFloat(amount),
-        dueDate: new Date(dueDate),
-        paidDate: paidDate ? new Date(paidDate) : null,
-        status: status || 'PENDING',
-        note
-      },
-      include: {
-        lease: {
-          include: {
-            tenant: { select: { id: true, name: true } },
-            property: { select: { id: true, name: true } }
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Lock the workspace record to prevent race conditions on limit checks
+      await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
+
+      const workspace = await tx.workspace.findUnique({ where: { id: workspaceId } });
+      if (workspace?.plan === 'FREE') {
+        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        const paymentCount = await tx.payment.count({
+          where: { 
+            workspaceId, 
+            createdAt: { gte: startOfMonth }
           }
+        });
+        
+        if (paymentCount >= 5) {
+          throw new Error('LIMIT_INVOICES');
         }
       }
+
+      return await tx.payment.create({
+        data: {
+          leaseId,
+          workspaceId,
+          amount: parseFloat(amount),
+          dueDate: new Date(dueDate),
+          paidDate: paidDate ? new Date(paidDate) : null,
+          status: status || 'PENDING',
+          note
+        },
+        include: {
+          lease: {
+            include: {
+              tenant: { select: { id: true, name: true } },
+              property: { select: { id: true, name: true } }
+            }
+          }
+        }
+      });
+    }).catch((err: any) => {
+      if (err.message === 'LIMIT_INVOICES') {
+        throw { statusCode: 402, message: 'Free plan limit reached: Maximum 5 invoices per month. Please upgrade your plan.' };
+      }
+      throw err;
     });
 
-    return reply.status(201).send({ payment });
+    return reply.status(201).send({ payment: result });
   });
 
   // Mark payment as paid

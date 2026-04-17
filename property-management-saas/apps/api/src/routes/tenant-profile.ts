@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
 // import { RemitaService } from '../services/remita';
 import { authenticate } from '../lib/middleware';
+import { Prisma } from '@prisma/client';
 
 export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
@@ -101,15 +102,39 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Property ID and description are required' });
     }
 
-    const maintenanceRequest = await prisma.maintenanceRequest.create({
-      data: {
-        tenantId: tenant.id,
-        propertyId,
-        workspaceId: membership.workspaceId,
-        description,
-        imageUrl,
-        status: 'PENDING'
+    const maintenanceRequest = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Lock the workspace record to prevent race conditions on limit checks
+      await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${membership.workspaceId} FOR UPDATE`;
+
+      const workspace = await tx.workspace.findUnique({ where: { id: membership.workspaceId } });
+      if (workspace?.plan === 'FREE') {
+        const activeCount = await tx.maintenanceRequest.count({
+          where: { 
+            workspaceId: membership.workspaceId, 
+            status: { in: ['PENDING', 'IN_PROGRESS'] } 
+          }
+        });
+        
+        if (activeCount >= 3) {
+          throw new Error('LIMIT_MAINTENANCE');
+        }
       }
+
+      return await tx.maintenanceRequest.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId,
+          workspaceId: membership.workspaceId,
+          description,
+          imageUrl,
+          status: 'PENDING'
+        }
+      });
+    }).catch((err: any) => {
+      if (err.message === 'LIMIT_MAINTENANCE') {
+        throw { statusCode: 402, message: 'Free plan limit reached: Maximum 3 active maintenance tickets allowed. Please upgrade your plan.' };
+      }
+      throw err;
     });
 
     // Emit real-time update to the workspace room
