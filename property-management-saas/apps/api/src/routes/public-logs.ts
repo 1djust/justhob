@@ -21,6 +21,14 @@ export default async function publicLogRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'Message and source are required' });
       }
 
+      // Payload validation to prevent database exhaustion (DoS)
+      if (message.length > 2000) {
+         return reply.status(400).send({ error: 'Message too long' });
+      }
+      if (stack && stack.length > 5000) {
+         return reply.status(400).send({ error: 'Stack trace too long' });
+      }
+
       const log = await prisma.errorLog.create({
         data: {
           level: level || 'error',

@@ -68,13 +68,33 @@ COOKIE_SECRET="another-secret-key-here"
 
 ## 3. Run the Application
 
-Start both the backend API and the frontend web app:
+### 3.1 Backend API & Web App (WSL / Ubuntu)
+For performance reasons, the API and Web apps must be run inside your WSL 2 (Ubuntu) environment:
+1. Open your Ubuntu terminal.
+2. Navigate to the project directory:
+```bash
+cd ~/projects/justhub/property-management-saas
+```
+3. Start the development server:
 ```bash
 npm run dev
 ```
-
 - **Frontend**: [http://localhost:3000](http://localhost:3000)
 - **Backend API**: [http://localhost:3001](http://localhost:3001)
+
+*(Note: Windows 11 automatically bridges these ports, allowing you to access them from your Windows browser).*
+
+### 3.2 Mobile App (Windows)
+The Flutter mobile app (`tenant_app`) runs directly on Windows to support native USB debugging:
+1. Open your terminal in VS Code or Android Studio on Windows.
+2. Navigate to the mobile app directory:
+```powershell
+cd "C:\Users\USER\Desktop\Just hub\tenant_app"
+```
+3. Connect an Android device or start an emulator, then run:
+```powershell
+flutter run
+```
 
 ---
 

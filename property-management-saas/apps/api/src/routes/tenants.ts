@@ -3,6 +3,7 @@ import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
 import { supabaseAdmin } from '../lib/supabase';
 import { Prisma } from '@prisma/client';
+import { randomBytes } from 'crypto';
 
 export default async function tenantRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
@@ -68,7 +69,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       }
 
       let supabaseUserId = null;
-      const tempPassword = password || 'JustHub123!';
+      const tempPassword = password || randomBytes(12).toString('hex') + 'A!1';
 
       // If email is provided, create a Supabase Auth account for the mobile app
       if (email) {

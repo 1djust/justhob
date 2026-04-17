@@ -34,7 +34,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   });
 
   // Record a payment for a specific lease
-  fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId } = request.params as { workspaceId: string };
     const { leaseId, amount, dueDate, paidDate, status, note } = request.body as any;
 
@@ -72,7 +72,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   });
 
   // Mark payment as paid
-  fastify.put('/:id/pay', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/:id/pay', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, id } = request.params as { workspaceId: string; id: string };
 
     try {

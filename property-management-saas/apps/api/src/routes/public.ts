@@ -37,6 +37,10 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Property ID and description are required' });
     }
 
+    if (description.length > 2000) {
+      return reply.status(400).send({ error: 'Description is too long' });
+    }
+
     // Verify tenant exists
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId, deletedAt: null }
