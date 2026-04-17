@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../shared/domain/tenant.dart';
 import '../../../../shared/domain/maintenance_request.dart';
@@ -25,15 +26,37 @@ class TenantRepository {
     required String description,
     String? imageUrl,
   }) async {
-    final response = await _apiClient.dio.post(
-      '/tenant/maintenance',
-      data: {
-        'propertyId': propertyId,
-        'description': description,
-        'imageUrl': imageUrl,
-      },
-    );
-    return MaintenanceRequest.fromJson(response.data['request']);
+    try {
+      final response = await _apiClient.dio.post(
+        '/tenant/maintenance',
+        data: {
+          'propertyId': propertyId,
+          'description': description,
+          'imageUrl': imageUrl,
+        },
+      );
+      return MaintenanceRequest.fromJson(response.data['request']);
+    } on DioException catch (e) {
+      String message = 'Failed to create request.';
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        message = 'Server is taking too long to respond. Please try again.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        message = 'Cannot reach the server. Please check your internet connection.';
+      } else if (e.response != null) {
+        final data = e.response?.data;
+        if (data is Map) {
+          if (data['message'] != null) {
+            message = data['message'].toString();
+          } else if (data['error'] != null) {
+            message = data['error'].toString();
+          }
+        }
+      }
+      throw Exception(message);
+    } catch (e) {
+      throw Exception('An unexpected error occurred: ${e.toString()}');
+    }
   }
 
   Future<List<Payment>> getPayments() async {

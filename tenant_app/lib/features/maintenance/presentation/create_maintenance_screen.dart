@@ -57,8 +57,15 @@ class _CreateMaintenanceScreenState extends ConsumerState<CreateMaintenanceScree
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = e.toString();
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red.shade800,
+          ),
         );
       }
     } finally {
