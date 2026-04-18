@@ -44,17 +44,21 @@ class TenantRepository {
       } else if (e.type == DioExceptionType.connectionError) {
         message = 'Cannot reach the server. Please check your internet connection.';
       } else if (e.response != null) {
-        final data = e.response?.data;
-        if (data is Map) {
-          if (data['message'] != null) {
-            message = data['message'].toString();
-          } else if (data['error'] != null) {
-            message = data['error'].toString();
+        // Check for known status codes first
+        if (e.response?.statusCode == 402) {
+          message = 'Free plan limit reached. Please upgrade to submit more maintenance requests.';
+        } else {
+          // Try to parse a user-friendly message from the response body
+          final data = e.response?.data;
+          if (data is Map) {
+            if (data['message'] != null) {
+              message = data['message'].toString();
+            } else if (data['error'] != null) {
+              message = data['error'].toString();
+            }
+          } else if (data is String && data.isNotEmpty) {
+            message = data;
           }
-        } else if (data is String && data.isNotEmpty) {
-           message = data;
-        } else if (e.response?.statusCode == 402) {
-           message = 'Free plan limit reached. Please upgrade to submit more maintenance requests.';
         }
       }
       throw Exception(message);
