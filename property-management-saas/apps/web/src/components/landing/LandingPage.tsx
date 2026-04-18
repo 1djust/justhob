@@ -14,9 +14,7 @@ import {
   PieChart,
   Download,
   Sparkles,
-  Zap,
-  Camera,
-  LogOut
+  Camera
 } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
 import { DashboardCarousel } from './DashboardCarousel';
@@ -359,7 +357,7 @@ export function LandingPage() {
               </ul>
               <a href="/downloads/estateos-tenant.apk" download className="inline-flex items-center justify-center w-full sm:w-auto space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50">
                 <Download className="h-5 w-5" />
-                <span>Download Android App (v0.1.0)</span>
+                <span>Download Android App (v0.1.5)</span>
               </a>
             </motion.div>
             <motion.div 
