@@ -51,6 +51,10 @@ class TenantRepository {
           } else if (data['error'] != null) {
             message = data['error'].toString();
           }
+        } else if (data is String && data.isNotEmpty) {
+           message = data;
+        } else if (e.response?.statusCode == 402) {
+           message = 'Free plan limit reached. Please upgrade to submit more maintenance requests.';
         }
       }
       throw Exception(message);

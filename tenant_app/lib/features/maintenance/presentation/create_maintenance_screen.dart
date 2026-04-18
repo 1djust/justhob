@@ -60,11 +60,24 @@ class _CreateMaintenanceScreenState extends ConsumerState<CreateMaintenanceScree
         String errorMessage = e.toString();
         if (errorMessage.startsWith('Exception: ')) {
           errorMessage = errorMessage.substring(11);
+        } else if (errorMessage.startsWith('Error: ')) {
+          errorMessage = errorMessage.substring(7);
         }
+        
+        // Final fallback to clean up unparsed Dio Exceptions just in case
+        if (errorMessage.contains('DioException [bad response]:')) {
+          if (errorMessage.contains('status code of 402')) {
+            errorMessage = 'Free plan limit reached. Please contact your property manager to upgrade.';
+          } else {
+            errorMessage = 'Failed to submit request due to a server error. Please try again.';
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
             backgroundColor: Colors.red.shade800,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
