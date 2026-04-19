@@ -59,12 +59,15 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
 
       const workspace = await tx.workspace.findUnique({ where: { id: workspaceId } });
-      if (workspace?.plan === 'FREE') {
+      const plan = workspace?.plan || 'FREE';
+
+      if (plan === 'FREE' || plan === 'PRO') {
         const tenantCount = await tx.tenant.count({
           where: { workspaceId, deletedAt: null }
         });
-        if (tenantCount >= 3) {
-          throw new Error('LIMIT_REACHED');
+        const limit = plan === 'FREE' ? 3 : 50;
+        if (tenantCount >= limit) {
+          throw new Error(`LIMIT_REACHED:${limit}`);
         }
       }
 
@@ -128,8 +131,9 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
 
       return { tenant, tempPassword };
     }).catch((err: any) => {
-      if (err.message === 'LIMIT_REACHED') {
-        throw { statusCode: 402, message: 'Free plan limit reached: Maximum 3 tenants allowed. Please upgrade your plan.' };
+      if (err.message?.startsWith('LIMIT_REACHED')) {
+        const limit = err.message.split(':')[1];
+        throw { statusCode: 402, message: `Plan limit reached: Maximum ${limit} tenants allowed. Please upgrade your plan.` };
       }
       if (err.message?.startsWith('AUTH_ERR:')) {
         throw { statusCode: 400, message: err.message.split(':')[1] };

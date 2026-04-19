@@ -55,7 +55,16 @@ export function buildApp() {
     const statusCode = error.statusCode || (error as any).status || 500;
     
     // Extract error details safely
-    const errorMessage = error.message || 'Internal Server Error';
+    let errorMessage = error.message || 'Internal Server Error';
+    
+    // Sanitize raw Prisma and database connection errors for the frontend
+    if (errorMessage.includes('Can\'t reach database server') || errorMessage.includes('PrismaClientInitializationError')) {
+      errorMessage = 'Unable to connect to the database. Please check your internet connection and try again.';
+    } else if (errorMessage.includes('\n') && errorMessage.includes('invocation in')) {
+      // Hide raw Prisma stack traces
+      errorMessage = 'An unexpected database error occurred. Please try again later.';
+    }
+
     const errorCode = (error as any).code || (statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
     
     // Safely handle details (ensure it's not nested if already structured)

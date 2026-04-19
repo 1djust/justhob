@@ -39,6 +39,7 @@ interface SidebarProps {
   onViewChange: (view: DashboardView) => void;
   isPropertyManager: boolean;
   userEmail?: string;
+  plan?: string;
   onLogout: () => void;
 }
 
@@ -51,7 +52,7 @@ interface Notification {
   createdAt: string;
 }
 
-export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail, onLogout }: SidebarProps) {
+export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail, plan, onLogout }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
@@ -315,7 +316,19 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
         <div className="p-4 border-t border-border bg-zinc-50/50 dark:bg-zinc-900/20">
           {!isCollapsed && userEmail && (
             <div className="px-3 py-3 mb-4 bg-white dark:bg-zinc-900 rounded-xl border border-border/60 shadow-sm transition-all">
-              <p className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 mb-0.5">Manager Profile</p>
+              <div className="flex items-center justify-between mb-0.5">
+                <p className="text-[10px] uppercase font-bold tracking-wider text-zinc-400">Profile</p>
+                {plan && (
+                  <span className={cn(
+                    "text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight",
+                    plan === 'PRO' ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" :
+                    plan === 'ENTERPRISE' ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
+                    "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                  )}>
+                    {plan}
+                  </span>
+                )}
+              </div>
               <p className="text-sm font-semibold truncate text-zinc-700 dark:text-zinc-200">{userEmail}</p>
             </div>
           )}

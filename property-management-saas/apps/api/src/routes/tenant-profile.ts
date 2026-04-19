@@ -222,7 +222,22 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     const orderId = `RENT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     try {
-      // Create pending payment record
+      // Enforce limits and create payment record
+      const workspace = await prisma.workspace.findUnique({ where: { id: membership.workspaceId } });
+      if (workspace?.plan === 'FREE') {
+        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        const paymentCount = await prisma.payment.count({
+          where: { 
+            workspaceId: membership.workspaceId, 
+            createdAt: { gte: startOfMonth }
+          }
+        });
+        
+        if (paymentCount >= 5) {
+          throw { statusCode: 402, message: 'Free plan limit reached: Maximum 5 invoices per month.' };
+        }
+      }
+
       const payment = await prisma.payment.create({
         data: {
           leaseId,

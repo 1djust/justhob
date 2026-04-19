@@ -7,7 +7,8 @@ import {
   Wallet, 
   Wrench, 
   TrendingUp, 
-  ArrowUpRight 
+  ArrowUpRight,
+  ShieldCheck
 } from 'lucide-react';
 import { RevenueChart } from './RevenueChart';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
@@ -15,6 +16,7 @@ import { useRealtime } from '@/components/providers/RealtimeProvider';
 
 interface DashboardStatsProps {
   workspaceId: string;
+  plan?: string;
 }
 
 interface StatsData {
@@ -27,10 +29,12 @@ interface StatsData {
   chartData: { name: string; revenue: number }[];
 }
 
-export function DashboardStats({ workspaceId }: DashboardStatsProps) {
+export function DashboardStats({ workspaceId, plan }: DashboardStatsProps) {
   const [stats, setStats] = React.useState<StatsData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const { socket, joinWorkspace } = useRealtime();
+
+  const isPro = plan === 'PRO' || plan === 'ENTERPRISE';
 
   const fetchStats = React.useCallback(() => {
     if (!workspaceId) return;
@@ -160,15 +164,37 @@ export function DashboardStats({ workspaceId }: DashboardStatsProps) {
               <h3 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Revenue Overview</h3>
               <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">Financial performance (Last 6 Months)</p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                <span className="text-sm font-medium">Income</span>
+            {isPro && (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                  <span className="text-sm font-medium">Income</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
-          <div className="h-[350px] w-full">
-            <RevenueChart data={stats.chartData} />
+          
+          <div className="h-[350px] w-full relative">
+            {!isPro && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/10 dark:bg-zinc-900/10 backdrop-blur-sm rounded-3xl border border-white/20 dark:border-zinc-800 shadow-2xl animate-in zoom-in-95 duration-300">
+                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-indigo-600/30">
+                  <ShieldCheck className="w-8 h-8 text-white" />
+                </div>
+                <h4 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Advanced Analytics</h4>
+                <p className="text-zinc-600 dark:text-zinc-400 text-center max-w-[280px] text-sm font-medium mb-6">
+                  Upgrade to <span className="text-indigo-600 dark:text-indigo-400 font-bold">PRO</span> to unlock detailed revenue charts and financial trends.
+                </p>
+                <button 
+                  onClick={() => window.location.href = '/#pricing'}
+                  className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+                >
+                  Upgrade to Pro
+                </button>
+              </div>
+            )}
+            <div className={!isPro ? 'opacity-20 grayscale pointer-events-none' : ''}>
+              <RevenueChart data={stats.chartData} />
+            </div>
           </div>
         </div>
       </div>

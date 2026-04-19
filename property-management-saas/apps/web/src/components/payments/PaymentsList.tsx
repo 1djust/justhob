@@ -868,6 +868,7 @@ function InvoiceModal({ payment, onClose }: { payment: Payment; onClose: () => v
 function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string; leases: Lease[]; onComplete: () => void }) {
   const [formData, setFormData] = React.useState({ leaseId: '', amount: '', dueDate: '', status: 'PENDING', note: '' });
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const handleLeaseChange = (leaseId: string) => {
     const lease = leases.find(l => l.id === leaseId);
@@ -881,6 +882,7 @@ function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string;
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments`, {
         method: 'POST',
@@ -889,8 +891,13 @@ function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string;
         credentials: 'include'
       });
       onComplete();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      if (e.message && e.message.includes('Free plan limit reached')) {
+        setError(e.message);
+      } else {
+        setError('Failed to record payment. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -903,6 +910,25 @@ function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string;
         <p className="text-sm text-zinc-500">Capture a manual rent payment or cash deposit. <br className="hidden md:block"/><span className="text-blue-600 dark:text-blue-400 font-medium">Digital payments submitted by tenants will automatically appear in your Pending Verification inbox.</span></p>
       </div>
 
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-300">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <h5 className="text-sm font-bold text-rose-900 dark:text-rose-100">Action Blocked</h5>
+              <p className="text-sm text-rose-700 dark:text-rose-300 mt-1">{error}</p>
+            </div>
+          </div>
+          {error.includes('limit reached') && (
+            <a 
+              href="/#pricing" 
+              className="whitespace-nowrap px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm text-center"
+            >
+              Upgrade to Pro
+            </a>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 relative">
         <div className="md:col-span-2 space-y-1.5">

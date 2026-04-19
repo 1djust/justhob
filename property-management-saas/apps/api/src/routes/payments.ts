@@ -2,6 +2,8 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
 import { Prisma } from '@prisma/client';
+import { generateReceiptPDF } from '../lib/pdf';
+import { sendEmail } from '../lib/mailer';
 
 export default async function paymentRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
@@ -49,14 +51,11 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     });
     if (!lease) return reply.status(404).send({ error: 'Lease not found in this workspace' });
 
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Lock the workspace record to prevent race conditions on limit checks
-      await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
-
-      const workspace = await tx.workspace.findUnique({ where: { id: workspaceId } });
+    try {
+      const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
       if (workspace?.plan === 'FREE') {
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-        const paymentCount = await tx.payment.count({
+        const paymentCount = await prisma.payment.count({
           where: { 
             workspaceId, 
             createdAt: { gte: startOfMonth }
@@ -64,11 +63,11 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         });
         
         if (paymentCount >= 5) {
-          throw new Error('LIMIT_INVOICES');
+          throw { statusCode: 402, message: 'Free plan limit reached: Maximum 5 invoices per month. Please upgrade your plan.' };
         }
       }
 
-      return await tx.payment.create({
+      const result = await prisma.payment.create({
         data: {
           leaseId,
           workspaceId,
@@ -81,20 +80,18 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         include: {
           lease: {
             include: {
-              tenant: { select: { id: true, name: true } },
-              property: { select: { id: true, name: true } }
+               tenant: { select: { id: true, name: true } },
+               property: { select: { id: true, name: true } }
             }
           }
         }
       });
-    }).catch((err: any) => {
-      if (err.message === 'LIMIT_INVOICES') {
-        throw { statusCode: 402, message: 'Free plan limit reached: Maximum 5 invoices per month. Please upgrade your plan.' };
-      }
-      throw err;
-    });
 
-    return reply.status(201).send({ payment: result });
+      return reply.status(201).send({ payment: result });
+    } catch (err: any) {
+      if (err.statusCode === 402) throw err;
+      throw err;
+    }
   });
 
   // Mark payment as paid
@@ -143,7 +140,10 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
 
     const payment = await prisma.payment.findUnique({
       where: { payment_workspace_id: { id, workspaceId } },
-      include: { lease: { include: { tenant: { select: { id: true, email: true } } } } }
+      include: { 
+        lease: { include: { tenant: { select: { id: true, email: true } } } },
+        workspace: { select: { plan: true } }
+      }
     });
 
     if (!payment) return reply.status(404).send({ error: 'Payment not found' });
@@ -152,6 +152,8 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     const tenantUser = tenantEmail 
       ? await prisma.user.findUnique({ where: { email: tenantEmail } })
       : null;
+
+    const isPro = payment.workspace?.plan !== 'FREE';
 
     let updatedPayment;
 
@@ -175,6 +177,15 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
             type: 'PAYMENT_APPROVED'
           }
         });
+
+        // Trigger email notification ONLY for PRO/ENTERPRISE
+        if (isPro) {
+          await sendEmail(
+            tenantEmail!,
+            'Payment Approved - EstateOS',
+            `Your payment of ₦${updatedPayment.amount.toLocaleString()} has been approved. Your Receipt ID is ${receiptId}. You can download your official receipt from the tenant portal.`
+          );
+        }
       }
     } else {
       // REJECTED
@@ -198,6 +209,15 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
             type: 'PAYMENT_REJECTED'
           }
         });
+
+        // Trigger email notification ONLY for PRO/ENTERPRISE
+        if (isPro) {
+          await sendEmail(
+            tenantEmail!,
+            'Payment Proof Rejected - EstateOS',
+            `Your submitted proof of payment for your rent has been rejected. \n\nReason: ${rejectionReason}\n\nPlease review the feedback and upload a valid proof of payment from the portal.`
+          );
+        }
       }
     }
 
@@ -209,5 +229,42 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     });
 
     return reply.send({ payment: updatedPayment });
+  });
+
+  // Download PDF Receipt
+  fastify.get('/:id/receipt', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+
+    const payment = await prisma.payment.findUnique({
+      where: { payment_workspace_id: { id, workspaceId } },
+      include: {
+        lease: {
+          include: {
+            tenant: true,
+            property: true,
+          }
+        },
+        workspace: true
+      }
+    });
+
+    if (!payment || !payment.receiptId || !payment.paidDate) {
+      return reply.status(404).send({ error: 'Receipt not found or payment not settled' });
+    }
+
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', `attachment; filename=receipt-${payment.receiptId}.pdf`);
+
+    generateReceiptPDF({
+      receiptId: payment.receiptId,
+      amount: payment.amount,
+      paidDate: payment.paidDate,
+      tenantName: payment.lease.tenant.name,
+      propertyName: payment.lease.property.name,
+      workspaceName: payment.workspace?.name || 'EstateOS Workspace',
+      note: payment.note || undefined
+    }, (reply as any).raw);
+
+    return reply;
   });
 }

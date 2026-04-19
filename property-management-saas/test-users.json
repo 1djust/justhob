@@ -17,5 +17,29 @@
     "role": "TENANT",
     "description": "Occupant of Unit A1. Can view lease and submit maintenance requests."
   },
+  "free_manager": {
+    "email": "free-manager@justhob.com",
+    "password": "Test1234!",
+    "role": "PROPERTY_MANAGER",
+    "description": "Manager on the FREE plan. Limited to 1 property, 1 owner, etc."
+  },
+  "enterprise_manager": {
+    "email": "enterprise-manager@justhob.com",
+    "password": "Test1234!",
+    "role": "PROPERTY_MANAGER",
+    "description": "Manager on the ENTERPRISE plan. Unlimited access to everything."
+  },
+  "freeTenant": {
+    "email": "free-tenant@justhob.com",
+    "password": "Test1234!",
+    "role": "TENANT",
+    "linkedManager": "free-manager@justhob.com"
+  },
+  "proTenant": {
+    "email": "pro-tenant@justhob.com",
+    "password": "Test1234!",
+    "role": "TENANT",
+    "linkedManager": "manager@justhob.com"
+  },
   "common_password": "Test1234!"
 }

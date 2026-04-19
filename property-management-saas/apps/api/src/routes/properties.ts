@@ -44,13 +44,17 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
       await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
 
       const workspace = await tx.workspace.findUnique({ where: { id: workspaceId } });
-      if (workspace?.plan === 'FREE') {
+      const plan = workspace?.plan || 'FREE';
+
+      // Enforcement of tier limits
+      if (plan === 'FREE' || plan === 'PRO') {
         const propertiesCount = await tx.property.count({
           where: { workspaceId, deletedAt: null }
         });
         
-        if (propertiesCount >= 1) {
-          throw new Error('LIMIT_PROPERTIES');
+        const limitProps = plan === 'FREE' ? 1 : 10;
+        if (propertiesCount >= limitProps) {
+          throw new Error(`LIMIT_PROPERTIES:${limitProps}`);
         }
 
         const newUnitsCount = units ? units.length : 0;
@@ -58,8 +62,9 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
           where: { workspaceId }
         });
 
-        if (currentUnitsCount + newUnitsCount > 3) {
-          throw new Error('LIMIT_UNITS');
+        const limitUnits = plan === 'FREE' ? 3 : 50;
+        if (currentUnitsCount + newUnitsCount > limitUnits) {
+          throw new Error(`LIMIT_UNITS:${limitUnits}`);
         }
       }
 
@@ -80,11 +85,13 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
         include: { units: true }
       });
     }).catch((err: any) => {
-      if (err.message === 'LIMIT_PROPERTIES') {
-        throw { statusCode: 402, message: 'Free plan limit reached: Maximum 1 property allowed. Please upgrade your plan.' };
+      if (err.message?.startsWith('LIMIT_PROPERTIES')) {
+        const limit = err.message.split(':')[1];
+        throw { statusCode: 402, message: `Plan limit reached: Maximum ${limit} property allowed. Please upgrade your plan.` };
       }
-      if (err.message === 'LIMIT_UNITS') {
-        throw { statusCode: 402, message: 'Free plan limit reached: Maximum 3 units allowed. Please upgrade your plan.' };
+      if (err.message?.startsWith('LIMIT_UNITS')) {
+        const limit = err.message.split(':')[1];
+        throw { statusCode: 402, message: `Plan limit reached: Maximum ${limit} units allowed. Please upgrade your plan.` };
       }
       throw err;
     });

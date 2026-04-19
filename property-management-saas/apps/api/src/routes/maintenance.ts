@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
+import { sendEmail } from '../lib/mailer';
 
 export default async function maintenanceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
@@ -83,7 +84,11 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
 
     try {
       const oldRequest = await prisma.maintenanceRequest.findUnique({
-        where: { id }
+        where: { id },
+        include: { 
+          tenant: { select: { email: true, name: true } },
+          workspace: { select: { plan: true } }
+        }
       });
 
       const maintenanceRequest = await prisma.maintenanceRequest.update({
@@ -104,6 +109,16 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
         
         // Broadcast the system message
         fastify.io.to(`maintenance:${id}`).emit('maintenance-message', systemMessage);
+
+        // Notify tenant via email ONLY for PRO/ENTERPRISE
+        const isPro = oldRequest.workspace?.plan !== 'FREE';
+        if (oldRequest.tenant.email && isPro) {
+          await sendEmail(
+            oldRequest.tenant.email,
+            'Maintenance Request Update - EstateOS',
+            `Hi ${oldRequest.tenant.name},\n\nThe status of your maintenance request "${maintenanceRequest.description.substring(0, 50)}..." has been updated to: ${status.replace('_', ' ')}.`
+          );
+        }
       }
 
       // Broadcast status change to workspace

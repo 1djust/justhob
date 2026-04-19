@@ -21,6 +21,7 @@ import {
 interface Workspace {
   id: string;
   name: string;
+  plan: string;
 }
 
 interface WorkspaceMember {
@@ -55,7 +56,7 @@ export default function DashboardPage() {
       .then(data => {
         setUser(data.user);
         if (data.user?.workspaces?.length > 0) {
-          setSelectedWorkspaceId(prev => prev || data.user.workspaces[0].workspace.id);
+          setSelectedWorkspaceId(prev => prev || data.user.workspaces[0]?.workspace?.id || null);
         }
         setLoading(false);
       })
@@ -158,7 +159,10 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <DashboardStats workspaceId={selectedWorkspaceId} />
+            <DashboardStats 
+              workspaceId={selectedWorkspaceId} 
+              plan={user?.workspaces?.find(w => w?.workspace?.id === selectedWorkspaceId)?.workspace?.plan}
+            />
 
             <div className="relative rounded-[2.5rem] border border-white/20 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md p-8 shadow-2xl overflow-hidden">
               <div className="flex justify-between items-center mb-8">
@@ -173,31 +177,31 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {user.workspaces.map((member) => (
                       <div 
-                        key={member.workspace.id} 
+                        key={member.workspace?.id} 
                         className={`group relative flex flex-col p-6 rounded-[2rem] border transition-all duration-300 ${
-                          selectedWorkspaceId === member.workspace.id 
+                          selectedWorkspaceId === member.workspace?.id 
                             ? 'bg-zinc-900 text-white border-zinc-900 shadow-xl' 
                             : 'bg-white/40 dark:bg-zinc-900/40 border-white/20 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600'
                         }`}
                       >
                         <div className="flex justify-between items-start mb-6">
-                          <div className={`p-3 rounded-2xl ${selectedWorkspaceId === member.workspace.id ? 'bg-white/10' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
-                            <Building className={`w-5 h-5 ${selectedWorkspaceId === member.workspace.id ? 'text-white' : 'text-zinc-500'}`} />
+                          <div className={`p-3 rounded-2xl ${selectedWorkspaceId === member.workspace?.id ? 'bg-white/10' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                            <Building className={`w-5 h-5 ${selectedWorkspaceId === member.workspace?.id ? 'text-white' : 'text-zinc-500'}`} />
                           </div>
                           <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            selectedWorkspaceId === member.workspace.id 
+                            selectedWorkspaceId === member.workspace?.id 
                               ? 'bg-white/20 text-white' 
                               : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                           }`}>
                             {member.role.replace('_', ' ')}
                           </div>
                         </div>
-                        <h4 className="text-xl font-bold tracking-tight mb-2">{member.workspace.name}</h4>
+                        <h4 className="text-xl font-bold tracking-tight mb-2">{member.workspace?.name}</h4>
                         <div className="mt-auto pt-4 flex items-center justify-between">
-                          <span className={`text-[10px] font-medium ${selectedWorkspaceId === member.workspace.id ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                          <span className={`text-[10px] font-medium ${selectedWorkspaceId === member.workspace?.id ? 'text-zinc-400' : 'text-zinc-500'}`}>
                             {member.role === 'PROPERTY_MANAGER' ? 'Full Access' : 'View Only'}
                           </span>
-                          {selectedWorkspaceId === member.workspace.id && (
+                          {selectedWorkspaceId === member.workspace?.id && (
                             <ShieldCheck className="w-4 h-4 text-emerald-400" />
                           )}
                         </div>
@@ -236,6 +240,7 @@ export default function DashboardPage() {
           onViewChange={setActiveView} 
           isPropertyManager={isPropertyManager}
           userEmail={user?.email}
+          plan={user?.workspaces?.find(w => w?.workspace?.id === selectedWorkspaceId)?.workspace?.plan}
           onLogout={handleLogout}
         />
         

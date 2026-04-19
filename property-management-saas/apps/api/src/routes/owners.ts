@@ -50,7 +50,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
   });
 
   // Add a new Landlord (Owner) to the workspace
-  fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: verifyPropertyManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId } = request.params as { workspaceId: string };
     const { name, email, password } = request.body as { name: string; email: string; password?: string };
 
@@ -58,67 +58,100 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Name and email are required' });
     }
 
-    // Check if Prisma user already exists
-    let user = await prisma.user.findUnique({ where: { email } });
+    try {
+      // Limit enforcement logic
+      const result = await prisma.$transaction(async (tx: any) => {
+        // 1. Get workspace and lock it
+        const workspace = await tx.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { id: true, plan: true }
+        });
 
-    if (user) {
-      const existingMember = await prisma.workspaceMember.findUnique({
-        where: { userId_workspaceId: { userId: user.id, workspaceId } }
+        if (!workspace) throw new Error('Workspace not found');
+
+        // 2. Count current owners (LANDLORD role)
+        const ownerCount = await tx.workspaceMember.count({
+          where: { workspaceId, role: 'LANDLORD' }
+        });
+
+        if (workspace.plan === 'FREE' && ownerCount >= 2) {
+          throw new Error('Owner limit reached for Free Plan. Maximum 2 owners allowed.');
+        }
+
+        let user = await tx.user.findUnique({ where: { email } });
+        if (user) {
+          const existingMember = await tx.workspaceMember.findUnique({
+            where: { userId_workspaceId: { userId: user.id, workspaceId } }
+          });
+          
+          if (existingMember) {
+            throw new Error('User is already a member of this workspace');
+          }
+          
+          const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as any;
+
+          const member = await tx.workspaceMember.create({
+            data: { 
+              userId: user.id, 
+              workspaceId, 
+              role: 'LANDLORD',
+              payoutStrategy,
+              bankCode,
+              accountNumber,
+              accountName
+            }
+          });
+          return { user, member };
+        }
+
+        return { user: null, limitReached: false };
       });
-      if (existingMember) {
-        return reply.status(400).send({ error: 'This user is already a member of this workspace' });
+
+      let user = result.user;
+
+      if (!user) {
+        // User doesn't exist, need to create in Supabase then Prisma
+        // Note: We do this outside the transaction to avoid long locks during network calls
+        const tempPassword = password || 'TempPass123!';
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { name }
+        });
+
+        if (authError || !authData.user) {
+          return reply.status(400).send({ error: authError?.message || 'Failed to create user authentication' });
+        }
+
+        user = await prisma.user.create({
+          data: { id: authData.user.id, email, name }
+        });
+
+        const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as any;
+
+        await prisma.workspaceMember.create({
+          data: { 
+            userId: user.id, 
+            workspaceId, 
+            role: 'LANDLORD',
+            payoutStrategy,
+            bankCode,
+            accountNumber,
+            accountName
+          }
+        });
       }
 
-      const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as any;
-
-      await prisma.workspaceMember.create({
-        data: { 
-          userId: user.id, 
-          workspaceId, 
-          role: 'LANDLORD',
-          payoutStrategy,
-          bankCode,
-          accountNumber,
-          accountName
-        }
+      return reply.status(201).send({
+        owner: { id: user.id, name: user.name, email: user.email }
       });
-    } else {
-      // Create user instantly with the provided Temporary Password
-      const tempPassword = password || 'TempPass123!';
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: { name }
-      });
-
-      if (authError || !authData.user) {
-        return reply.status(400).send({ error: authError?.message || 'Failed to create user authentication' });
+    } catch (error: any) {
+      if (error.message && error.message.includes('Owner limit reached')) {
+        return reply.status(402).send({ error: error.message });
       }
-
-      // Create Prisma user linked to Supabase Auth UID
-      user = await prisma.user.create({
-        data: { id: authData.user.id, email, name }
-      });
-
-      const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as any;
-
-      await prisma.workspaceMember.create({
-        data: { 
-          userId: user.id, 
-          workspaceId, 
-          role: 'LANDLORD',
-          payoutStrategy,
-          bankCode,
-          accountNumber,
-          accountName
-        }
-      });
+      return reply.status(500).send(error);
     }
-
-    return reply.status(201).send({
-      owner: { id: user.id, name: user.name, email: user.email }
-    });
   });
 
   // Remove a Landlord from the workspace
