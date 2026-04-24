@@ -74,8 +74,12 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           where: { workspaceId, role: 'LANDLORD' }
         });
 
-        if (workspace.plan === 'FREE' && ownerCount >= 2) {
-          throw new Error('Owner limit reached for Free Plan. Maximum 2 owners allowed.');
+        if (workspace.plan === 'FREE' && ownerCount >= 1) {
+          throw new Error('Owner limit reached for Free Plan. Maximum 1 owner allowed.');
+        }
+
+        if (workspace.plan === 'PRO' && ownerCount >= 3) {
+          throw new Error('Owner limit reached for Pro Plan. Maximum 3 owners allowed.');
         }
 
         let user = await tx.user.findUnique({ where: { email } });

@@ -15,6 +15,7 @@ import {
   Plus
 } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
+import { ExportButton } from '@/components/shared/ExportButton';
 
 interface Lease {
   id: string;
@@ -44,9 +45,10 @@ interface TenantProps {
   workspaceId: string;
   properties: Property[];
   onLeasesLoaded?: (leases: Lease[]) => void;
+  plan?: string;
 }
 
-export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantProps) {
+export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: TenantProps) {
   const [tenants, setTenants] = React.useState<Tenant[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
@@ -101,12 +103,15 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded }: TenantP
           <h3 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-zinc-50 dark:to-zinc-400 bg-clip-text text-transparent">Tenants</h3>
           <p className="text-sm text-zinc-500 mt-1">Manage your residents and lease agreements</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="group relative flex items-center gap-2 bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900 px-5 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-all active:scale-95"
-        >
-          {showForm ? 'Cancel' : <><UserPlus className="w-4 h-4" /> Add Tenant</>}
-        </button>
+        <div className="flex items-center gap-3">
+          <ExportButton workspaceId={workspaceId} type="tenants" plan={plan} />
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="group relative flex items-center gap-2 bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900 px-5 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-all active:scale-95"
+          >
+            {showForm ? 'Cancel' : <><UserPlus className="w-4 h-4" /> Add Tenant</>}
+          </button>
+        </div>
       </div>
 
       {showForm && (

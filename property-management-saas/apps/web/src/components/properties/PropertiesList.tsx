@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ExportButton } from '@/components/shared/ExportButton';
 
 interface Unit {
   id: string;
@@ -49,7 +50,7 @@ const propertyTypeConfig: Record<string, { label: string; icon: React.ComponentT
   OTHERS: { label: 'Others', icon: MoreHorizontal, description: 'Custom unit type' }
 };
 
-export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyManager = true }: { workspaceId: string; onPropertiesLoaded?: (props: Property[]) => void; isPropertyManager?: boolean }) {
+export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyManager = true, plan }: { workspaceId: string; onPropertiesLoaded?: (props: Property[]) => void; isPropertyManager?: boolean; plan?: string }) {
   const [properties, setProperties] = React.useState<Property[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
@@ -108,12 +109,15 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
           <p className="text-sm text-zinc-500 mt-1">Manage your buildings and rental units</p>
         </div>
         {isPropertyManager && (
-          <button 
-            onClick={() => setShowForm(!showForm)} 
-            className="group relative flex items-center gap-2 bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900 px-5 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-all active:scale-95"
-          >
-            {showForm ? 'Cancel' : <><Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" /> Add Property</>}
-          </button>
+          <div className="flex items-center gap-3">
+            <ExportButton workspaceId={workspaceId} type="properties" plan={plan} />
+            <button 
+              onClick={() => setShowForm(!showForm)} 
+              className="group relative flex items-center gap-2 bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900 px-5 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-all active:scale-95"
+            >
+              {showForm ? 'Cancel' : <><Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" /> Add Property</>}
+            </button>
+          </div>
         )}
       </div>
 

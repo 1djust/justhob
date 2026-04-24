@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
+import { ExportButton } from '@/components/shared/ExportButton';
 
 interface Lease {
   id: string;
@@ -53,9 +54,10 @@ interface PaymentsListProps {
   workspaceId: string;
   leases: Lease[];
   isPropertyManager?: boolean;
+  plan?: string;
 }
 
-export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: PaymentsListProps) {
+export function PaymentsList({ workspaceId, leases, isPropertyManager = true, plan }: PaymentsListProps) {
   const [payments, setPayments] = React.useState<Payment[]>([]);
   const { socket, joinWorkspace, leaveWorkspace } = useRealtime();
   const [loading, setLoading] = React.useState(true);
@@ -187,6 +189,7 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true }: 
               <option value="OVERDUE">Overdue</option>
             </select>
           </div>
+          <ExportButton workspaceId={workspaceId} type="payments" plan={plan} />
           {isPropertyManager && (
             <button
               onClick={() => setShowForm(!showForm)}

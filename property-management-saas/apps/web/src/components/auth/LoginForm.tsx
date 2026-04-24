@@ -242,6 +242,9 @@ export function LoginForm() {
           <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
             Password
           </label>
+          <Link href="/forgot-password" className="text-xs font-bold text-primary hover:underline transition-colors">
+            Forgot password?
+          </Link>
         </div>
         <div className="relative">
           <input

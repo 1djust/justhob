@@ -18,6 +18,7 @@ import ownerRoutes from './routes/owners';
 import notificationRoutes from './routes/notifications';
 import bankVerificationRoutes from './routes/bank-verification';
 import leaseRoutes from './routes/leases';
+import exportRoutes from './routes/exports';
 import socketPlugin from './plugins/socket';
 
 export function buildApp() {
@@ -120,6 +121,7 @@ export function buildApp() {
   fastify.register(publicLogRoutes, { prefix: '/api/public' });
   fastify.register(bankVerificationRoutes, { prefix: '/api/workspaces/:workspaceId/bank' });
   fastify.register(leaseRoutes, { prefix: '/api/workspaces/:workspaceId/leases' });
+  fastify.register(exportRoutes, { prefix: '/api/workspaces/:workspaceId/export' });
 
   return fastify;
 }

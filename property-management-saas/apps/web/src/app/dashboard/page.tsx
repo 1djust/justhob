@@ -216,13 +216,13 @@ export default function DashboardPage() {
           </div>
         );
       case 'properties':
-        return <PropertiesList workspaceId={selectedWorkspaceId} onPropertiesLoaded={setProperties} isPropertyManager={isPropertyManager} />;
+        return <PropertiesList workspaceId={selectedWorkspaceId} onPropertiesLoaded={setProperties} isPropertyManager={isPropertyManager} plan={user?.workspaces?.find(w => w?.workspace?.id === selectedWorkspaceId)?.workspace?.plan} />;
       case 'tenants':
-        return isPropertyManager ? <TenantsList workspaceId={selectedWorkspaceId} properties={properties} onLeasesLoaded={setLeases} /> : null;
+        return isPropertyManager ? <TenantsList workspaceId={selectedWorkspaceId} properties={properties} onLeasesLoaded={setLeases} plan={user?.workspaces?.find(w => w?.workspace?.id === selectedWorkspaceId)?.workspace?.plan} /> : null;
       case 'owners':
         return isPropertyManager ? <OwnerManagement workspaceId={selectedWorkspaceId} /> : null;
       case 'payments':
-        return <PaymentsList workspaceId={selectedWorkspaceId} leases={leases} isPropertyManager={isPropertyManager} />;
+        return <PaymentsList workspaceId={selectedWorkspaceId} leases={leases} isPropertyManager={isPropertyManager} plan={user?.workspaces?.find(w => w?.workspace?.id === selectedWorkspaceId)?.workspace?.plan} />;
       case 'maintenance':
         return <MaintenanceList workspaceId={selectedWorkspaceId} isPropertyManager={isPropertyManager} />;
       case 'settings':
