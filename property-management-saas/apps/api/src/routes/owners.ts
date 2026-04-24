@@ -117,11 +117,8 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         // User doesn't exist, need to create in Supabase then Prisma
         // Note: We do this outside the transaction to avoid long locks during network calls
         const tempPassword = password || 'TempPass123!';
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email,
-          password: tempPassword,
-          email_confirm: true,
-          user_metadata: { name }
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+          data: { name }
         });
 
         if (authError || !authData.user) {

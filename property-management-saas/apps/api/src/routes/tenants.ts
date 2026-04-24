@@ -76,11 +76,8 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
 
       // If email is provided, create a Supabase Auth account for the mobile app
       if (email) {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email,
-          password: tempPassword,
-          email_confirm: true,
-          user_metadata: { name, role: 'TENANT', mustChangePassword: true }
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+          data: { name, role: 'TENANT', mustChangePassword: true }
         });
 
         if (authError) {
