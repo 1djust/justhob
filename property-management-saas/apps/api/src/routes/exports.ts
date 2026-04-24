@@ -27,7 +27,7 @@ function toCSV(rows: Record<string, any>[], columns: { key: string; label: strin
  * Generate a PDF document from rows and columns.
  */
 function toPDF(reply: FastifyReply, title: string, rows: Record<string, any>[], columns: { key: string; label: string }[]) {
-  return new Promise((resolve) => {
+  return new Promise<void>((resolve) => {
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
     const chunks: any[] = [];
 
