@@ -38,7 +38,7 @@ function toPDF(reply: FastifyReply, title: string, rows: Record<string, any>[], 
         .header('Content-Type', 'application/pdf')
         .header('Content-Disposition', `attachment; filename=${title.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`)
         .send(result);
-      resolve(reply);
+      resolve();
     });
 
     // Header
@@ -80,6 +80,7 @@ function toPDF(reply: FastifyReply, title: string, rows: Record<string, any>[], 
   });
 
   doc.end();
+  });
 }
 
 export default async function exportRoutes(fastify: FastifyInstance) {
@@ -143,7 +144,7 @@ export default async function exportRoutes(fastify: FastifyInstance) {
 
     const { format } = request.query as { format?: string };
     if (format === 'pdf') {
-      return toPDF(reply, 'Tenants Report', rows, [
+      await toPDF(reply, 'Tenants Report', rows, [
         { key: 'name', label: 'Name' },
         { key: 'email', label: 'Email' },
         { key: 'property', label: 'Property' },
@@ -151,6 +152,7 @@ export default async function exportRoutes(fastify: FastifyInstance) {
         { key: 'leaseStart', label: 'Start' },
         { key: 'yearlyRent', label: 'Rent' }
       ]);
+      return reply;
     }
 
     reply.header('Content-Type', 'text/csv');
@@ -202,7 +204,7 @@ export default async function exportRoutes(fastify: FastifyInstance) {
 
     const { format } = request.query as { format?: string };
     if (format === 'pdf') {
-      return toPDF(reply, 'Payments Ledger', rows, [
+      await toPDF(reply, 'Payments Ledger', rows, [
         { key: 'receiptId', label: 'ID' },
         { key: 'tenant', label: 'Tenant' },
         { key: 'property', label: 'Property' },
@@ -210,6 +212,7 @@ export default async function exportRoutes(fastify: FastifyInstance) {
         { key: 'status', label: 'Status' },
         { key: 'paidDate', label: 'Date' }
       ]);
+      return reply;
     }
 
     reply.header('Content-Type', 'text/csv');
@@ -272,13 +275,14 @@ export default async function exportRoutes(fastify: FastifyInstance) {
 
     const { format } = request.query as { format?: string };
     if (format === 'pdf') {
-      return toPDF(reply, 'Portfolio Report', rows, [
+      await toPDF(reply, 'Portfolio Report', rows, [
         { key: 'property', label: 'Property' },
         { key: 'address', label: 'Address' },
         { key: 'owner', label: 'Owner' },
         { key: 'unitNumber', label: 'Unit' },
         { key: 'unitStatus', label: 'Status' }
       ]);
+      return reply;
     }
 
     reply.header('Content-Type', 'text/csv');
