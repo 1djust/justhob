@@ -121,7 +121,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
           type: 'invite',
           email,
-          data: { name }
+          options: { data: { name } }
         });
 
         const linkDataAny = linkData as any;
