@@ -103,6 +103,11 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
     } catch (e) {
       console.error('Failed to delete property:', e);
       // No need to alert() here, apiFetch automatically shows a toast
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleReassignProperty = async (propertyId: string, ownerId: string) => {
     setReassigning(true);
     try {
