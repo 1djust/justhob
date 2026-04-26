@@ -8,7 +8,7 @@ import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'EstateOS - Property Management',
+  title: 'Just Hub',
   description: 'Manage your properties with ease',
 };
 

@@ -3,7 +3,7 @@ import { LoginForm } from '@/components/auth/LoginForm';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Sign In - Property Management SaaS',
+  title: 'Sign In - Just Hub',
 };
 
 export default function LoginPage() {
