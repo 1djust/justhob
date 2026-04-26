@@ -32,16 +32,22 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("key.jks")
-            storePassword = "justhub123"
-            keyAlias = "key"
-            keyPassword = "justhub123"
+            if (file("key.jks").exists()) {
+                storeFile = file("key.jks")
+                storePassword = "justhub123"
+                keyAlias = "key"
+                keyPassword = "justhub123"
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (file("key.jks").exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }
