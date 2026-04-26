@@ -12,9 +12,18 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       include: {
         leases: {
           where: { status: 'ACTIVE' },
-          include: { property: { select: { id: true, name: true, address: true } } }
+          include: { 
+            property: { 
+              select: { 
+                id: true, 
+                name: true, 
+                address: true,
+                owner: { select: { id: true, name: true, email: true } }
+              } 
+            } 
+          }
         },
-        workspace: { select: { name: true } },
+        workspace: { select: { name: true, id: true } },
         maintenanceRequests: {
           orderBy: { createdAt: 'desc' },
           include: { property: { select: { id: true, name: true } } }
@@ -26,7 +35,47 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Tenant not found or has been deactivated' });
     }
 
-    return reply.send({ tenant });
+    // For each lease, look up the landlord's bank info from WorkspaceMember
+    const leasesWithPaymentInfo = await Promise.all(
+      (tenant.leases || []).map(async (lease: any) => {
+        let paymentInfo = null;
+        if (lease.property?.owner?.id) {
+          const member = await prisma.workspaceMember.findUnique({
+            where: {
+              userId_workspaceId: {
+                userId: lease.property.owner.id,
+                workspaceId: tenant.workspaceId
+              }
+            },
+            select: {
+              payoutStrategy: true,
+              bankCode: true,
+              accountNumber: true,
+              accountName: true
+            }
+          });
+          if (member) {
+            paymentInfo = {
+              payoutStrategy: member.payoutStrategy,
+              bankCode: member.bankCode,
+              accountNumber: member.accountNumber,
+              accountName: member.accountName
+            };
+          }
+        }
+        return {
+          ...lease,
+          paymentInfo
+        };
+      })
+    );
+
+    return reply.send({ 
+      tenant: {
+        ...tenant,
+        leases: leasesWithPaymentInfo
+      }
+    });
   });
 
   // Submit a new maintenance request from the tenant portal

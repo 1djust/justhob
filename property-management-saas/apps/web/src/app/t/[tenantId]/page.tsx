@@ -13,8 +13,25 @@ interface MaintenanceRequest {
   property: { name: string };
 }
 
+interface PaymentInfo {
+  payoutStrategy: string | null;
+  bankCode: string | null;
+  accountNumber: string | null;
+  accountName: string | null;
+}
+
 interface TenantLease {
-  property: { id: string; name: string; address: string };
+  id: string;
+  startDate: string;
+  endDate: string | null;
+  yearlyRent: number;
+  property: { 
+    id: string; 
+    name: string; 
+    address: string;
+    owner?: { id: string; name: string; email: string } | null;
+  };
+  paymentInfo?: PaymentInfo | null;
 }
 
 interface PortalTenant {
@@ -22,6 +39,26 @@ interface PortalTenant {
   workspace?: { name: string };
   leases?: TenantLease[];
   maintenanceRequests?: MaintenanceRequest[];
+}
+
+function getExpiryColor(endDate: string | null): { color: string; bgColor: string; borderColor: string; label: string } {
+  if (!endDate) return { color: 'text-zinc-500', bgColor: 'bg-zinc-100 dark:bg-zinc-800', borderColor: 'border-zinc-200 dark:border-zinc-700', label: 'No expiry set' };
+  
+  const now = new Date();
+  const end = new Date(endDate);
+  const diffMs = end.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return { color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-50 dark:bg-rose-950/30', borderColor: 'border-rose-200 dark:border-rose-800', label: 'Expired' };
+  }
+  if (diffDays <= 30) {
+    return { color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-50 dark:bg-rose-950/30', borderColor: 'border-rose-200 dark:border-rose-800', label: `${diffDays} days left` };
+  }
+  if (diffDays <= 90) {
+    return { color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-50 dark:bg-amber-950/30', borderColor: 'border-amber-200 dark:border-amber-800', label: `${diffDays} days left` };
+  }
+  return { color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-50 dark:bg-emerald-950/30', borderColor: 'border-emerald-200 dark:border-emerald-800', label: `${diffDays} days left` };
 }
 
 export default function TenantPortalPage() {
@@ -143,8 +180,114 @@ export default function TenantPortalPage() {
       <main className="max-w-3xl mx-auto p-6 space-y-8 mt-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Welcome, {tenant.name}</h2>
-          <p className="text-zinc-500 mt-2">Submit and track maintenance requests for your property.</p>
+          <p className="text-zinc-500 mt-2">View your lease details and submit maintenance requests.</p>
         </div>
+
+        {/* Lease & Payment Info */}
+        {tenant.leases && tenant.leases.length > 0 && (
+          <div className="space-y-4">
+            {tenant.leases.map((lease) => {
+              const expiry = getExpiryColor(lease.endDate);
+              return (
+                <div key={lease.id} className="rounded-xl border border-border bg-white dark:bg-zinc-950 shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-border">
+                    <h3 className="font-semibold text-lg">Lease Details</h3>
+                  </div>
+                  <div className="p-6 space-y-5">
+                    {/* Property */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg className="w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest">Property</p>
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{lease.property.name}</p>
+                        <p className="text-xs text-zinc-500 mt-0.5">{lease.property.address}</p>
+                      </div>
+                    </div>
+
+                    {/* Rent Expiry Date — Color coded */}
+                    <div className={`flex items-center justify-between p-4 rounded-xl border ${expiry.borderColor} ${expiry.bgColor}`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${expiry.bgColor}`}>
+                          <svg className={`w-4 h-4 ${expiry.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest">Rent Expires</p>
+                          <p className={`text-sm font-bold ${expiry.color}`}>
+                            {lease.endDate ? new Date(lease.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Not specified'}
+                          </p>
+                          <p className="text-xs text-zinc-500 mt-0.5">
+                            Started: {new Date(lease.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${expiry.color} ${expiry.bgColor} border ${expiry.borderColor}`}>
+                        {expiry.label}
+                      </div>
+                    </div>
+
+                    {/* Yearly Rent */}
+                    {lease.yearlyRent > 0 && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <svg className="w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest">Yearly Rent</p>
+                          <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">₦{lease.yearlyRent.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Landlord Info */}
+                    {lease.property.owner && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <svg className="w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest">Landlord</p>
+                          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{lease.property.owner.name}</p>
+                          <p className="text-xs text-zinc-500 mt-0.5">{lease.property.owner.email}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bank / Payment Account */}
+                    {lease.paymentInfo && lease.paymentInfo.accountNumber && (
+                      <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 tracking-widest">Payment Account</p>
+                            <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mt-1">{lease.paymentInfo.accountName}</p>
+                            <p className="text-sm font-mono text-zinc-700 dark:text-zinc-300 mt-0.5">{lease.paymentInfo.accountNumber}</p>
+                            {lease.paymentInfo.bankCode && (
+                              <p className="text-xs text-zinc-500 mt-0.5">Bank Code: {lease.paymentInfo.bankCode}</p>
+                            )}
+                            {lease.paymentInfo.payoutStrategy === 'DIRECT_TO_LANDLORD' && (
+                              <p className="text-[10px] text-blue-500 font-semibold mt-2 uppercase tracking-wider">
+                                ↳ Pay directly to landlord
+                              </p>
+                            )}
+                            {lease.paymentInfo.payoutStrategy === 'MANAGER_COLLECTS' && (
+                              <p className="text-[10px] text-blue-500 font-semibold mt-2 uppercase tracking-wider">
+                                ↳ Pay to property manager
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Submit Form */}
         <div className="rounded-xl border border-border bg-white dark:bg-zinc-950 shadow-sm overflow-hidden">
