@@ -48,24 +48,46 @@ export default async function authRoutes(fastify: FastifyInstance) {
           const userMetadata: any = supaUser.user_metadata || {};
           const userName = name || userMetadata.name || null;
           
-          user = await prisma.user.create({
-            data: {
-              id: supaUser.id,
-              email: supaUser.email || '', 
-              name: userName,
-              workspaces: {
-                create: {
-                  role: 'PROPERTY_MANAGER',
-                  workspace: { create: { name: 'My Properties' } }
+          // Check if this user already has workspace memberships (e.g. created as tenant by manager)
+          const existingMemberships = await prisma.workspaceMember.findMany({
+            where: { userId: supaUser.id }
+          });
+
+          if (existingMemberships.length > 0) {
+            // User was pre-created (e.g. as a tenant) — just create the User record, don't add a new workspace
+            user = await prisma.user.create({
+              data: {
+                id: supaUser.id,
+                email: supaUser.email || '', 
+                name: userName,
+              },
+              include: {
+                workspaces: {
+                  include: { workspace: true }
                 }
               }
-            },
-            include: {
-              workspaces: {
-                include: { workspace: true }
+            });
+          } else {
+            // Brand new user — create with default PROPERTY_MANAGER workspace
+            user = await prisma.user.create({
+              data: {
+                id: supaUser.id,
+                email: supaUser.email || '', 
+                name: userName,
+                workspaces: {
+                  create: {
+                    role: 'PROPERTY_MANAGER',
+                    workspace: { create: { name: 'My Properties' } }
+                  }
+                }
+              },
+              include: {
+                workspaces: {
+                  include: { workspace: true }
+                }
               }
-            }
-          });
+            });
+          }
         } catch (createErr: any) {
           throw new AppError("Database profile setup failed.", 500, "SYNC_DB_ERROR", createErr.message);
         }

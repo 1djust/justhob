@@ -101,6 +101,14 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           inviteLink = linkDataAny.properties.action_link;
         }
 
+        // Actually set the temp password on the Supabase account so the tenant can log in
+        if (supabaseUserId) {
+          await supabaseAdmin.auth.admin.updateUserById(supabaseUserId, {
+            password: tempPassword,
+            email_confirm: true
+          });
+        }
+
         if (supabaseUserId) {
           const existingDbUser = await tx.user.findUnique({ where: { email } });
           if (existingDbUser && existingDbUser.id !== supabaseUserId) {
