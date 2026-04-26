@@ -121,7 +121,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
           type: 'invite',
           email,
-          options: { data: { name } }
+          options: { data: { name }, redirectTo: 'https://justhob.vercel.app/login' }
         });
 
         const linkDataAny = linkData as any;
@@ -153,7 +153,8 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         try {
           const { data: mlData } = await supabaseAdmin.auth.admin.generateLink({
             type: 'magiclink',
-            email
+            email,
+            options: { redirectTo: 'https://justhob.vercel.app/login' }
           });
           const mlAny = mlData as any;
           if (mlAny?.properties?.action_link) {

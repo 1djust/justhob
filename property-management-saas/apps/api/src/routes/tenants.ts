@@ -80,7 +80,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
           type: 'invite',
           email,
-          options: { data: { name, role: 'TENANT', mustChangePassword: true } }
+          options: { data: { name, role: 'TENANT', mustChangePassword: true }, redirectTo: 'https://justhob.vercel.app/login' }
         });
 
         const linkDataAny = linkData as any;
