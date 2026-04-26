@@ -97,9 +97,32 @@ class AuthRepository {
         // Return the updated user
         return User.fromJson(response.data['user']);
       }
+      // Password changed but no new token — still a success
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return null; // Will trigger re-login
+      }
       return null;
+    } on DioException catch (e) {
+      String message = 'Failed to update password. Please try again.';
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        message = 'Server is taking too long to respond.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        message = 'Cannot reach the server. Check your internet connection.';
+      } else if (e.response != null) {
+        final data = e.response?.data;
+        if (data is Map) {
+          final error = data['error'];
+          if (error is Map && error['message'] != null) {
+            message = error['message'].toString();
+          } else if (data['message'] != null) {
+            message = data['message'].toString();
+          }
+        }
+      }
+      throw Exception(message);
     } catch (e) {
-      return null;
+      throw Exception('Failed to update password: ${e.toString()}');
     }
   }
   Future<void> requestPasswordReset(String email) async {

@@ -165,7 +165,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Sign in to manage your property',
+                    'Sign in to your tenant portal',
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: Colors.grey.shade600,
                     ),

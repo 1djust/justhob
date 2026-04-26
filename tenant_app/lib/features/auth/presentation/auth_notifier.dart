@@ -49,14 +49,24 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     }
   }
 
+  String? lastError;
+
   Future<bool> changePassword(String newPassword) async {
-    final updatedUser = await _repository.changePassword(newPassword);
-    if (updatedUser != null) {
-      // Directly set the new user state (with mustChangePassword: false and fresh token)
-      state = AsyncValue.data(updatedUser);
+    lastError = null;
+    try {
+      final updatedUser = await _repository.changePassword(newPassword);
+      if (updatedUser != null) {
+        // Directly set the new user state (with mustChangePassword: false and fresh token)
+        state = AsyncValue.data(updatedUser);
+        return true;
+      }
+      // Password changed but no user returned — trigger re-login
+      await checkAuth();
       return true;
+    } catch (e) {
+      lastError = e.toString().replaceFirst('Exception: ', '');
+      return false;
     }
-    return false;
   }
   Future<void> resetPassword(String email) async {
     try {

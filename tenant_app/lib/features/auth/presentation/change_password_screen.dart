@@ -36,8 +36,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     );
 
     if (!success && mounted) {
+      final notifier = ref.read(authStateProvider.notifier);
       setState(() {
-        _error = 'Failed to update password. Please try again.';
+        _error = notifier.lastError ?? 'Failed to update password. Please try again.';
         _isLoading = false;
       });
     }
