@@ -148,6 +148,20 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
             accountName
           }
         });
+      } else {
+        // User already exists — generate a magic link so they can log in
+        try {
+          const { data: mlData } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'magiclink',
+            email
+          });
+          const mlAny = mlData as any;
+          if (mlAny?.properties?.action_link) {
+            inviteLink = mlAny.properties.action_link;
+          }
+        } catch (_e) {
+          // Non-critical: link generation failed but owner was still added
+        }
       }
 
       return reply.status(201).send({
