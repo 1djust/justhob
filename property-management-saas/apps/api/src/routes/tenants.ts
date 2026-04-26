@@ -83,7 +83,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           data: { name, role: 'TENANT', mustChangePassword: true }
         });
 
-        if (linkError || !linkData.properties?.action_link) {
+        if (linkError || !linkData || !linkData.properties?.action_link) {
           const authError = linkError || new Error('Failed to generate invite link');
           if (authError.message.includes('already') && authError.message.includes('registered')) {
             const { data: listData } = await supabaseAdmin.auth.admin.listUsers();

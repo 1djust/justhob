@@ -124,7 +124,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           data: { name }
         });
 
-        if (linkError || !linkData.properties?.action_link) {
+        if (linkError || !linkData || !linkData.properties?.action_link) {
           return reply.status(400).send({ error: linkError?.message || 'Failed to generate invite link' });
         }
 
