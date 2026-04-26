@@ -31,7 +31,14 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       include: {
         leases: {
           include: { 
-            property: { select: { id: true, name: true, address: true } }
+            property: { 
+              select: { 
+                id: true, 
+                name: true, 
+                address: true,
+                owner: { select: { id: true, name: true, email: true } }
+              } 
+            }
           },
           where: { status: 'ACTIVE' }
         },
@@ -44,7 +51,47 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
     if (!tenant) return reply.status(404).send({ error: 'Tenant profile not found' });
 
-    return reply.send({ tenant });
+    // For each lease, look up the landlord's bank info from WorkspaceMember
+    const leasesWithPaymentInfo = await Promise.all(
+      (tenant.leases || []).map(async (lease: any) => {
+        let paymentInfo = null;
+        if (lease.property?.owner?.id) {
+          const member = await prisma.workspaceMember.findUnique({
+            where: {
+              userId_workspaceId: {
+                userId: lease.property.owner.id,
+                workspaceId: membership.workspaceId
+              }
+            },
+            select: {
+              payoutStrategy: true,
+              bankCode: true,
+              accountNumber: true,
+              accountName: true
+            }
+          });
+          if (member) {
+            paymentInfo = {
+              payoutStrategy: member.payoutStrategy,
+              bankCode: member.bankCode,
+              accountNumber: member.accountNumber,
+              accountName: member.accountName
+            };
+          }
+        }
+        return {
+          ...lease,
+          paymentInfo
+        };
+      })
+    );
+
+    return reply.send({ 
+      tenant: {
+        ...tenant,
+        leases: leasesWithPaymentInfo
+      } 
+    });
   });
 
   // List maintenance requests for the authenticated tenant
