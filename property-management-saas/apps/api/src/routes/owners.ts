@@ -124,15 +124,16 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           data: { name }
         });
 
-        if (linkError || !linkData || !linkData.properties?.action_link) {
+        const linkDataAny = linkData as any;
+        if (linkError || !linkDataAny || !linkDataAny.properties?.action_link) {
           return reply.status(400).send({ error: linkError?.message || 'Failed to generate invite link' });
         }
 
         user = await prisma.user.create({
-          data: { id: linkData.user.id, email, name }
+          data: { id: linkDataAny.user.id, email, name }
         });
 
-        inviteLink = linkData.properties.action_link;
+        inviteLink = linkDataAny.properties.action_link;
 
         const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as any;
 
