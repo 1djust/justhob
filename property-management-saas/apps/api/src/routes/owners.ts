@@ -112,22 +112,27 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
       });
 
       let user = result.user;
+      let inviteLink = null;
 
       if (!user) {
         // User doesn't exist, need to create in Supabase then Prisma
         // Note: We do this outside the transaction to avoid long locks during network calls
         const tempPassword = password || 'TempPass123!';
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'invite',
+          email,
           data: { name }
         });
 
-        if (authError || !authData.user) {
-          return reply.status(400).send({ error: authError?.message || 'Failed to create user authentication' });
+        if (linkError || !linkData.properties?.action_link) {
+          return reply.status(400).send({ error: linkError?.message || 'Failed to generate invite link' });
         }
 
         user = await prisma.user.create({
-          data: { id: authData.user.id, email, name }
+          data: { id: linkData.user.id, email, name }
         });
+
+        inviteLink = linkData.properties.action_link;
 
         const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as any;
 
@@ -145,7 +150,8 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
       }
 
       return reply.status(201).send({
-        owner: { id: user.id, name: user.name, email: user.email }
+        owner: { id: user.id, name: user.name, email: user.email },
+        inviteLink: inviteLink || null
       });
     } catch (error: any) {
       if (error.message && error.message.includes('Owner limit reached')) {

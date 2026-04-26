@@ -217,25 +217,64 @@ function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComp
   });
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [successLink, setSuccessLink] = React.useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include'
       });
-      onComplete();
+      if (res.inviteLink) {
+        setSuccessLink(res.inviteLink);
+      } else {
+        onComplete();
+      }
     } catch (e: any) {
       setError(e.message || 'Failed to add owner');
     } finally {
       setLoading(false);
     }
   };
+
+  if (successLink) {
+    return (
+      <div className="mb-12 p-8 border border-emerald-200 dark:border-emerald-900/50 rounded-[2.5rem] bg-emerald-50/50 dark:bg-emerald-950/20 text-center space-y-6 animate-in zoom-in-95 duration-300">
+        <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
+        <div>
+          <h4 className="text-xl font-bold text-emerald-900 dark:text-emerald-100">Landlord Added Successfully!</h4>
+          <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-2">
+            Please copy the secure invite link below and send it to them directly.
+          </p>
+        </div>
+        <div className="bg-white dark:bg-black p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/50 break-all flex items-center justify-between gap-4">
+          <code className="text-xs text-emerald-800 dark:text-emerald-200 font-medium text-left">{successLink}</code>
+          <button 
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(successLink);
+              alert('Copied to clipboard!');
+            }}
+            className="px-4 py-2 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold whitespace-nowrap hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors"
+          >
+            Copy Link
+          </button>
+        </div>
+        <button 
+          type="button"
+          onClick={() => onComplete()}
+          className="bg-emerald-600 text-white px-8 py-3 rounded-full text-sm font-bold shadow-lg hover:bg-emerald-700 transition-colors"
+        >
+          Done
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="mb-12 p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] bg-white dark:bg-zinc-950 shadow-2xl space-y-10 relative overflow-hidden">

@@ -268,7 +268,7 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
 function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComplete: () => void }) {
   const [formData, setFormData] = React.useState({ name: '', email: '', phone: '' });
   const [loading, setLoading] = React.useState(false);
-  const [credentials, setCredentials] = React.useState<{ email: string; tempPassword: string } | null>(null);
+  const [credentials, setCredentials] = React.useState<{ email: string; tempPassword: string; inviteLink?: string } | null>(null);
   const [copied, setCopied] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -333,6 +333,23 @@ function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComple
               <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 font-mono select-all">{credentials.tempPassword}</p>
             </div>
           </div>
+          {credentials.inviteLink && (
+            <div className="flex items-start gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+              <svg className="w-4 h-4 text-emerald-500 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+              <div className="flex-1 overflow-hidden">
+                <p className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-widest">Secure Invite Link (Recommended)</p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <code className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900 px-2.5 py-1.5 rounded w-full truncate border border-zinc-100 dark:border-zinc-800">{credentials.inviteLink}</code>
+                  <button 
+                    onClick={() => { navigator.clipboard.writeText(credentials.inviteLink!); alert('Invite Link Copied!'); }}
+                    className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-bold rounded hover:bg-emerald-200 transition-colors whitespace-nowrap"
+                  >
+                    Copy Link
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">

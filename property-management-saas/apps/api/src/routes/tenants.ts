@@ -72,15 +72,19 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       }
 
       let supabaseUserId = null;
+      let inviteLink = null;
       const tempPassword = password || randomBytes(12).toString('hex') + 'A!1';
 
       // If email is provided, create a Supabase Auth account for the mobile app
       if (email) {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'invite',
+          email,
           data: { name, role: 'TENANT', mustChangePassword: true }
         });
 
-        if (authError) {
+        if (linkError || !linkData.properties?.action_link) {
+          const authError = linkError || new Error('Failed to generate invite link');
           if (authError.message.includes('already') && authError.message.includes('registered')) {
             const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
             const existingUser = listData.users.find(u => u.email === email);
@@ -92,7 +96,8 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
             throw new Error(`AUTH_ERR:${authError.message}`);
           }
         } else {
-          supabaseUserId = authData.user.id;
+          supabaseUserId = linkData.user.id;
+          inviteLink = linkData.properties.action_link;
         }
 
         if (supabaseUserId) {
@@ -126,7 +131,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
             data: { name, email, phone, workspaceId }
           });
 
-      return { tenant, tempPassword };
+      return { tenant, tempPassword, inviteLink };
     }).catch((err: any) => {
       if (err.message?.startsWith('LIMIT_REACHED')) {
         const limit = err.message.split(':')[1];
@@ -140,7 +145,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
 
     return reply.status(201).send({ 
       tenant: (result as any).tenant,
-      credentials: email ? { email, tempPassword: (result as any).tempPassword } : null
+      credentials: email ? { email, tempPassword: (result as any).tempPassword, inviteLink: (result as any).inviteLink } : null
     });
   });
 
