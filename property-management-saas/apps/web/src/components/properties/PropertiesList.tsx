@@ -55,7 +55,10 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
   const [propertyToDelete, setPropertyToDelete] = React.useState<Property | null>(null);
+  const [propertyToReassign, setPropertyToReassign] = React.useState<Property | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [reassigning, setReassigning] = React.useState(false);
+  const [owners, setOwners] = React.useState<{ id: string; name: string; email: string }[]>([]);
 
   const fetchProperties = async () => {
     try {
@@ -71,9 +74,21 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
     }
   };
 
+  const fetchOwners = async () => {
+    try {
+      const data = await apiFetch(`/api/workspaces/${workspaceId}/owners`, { credentials: 'include' });
+      setOwners(data.owners || []);
+    } catch (e) {
+      console.error('Failed to fetch owners:', e);
+    }
+  };
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
-    if (workspaceId) fetchProperties();
+    if (workspaceId) {
+      fetchProperties();
+      fetchOwners();
+    }
   }, [workspaceId]);
 
   const handleDeleteProperty = async (propertyId: string) => {
@@ -88,8 +103,28 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
     } catch (e) {
       console.error('Failed to delete property:', e);
       // No need to alert() here, apiFetch automatically shows a toast
+  const handleReassignProperty = async (propertyId: string, ownerId: string) => {
+    setReassigning(true);
+    try {
+      const property = properties.find(p => p.id === propertyId);
+      if (!property) return;
+
+      await apiFetch(`/api/workspaces/${workspaceId}/properties/${propertyId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: property.name,
+          address: property.address,
+          ownerId: ownerId || null
+        }),
+        credentials: 'include'
+      });
+      setPropertyToReassign(null);
+      fetchProperties();
+    } catch (e) {
+      console.error('Failed to reassign property:', e);
     } finally {
-      setDeleting(false);
+      setReassigning(false);
     }
   };
 
@@ -175,14 +210,28 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
               </div>
 
               <div className="mt-auto space-y-4">
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
-                  <UserCircle className="w-4 h-4 text-zinc-400" />
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Landlord</span>
-                    <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                      {p.owner ? (p.owner.name || p.owner.email) : 'Unassigned'}
-                    </span>
+                <div 
+                  onClick={() => isPropertyManager && setPropertyToReassign(p)}
+                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                    isPropertyManager 
+                      ? 'cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-600 bg-zinc-50 dark:bg-zinc-900/50 border-zinc-100 dark:border-zinc-800 group/owner' 
+                      : 'bg-zinc-50/50 dark:bg-zinc-900/30 border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <UserCircle className="w-4 h-4 text-zinc-400 group-hover/owner:text-zinc-600 transition-colors" />
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Landlord</span>
+                      <span className={`text-xs font-semibold ${p.owner ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 italic'}`}>
+                        {p.owner ? (p.owner.name || p.owner.email) : 'Unassigned'}
+                      </span>
+                    </div>
                   </div>
+                  {isPropertyManager && (
+                    <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest opacity-0 group-hover/owner:opacity-100 transition-opacity">
+                      Change
+                    </div>
+                  )}
                 </div>
                 
                 {p.units && p.units.length > 0 && (
@@ -228,6 +277,15 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
             isDeleting={deleting}
             onConfirm={() => handleDeleteProperty(propertyToDelete.id)} 
             onClose={() => setPropertyToDelete(null)} 
+          />
+        )}
+        {propertyToReassign && (
+          <ReassignOwnerModal 
+            property={propertyToReassign}
+            owners={owners}
+            isReassigning={reassigning}
+            onConfirm={(ownerId) => handleReassignProperty(propertyToReassign.id, ownerId)}
+            onClose={() => setPropertyToReassign(null)}
           />
         )}
       </AnimatePresence>
@@ -493,5 +551,83 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
         </button>
       </div>
     </form>
+  );
+}
+
+function ReassignOwnerModal({ property, owners, isReassigning, onConfirm, onClose }: { property: Property; owners: { id: string; name: string; email: string }[]; isReassigning: boolean; onConfirm: (ownerId: string) => void; onClose: () => void }) {
+  const [selectedOwnerId, setSelectedOwnerId] = React.useState(property.owner?.email || '');
+
+  // Find owner by ID if possible, but the owner object in property might only have email
+  // Let's use the actual owner ID if it exists
+  React.useEffect(() => {
+    const owner = owners.find(o => o.email === property.owner?.email);
+    if (owner) setSelectedOwnerId(owner.id);
+  }, [property.owner, owners]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative w-full max-w-md bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl border border-zinc-200 dark:border-zinc-800 p-8 space-y-6"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-xl font-bold">Assign Landlord</h4>
+            <p className="text-sm text-zinc-500 mt-1">Assign "{property.name}" to an owner</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest ml-1">Select New Landlord</label>
+            <select 
+              value={selectedOwnerId} 
+              onChange={e => setSelectedOwnerId(e.target.value)} 
+              className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all font-medium appearance-none"
+            >
+              <option value="">No Landlord (Unassigned)</option>
+              {owners.map(o => (
+                <option key={o.id} value={o.id}>{o.name} - {o.email}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 flex gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+              Changing the landlord will update who receives payouts and can manage units for this property.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 pt-2">
+          <button 
+            disabled={isReassigning}
+            onClick={() => onConfirm(selectedOwnerId)}
+            className="w-full bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900 py-3.5 rounded-full text-sm font-bold shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+          >
+            {isReassigning ? 'Updating...' : 'Confirm Assignment'}
+          </button>
+          <button 
+            onClick={onClose}
+            className="w-full py-3 rounded-full text-sm font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </motion.div>
+    </div>
   );
 }
