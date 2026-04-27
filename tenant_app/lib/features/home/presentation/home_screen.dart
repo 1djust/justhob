@@ -671,7 +671,7 @@ class _DashboardPaymentAccountCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isDirect ? Colors.emerald.withOpacity(0.1) : Colors.amber.withOpacity(0.1),
+              color: isDirect ? Colors.teal.withOpacity(0.1) : Colors.amber.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -680,7 +680,7 @@ class _DashboardPaymentAccountCard extends StatelessWidget {
                 Icon(
                   isDirect ? Icons.person_pin_rounded : Icons.business_center_rounded,
                   size: 16,
-                  color: isDirect ? Colors.emerald.shade700 : Colors.amber.shade700,
+                  color: isDirect ? Colors.teal.shade700 : Colors.amber.shade700,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -688,7 +688,7 @@ class _DashboardPaymentAccountCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: isDirect ? Colors.emerald.shade800 : Colors.amber.shade800,
+                    color: isDirect ? Colors.teal.shade800 : Colors.amber.shade800,
                   ),
                 ),
               ],

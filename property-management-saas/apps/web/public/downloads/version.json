@@ -1,6 +1,6 @@
 {
   "latestVersion": "0.1.8",
-  "latestBuildNumber": 10,
+  "latestBuildNumber": 11,
   "isMandatory": true,
   "downloadUrl": "https://justhob.vercel.app/downloads/justhub-tenant.apk",
   "releaseNotes": "• Fixed build compatibility issues\n• Added rent payment account details directly to the Dashboard\n• Clear indicator for Landlord vs Manager payments"
