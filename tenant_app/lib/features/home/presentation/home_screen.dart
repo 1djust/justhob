@@ -323,6 +323,13 @@ class _LeaseCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
+          
+          // Expiry Date Section
+          if (lease?.endDate != null) ...[
+            _ExpiryBadge(endDate: lease!.endDate!),
+            const SizedBox(height: 16),
+          ],
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -338,6 +345,97 @@ class _LeaseCard extends StatelessWidget {
                 ],
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExpiryBadge extends StatelessWidget {
+  final DateTime endDate;
+
+  const _ExpiryBadge({required this.endDate});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final difference = endDate.difference(now).inDays;
+    
+    Color color;
+    String label;
+    if (difference < 0) {
+      color = Colors.red.shade400;
+      label = 'Expired';
+    } else if (difference <= 30) {
+      color = Colors.red.shade400;
+      label = '$difference days left';
+    } else if (difference <= 90) {
+      color = Colors.orange.shade400;
+      label = '$difference days left';
+    } else {
+      color = Colors.greenAccent;
+      label = '$difference days left';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.event_available, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'RENT EXPIRES',
+                  style: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  DateFormat('dd MMMM yyyy').format(endDate),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: color.withValues(alpha: 0.2)),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
