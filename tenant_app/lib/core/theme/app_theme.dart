@@ -56,7 +56,7 @@ class AppTheme {
             letterSpacing: 0.2,
           ),
         ).copyWith(
-          overlayColor: WidgetStateProperty.all(Colors.white.withValues(alpha: 0.1)),
+          overlayColor: MaterialStateProperty.all(Colors.white.withOpacity(0.1)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(

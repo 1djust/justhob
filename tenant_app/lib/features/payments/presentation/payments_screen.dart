@@ -275,7 +275,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF18181B).withValues(alpha: 0.08),
+                    color: const Color(0xFF18181B).withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.receipt_long, color: Color(0xFF18181B), size: 22),
@@ -349,7 +349,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
                 gradient: LinearGradient(
                   colors: [
                     const Color(0xFF18181B),
-                    const Color(0xFF18181B).withValues(alpha: 0.85),
+                    const Color(0xFF18181B).withOpacity(0.85),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -406,7 +406,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
+                          color: Colors.black.withOpacity(0.6),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.close, color: Colors.white, size: 18),
@@ -610,7 +610,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
+                    color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(statusIcon, color: statusColor, size: 28),
@@ -635,7 +635,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
+                    color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -977,7 +977,7 @@ class _PaymentAccountCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withValues(alpha: 0.1),
+                  color: const Color(0xFF0284C7).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.account_balance_rounded, color: Color(0xFF0284C7), size: 20),
@@ -1044,7 +1044,7 @@ class _PaymentAccountCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.5),
+              color: Colors.white.withOpacity(0.5),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
