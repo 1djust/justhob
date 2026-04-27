@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect } from 'react';
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -21,6 +22,19 @@ import { DashboardCarousel } from './DashboardCarousel';
 import { PricingSection } from './PricingSection';
 
 export function LandingPage() {
+  const [version, setVersion] = useState('0.1.7');
+
+  useEffect(() => {
+    fetch('/downloads/version.json')
+      .then(res => res.json())
+      .then(data => {
+        if (data.latestVersion) {
+          setVersion(data.latestVersion);
+        }
+      })
+      .catch(err => console.error('Failed to fetch version:', err));
+  }, []);
+
   const fadeInUp = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
@@ -52,7 +66,7 @@ export function LandingPage() {
               <span className="bg-primary/20 text-primary text-xs font-semibold px-2 py-1 rounded-full uppercase tracking-wider">
                 New Release
               </span>
-              <span className="text-sm font-medium text-muted-foreground">Version 0.1.7</span>
+              <span className="text-sm font-medium text-muted-foreground">Version {version}</span>
             </div>
             <div className="flex items-center space-x-4">
               <div className="hidden md:block">
@@ -100,7 +114,7 @@ export function LandingPage() {
               </Link>
               <a href="/downloads/justhub-tenant.apk" download className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-4 rounded-full font-semibold text-lg text-slate-700 dark:text-slate-200 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 transition-all shadow-sm">
                 <Download className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                <span>Download App (v0.1.7)</span>
+                <span>Download App (v{version})</span>
               </a>
             </motion.div>
           </motion.div>
@@ -181,7 +195,7 @@ export function LandingPage() {
             <div>
                <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-indigo-500 to-violet-500 text-white px-4 py-1.5 rounded-full text-sm font-bold mb-4">
                  <Sparkles className="h-4 w-4" />
-                 <span>Version 0.1.7 Released</span>
+                 <span>Version {version} Released</span>
                </div>
                <h2 className="text-3xl md:text-4xl font-bold">What's New in Just Hub</h2>
             </div>
@@ -208,7 +222,7 @@ export function LandingPage() {
                  <h3 className="text-xl font-bold mb-2">Dedicated Tenant App</h3>
                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-4">Our massively updated Android app is now available. Tenants can securely login, review open balances, and coordinate with management seamlessly from their phones.</p>
                  <a href="/downloads/justhub-tenant.apk" download className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm hover:underline flex items-center space-x-1">
-                   <span>Download v0.1.7 directly</span>
+                   <span>Download v{version} directly</span>
                    <Download className="h-4 w-4" />
                  </a>
                </div>
@@ -357,7 +371,7 @@ export function LandingPage() {
               </ul>
               <a href="/downloads/justhub-tenant.apk" download className="inline-flex items-center justify-center w-full sm:w-auto space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50">
                 <Download className="h-5 w-5" />
-                <span>Download Android App (v0.1.7)</span>
+                <span>Download Android App (v{version})</span>
               </a>
             </motion.div>
             <motion.div 
