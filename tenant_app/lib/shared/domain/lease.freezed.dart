@@ -29,6 +29,7 @@ mixin _$Lease {
   double get yearlyRent => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
   Property? get property => throw _privateConstructorUsedError;
+  PaymentInfo? get paymentInfo => throw _privateConstructorUsedError;
 
   /// Serializes this Lease to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -53,9 +54,11 @@ abstract class $LeaseCopyWith<$Res> {
     double yearlyRent,
     String status,
     Property? property,
+    PaymentInfo? paymentInfo,
   });
 
   $PropertyCopyWith<$Res>? get property;
+  $PaymentInfoCopyWith<$Res>? get paymentInfo;
 }
 
 /// @nodoc
@@ -81,6 +84,7 @@ class _$LeaseCopyWithImpl<$Res, $Val extends Lease>
     Object? yearlyRent = null,
     Object? status = null,
     Object? property = freezed,
+    Object? paymentInfo = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -116,6 +120,10 @@ class _$LeaseCopyWithImpl<$Res, $Val extends Lease>
                 ? _value.property
                 : property // ignore: cast_nullable_to_non_nullable
                       as Property?,
+            paymentInfo: freezed == paymentInfo
+                ? _value.paymentInfo
+                : paymentInfo // ignore: cast_nullable_to_non_nullable
+                      as PaymentInfo?,
           )
           as $Val,
     );
@@ -132,6 +140,20 @@ class _$LeaseCopyWithImpl<$Res, $Val extends Lease>
 
     return $PropertyCopyWith<$Res>(_value.property!, (value) {
       return _then(_value.copyWith(property: value) as $Val);
+    });
+  }
+
+  /// Create a copy of Lease
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PaymentInfoCopyWith<$Res>? get paymentInfo {
+    if (_value.paymentInfo == null) {
+      return null;
+    }
+
+    return $PaymentInfoCopyWith<$Res>(_value.paymentInfo!, (value) {
+      return _then(_value.copyWith(paymentInfo: value) as $Val);
     });
   }
 }
@@ -153,10 +175,13 @@ abstract class _$$LeaseImplCopyWith<$Res> implements $LeaseCopyWith<$Res> {
     double yearlyRent,
     String status,
     Property? property,
+    PaymentInfo? paymentInfo,
   });
 
   @override
   $PropertyCopyWith<$Res>? get property;
+  @override
+  $PaymentInfoCopyWith<$Res>? get paymentInfo;
 }
 
 /// @nodoc
@@ -181,6 +206,7 @@ class __$$LeaseImplCopyWithImpl<$Res>
     Object? yearlyRent = null,
     Object? status = null,
     Object? property = freezed,
+    Object? paymentInfo = freezed,
   }) {
     return _then(
       _$LeaseImpl(
@@ -216,6 +242,10 @@ class __$$LeaseImplCopyWithImpl<$Res>
             ? _value.property
             : property // ignore: cast_nullable_to_non_nullable
                   as Property?,
+        paymentInfo: freezed == paymentInfo
+            ? _value.paymentInfo
+            : paymentInfo // ignore: cast_nullable_to_non_nullable
+                  as PaymentInfo?,
       ),
     );
   }
@@ -233,6 +263,7 @@ class _$LeaseImpl implements _Lease {
     required this.yearlyRent,
     required this.status,
     this.property,
+    this.paymentInfo,
   });
 
   factory _$LeaseImpl.fromJson(Map<String, dynamic> json) =>
@@ -254,10 +285,12 @@ class _$LeaseImpl implements _Lease {
   final String status;
   @override
   final Property? property;
+  @override
+  final PaymentInfo? paymentInfo;
 
   @override
   String toString() {
-    return 'Lease(id: $id, tenantId: $tenantId, propertyId: $propertyId, startDate: $startDate, endDate: $endDate, yearlyRent: $yearlyRent, status: $status, property: $property)';
+    return 'Lease(id: $id, tenantId: $tenantId, propertyId: $propertyId, startDate: $startDate, endDate: $endDate, yearlyRent: $yearlyRent, status: $status, property: $property, paymentInfo: $paymentInfo)';
   }
 
   @override
@@ -277,7 +310,9 @@ class _$LeaseImpl implements _Lease {
                 other.yearlyRent == yearlyRent) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.property, property) ||
-                other.property == property));
+                other.property == property) &&
+            (identical(other.paymentInfo, paymentInfo) ||
+                other.paymentInfo == paymentInfo));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -292,6 +327,7 @@ class _$LeaseImpl implements _Lease {
     yearlyRent,
     status,
     property,
+    paymentInfo,
   );
 
   /// Create a copy of Lease
@@ -318,6 +354,7 @@ abstract class _Lease implements Lease {
     required final double yearlyRent,
     required final String status,
     final Property? property,
+    final PaymentInfo? paymentInfo,
   }) = _$LeaseImpl;
 
   factory _Lease.fromJson(Map<String, dynamic> json) = _$LeaseImpl.fromJson;
@@ -338,6 +375,8 @@ abstract class _Lease implements Lease {
   String get status;
   @override
   Property? get property;
+  @override
+  PaymentInfo? get paymentInfo;
 
   /// Create a copy of Lease
   /// with the given fields replaced by the non-null parameter values.

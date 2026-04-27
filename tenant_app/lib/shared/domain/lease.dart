@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'property.dart';
+import 'payment_info.dart';
 
 part 'lease.freezed.dart';
 part 'lease.g.dart';
@@ -15,6 +16,7 @@ class Lease with _$Lease {
     required double yearlyRent,
     required String status,
     Property? property,
+    PaymentInfo? paymentInfo,
   }) = _Lease;
 
   factory Lease.fromJson(Map<String, dynamic> json) => _$LeaseFromJson(json);

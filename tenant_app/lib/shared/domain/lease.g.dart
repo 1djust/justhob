@@ -19,6 +19,9 @@ _$LeaseImpl _$$LeaseImplFromJson(Map<String, dynamic> json) => _$LeaseImpl(
   property: json['property'] == null
       ? null
       : Property.fromJson(json['property'] as Map<String, dynamic>),
+  paymentInfo: json['paymentInfo'] == null
+      ? null
+      : PaymentInfo.fromJson(json['paymentInfo'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$$LeaseImplToJson(_$LeaseImpl instance) =>
@@ -31,4 +34,5 @@ Map<String, dynamic> _$$LeaseImplToJson(_$LeaseImpl instance) =>
       'yearlyRent': instance.yearlyRent,
       'status': instance.status,
       'property': instance.property,
+      'paymentInfo': instance.paymentInfo,
     };

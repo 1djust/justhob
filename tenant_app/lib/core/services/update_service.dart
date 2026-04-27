@@ -30,7 +30,12 @@ class UpdateInfo {
 }
 
 class UpdateService {
-  final Dio _dio = ApiClient().dio;
+  // Use a standalone Dio instance — the update check must not depend on
+  // ApiClient.init() having completed, since it runs early in initState.
+  final Dio _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 15),
+  ));
 
   // We fetch updates from the web frontend directly, as it hosts the static files
   String get _webBaseUrl {
@@ -51,6 +56,8 @@ class UpdateService {
         final packageInfo = await PackageInfo.fromPlatform();
         // pubspec version is '0.1.0+1'. The buildNumber here is '1'
         final localBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
+
+        debugPrint('Update check: server build=${ serverInfo.latestBuildNumber}, local build=$localBuildNumber');
 
         if (serverInfo.latestBuildNumber > localBuildNumber) {
           return serverInfo;
