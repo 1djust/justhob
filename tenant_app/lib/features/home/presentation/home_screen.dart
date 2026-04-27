@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'home_notifier.dart';
 import 'notifications_notifier.dart';
 import 'package:intl/intl.dart';
+import '../../../shared/domain/payment_info.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/widgets/app_update_dialog.dart';
 
@@ -132,6 +133,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   
                   // Active Lease Card
                   _LeaseCard(property: property, lease: lease),
+                  
+                  if (lease?.paymentInfo != null) ...[
+                    const SizedBox(height: 24),
+                    _DashboardPaymentAccountCard(paymentInfo: lease!.paymentInfo!),
+                  ],
                   
                   const SizedBox(height: 32),
                   
@@ -570,6 +576,170 @@ class _MaintenanceItem extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DashboardPaymentAccountCard extends StatelessWidget {
+  final PaymentInfo paymentInfo;
+
+  const _DashboardPaymentAccountCard({required this.paymentInfo});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDirect = paymentInfo.payoutStrategy == 'DIRECT_TO_LANDLORD';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.account_balance_wallet, color: Color(0xFF0284C7), size: 22),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'RENT PAYMENT ACCOUNT',
+                      style: TextStyle(
+                        color: Color(0xFF0284C7),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    Text(
+                      'Transfer your rent here',
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+            ),
+            child: Column(
+              children: [
+                _AccountRow(label: 'Account Name', value: paymentInfo.accountName ?? 'N/A'),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                ),
+                _AccountRow(label: 'Account Number', value: paymentInfo.accountNumber ?? 'N/A', isCopyable: true),
+                if (paymentInfo.bankCode != null) ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  ),
+                  _AccountRow(label: 'Bank Code / Name', value: paymentInfo.bankCode!),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDirect ? Colors.emerald.withValues(alpha: 0.1) : Colors.amber.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isDirect ? Icons.person_pin_rounded : Icons.business_center_rounded,
+                  size: 16,
+                  color: isDirect ? Colors.emerald.shade700 : Colors.amber.shade700,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isDirect ? 'Pay directly to Landlord' : 'Pay to Property Manager',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isDirect ? Colors.emerald.shade800 : Colors.amber.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isCopyable;
+
+  const _AccountRow({required this.label, required this.value, this.isCopyable = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+        ),
+        Row(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: Color(0xFF1E293B),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (isCopyable) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Account number copied to clipboard')),
+                  );
+                },
+                child: Icon(Icons.copy_rounded, size: 14, color: Colors.blue.shade600),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }
