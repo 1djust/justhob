@@ -17,6 +17,8 @@ class PaymentsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final paymentsState = ref.watch(paymentsProvider);
+    final homeState = ref.watch(homeStateProvider);
+    final tenant = homeState.valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
@@ -47,14 +49,31 @@ class PaymentsScreen extends ConsumerWidget {
 
           return RefreshIndicator(
             onRefresh: () => ref.read(paymentsProvider.notifier).fetchPayments(),
-            child: ListView.separated(
+            child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              itemCount: payments.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final payment = payments[index];
-                return _PaymentCard(payment: payment);
-              },
+              children: [
+                // Payment Account Card
+                if (tenant != null && tenant.leases != null && tenant.leases!.isNotEmpty && tenant.leases!.first.paymentInfo != null)
+                  _PaymentAccountCard(paymentInfo: tenant.leases!.first.paymentInfo!),
+                
+                const SizedBox(height: 24),
+                
+                Text(
+                  'Payment History',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                ...payments.map((payment) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _PaymentCard(payment: payment),
+                )),
+              ],
             ),
           );
         },
@@ -926,6 +945,127 @@ class _ReceiptRow extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentAccountCard extends StatelessWidget {
+  final dynamic paymentInfo;
+
+  const _PaymentAccountCard({required this.paymentInfo});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDirect = paymentInfo.payoutStrategy == 'DIRECT_TO_LANDLORD';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F9FF), // Light blue
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFBAE6FD)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.account_balance_rounded, color: Color(0xFF0284C7), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'PAYMENT ACCOUNT',
+                      style: TextStyle(
+                        color: Color(0xFF0369A1),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    Text(
+                      paymentInfo.accountName ?? 'Account Name N/A',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0C4A6E),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFBAE6FD), height: 1),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Account Number', style: TextStyle(color: Color(0xFF0369A1), fontSize: 11)),
+                  const SizedBox(height: 2),
+                  Text(
+                    paymentInfo.accountNumber ?? 'N/A',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: Color(0xFF0C4A6E)),
+                  ),
+                ],
+              ),
+              if (paymentInfo.bankCode != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('Bank Code', style: TextStyle(color: Color(0xFF0369A1), fontSize: 11)),
+                    const SizedBox(height: 2),
+                    Text(
+                      paymentInfo.bankCode!,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0C4A6E)),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isDirect ? Icons.person_pin_rounded : Icons.business_center_rounded,
+                  size: 14,
+                  color: const Color(0xFF0369A1),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isDirect ? 'Pay directly to landlord' : 'Pay to property manager',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0369A1),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
