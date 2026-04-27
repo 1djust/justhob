@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../domain/user.dart';
@@ -22,15 +23,13 @@ class AuthRepository {
           try {
             await _apiClient.storage.write(key: 'access_token', value: token);
           } catch (storageError) {
-            // Token save failed (Keystore issue on some physical devices)
-            // Login still succeeds but session won't persist after app restart
+            // Token save failed
           }
         }
 
         return User.fromJson(userData);
       }
     } on DioException catch (e) {
-      // Extract the actual server error message for display
       String message = 'Login failed. Please check your credentials.';
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
@@ -38,15 +37,23 @@ class AuthRepository {
       } else if (e.type == DioExceptionType.connectionError) {
         message = 'Cannot reach the server. Please check your internet connection.';
       } else if (e.response != null) {
-        // Try to extract structured error from API response
-        final data = e.response?.data;
+        dynamic data = e.response?.data;
+        if (data is String) {
+          try { data = jsonDecode(data); } catch (_) {}
+        }
         if (data is Map) {
           final error = data['error'];
           if (error is Map && error['message'] != null) {
             message = error['message'].toString();
+          } else if (error is String) {
+            message = error;
           } else if (data['message'] != null) {
             message = data['message'].toString();
+          } else {
+            message = 'Error: $data';
           }
+        } else {
+          message = 'Error ${e.response?.statusCode}: $data';
         }
       }
       throw Exception(message);
@@ -57,11 +64,8 @@ class AuthRepository {
   }
 
   Future<User?> getMe() async {
-    // Immediately return null if we have no token, skipping the long network wait on cold start.
     final token = await _apiClient.storage.read(key: 'access_token');
-    if (token == null) {
-      return null;
-    }
+    if (token == null) return null;
 
     try {
       final response = await _apiClient.dio.get('/auth/me');
@@ -79,7 +83,7 @@ class AuthRepository {
     try {
       await _apiClient.dio.post('/auth/logout');
     } catch (e) {
-      // Ignore server errors during logout to ensure local cleanup continues
+      // Ignore
     } finally {
       await _apiClient.cookieJar.deleteAll();
       await _apiClient.storage.delete(key: 'access_token');
@@ -92,14 +96,13 @@ class AuthRepository {
         'newPassword': newPassword,
       });
       if (response.statusCode == 200 && response.data['access_token'] != null) {
-        // Store the fresh token
-        await _apiClient.storage.write(key: 'access_token', value: response.data['access_token']);
-        // Return the updated user
+        try {
+          await _apiClient.storage.write(key: 'access_token', value: response.data['access_token']);
+        } catch (_) {}
         return User.fromJson(response.data['user']);
       }
-      // Password changed but no new token — still a success
       if (response.statusCode == 200 && response.data['success'] == true) {
-        return null; // Will trigger re-login
+        return null;
       }
       return null;
     } on DioException catch (e) {
@@ -110,14 +113,23 @@ class AuthRepository {
       } else if (e.type == DioExceptionType.connectionError) {
         message = 'Cannot reach the server. Check your internet connection.';
       } else if (e.response != null) {
-        final data = e.response?.data;
+        dynamic data = e.response?.data;
+        if (data is String) {
+          try { data = jsonDecode(data); } catch (_) {}
+        }
         if (data is Map) {
           final error = data['error'];
           if (error is Map && error['message'] != null) {
             message = error['message'].toString();
+          } else if (error is String) {
+            message = error;
           } else if (data['message'] != null) {
             message = data['message'].toString();
+          } else {
+            message = 'Error: $data';
           }
+        } else {
+          message = 'Error ${e.response?.statusCode}: $data';
         }
       }
       throw Exception(message);
@@ -125,6 +137,7 @@ class AuthRepository {
       throw Exception('Failed to update password: ${e.toString()}');
     }
   }
+
   Future<void> requestPasswordReset(String email) async {
     await _apiClient.dio.post('/auth/reset-password-request', data: {
       'email': email,
