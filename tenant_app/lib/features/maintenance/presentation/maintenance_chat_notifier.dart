@@ -31,6 +31,7 @@ class MaintenanceChatNotifier extends StateNotifier<AsyncValue<List<MaintenanceM
       final messages = await _repository.getMaintenanceMessages(_requestId);
       state = AsyncValue.data(messages);
     } catch (e, stack) {
+      debugPrint('Caught error: $stack');
       state = AsyncValue.error(e, stack);
     }
   }

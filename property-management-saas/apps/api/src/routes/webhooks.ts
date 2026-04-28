@@ -9,7 +9,7 @@ export default async function webhookRoutes(fastify: FastifyInstance) {
       /*
       // Commenting out Remita logic
       // Remita usually sends an array of payment notifications
-      const notifications = request.body as any[];
+      const notifications = request.body as Record<string, any>[];
 
       if (!Array.isArray(notifications)) {
         return reply.status(400).send({ error: 'Invalid payload format' });
@@ -38,7 +38,7 @@ export default async function webhookRoutes(fastify: FastifyInstance) {
                 transactionId: orderId
               }
             });
-            console.log(`[Webhook] Payment ${payment.id} marked as PAID via Remita (RRR: ${rrr})`);
+            request.log.info(`[Webhook] Payment ${payment.id} marked as PAID via Remita (RRR: ${rrr})`);
           }
         }
       }
@@ -46,7 +46,7 @@ export default async function webhookRoutes(fastify: FastifyInstance) {
 
       return reply.send({ success: true, message: 'Webhooks disabled for Remita' });
     } catch (error: any) {
-      console.error('[Webhook Error]', error.message);
+      request.log.error('[Webhook Error]', error.message);
       return reply.status(500).send({ error: 'Webhook processing failed' });
     }
   });

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import \'package:flutter/foundation.dart\';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/network/api_client.dart';
 import 'core/network/socket_service.dart';
@@ -30,7 +31,7 @@ class MainApp extends ConsumerWidget {
     // This could also be used to show in-app notifications
     ref.listen(StreamProvider((ref) => SocketService().eventStream), (prev, next) {
       if (next.hasValue) {
-        print('[MainApp] Global Socket Event: ${next.value!['type']}');
+        debugPrint('[MainApp] Global Socket Event: ${next.value!['type']}');
       }
     });
     

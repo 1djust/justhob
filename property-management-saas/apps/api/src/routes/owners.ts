@@ -4,7 +4,7 @@ import { authenticate } from '../lib/middleware';
 import { supabaseAdmin } from '../lib/supabase';
 
 const verifyPropertyManager = async (request: FastifyRequest, reply: FastifyReply) => {
-  const userId = (request as any).userId;
+  const userId = request.userId!;
   const { workspaceId } = request.params as any;
 
   if (!workspaceId) return reply.status(400).send({ error: 'Workspace ID required' });
@@ -92,7 +92,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
             throw new Error('User is already a member of this workspace');
           }
           
-          const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as any;
+          const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as { payoutStrategy?: any; bankCode?: any; accountNumber?: any; accountName?: any };
 
           const member = await tx.workspaceMember.create({
             data: { 
@@ -135,7 +135,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
 
         inviteLink = linkDataAny.properties.action_link;
 
-        const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as any;
+        const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as { payoutStrategy?: any; bankCode?: any; accountNumber?: any; accountName?: any };
 
         await prisma.workspaceMember.create({
           data: { 

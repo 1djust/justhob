@@ -53,7 +53,7 @@ export function buildApp() {
   // Global Error Handler
   fastify.setErrorHandler((error, request, reply) => {
     // Determine status code
-    const statusCode = error.statusCode || (error as any).status || 500;
+    const statusCode = error.statusCode || (error as Error & { statusCode?: number; status?: number; code?: string; details?: any }).status || 500;
     
     // Extract error details safely
     let errorMessage = error.message || 'Internal Server Error';
@@ -66,13 +66,13 @@ export function buildApp() {
       errorMessage = 'An unexpected database error occurred. Please try again later.';
     }
 
-    const errorCode = (error as any).code || (statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
+    const errorCode = (error as Error & { statusCode?: number; status?: number; code?: string; details?: any }).code || (statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
     
     // Safely handle details (ensure it's not nested if already structured)
-    let errorDetails = (error as any).details || undefined;
+    let errorDetails = (error as Error & { statusCode?: number; status?: number; code?: string; details?: any }).details || undefined;
     
     // Log the error
-    request.log.error({ 
+    console.error({ 
       err: error, 
       requestId: request.id,
       url: request.url,

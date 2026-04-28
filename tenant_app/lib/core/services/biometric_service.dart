@@ -1,4 +1,6 @@
 import 'package:local_auth/local_auth.dart';
+import \'package:flutter/foundation.dart\';
+import \'package:flutter/foundation.dart\';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Service to handle biometric (fingerprint/face) authentication.
@@ -26,6 +28,7 @@ class BiometricService {
       final canCheck = await _auth.canCheckBiometrics;
       return isSupported && canCheck;
     } catch (e) {
+      debugPrint('Caught error: $e');
       return false;
     }
   }
@@ -58,7 +61,7 @@ class BiometricService {
         ),
       );
     } catch (e) {
-      print('[Biometric] Authentication error: $e');
+      debugPrint('[Biometric] Authentication error: $e');
       return false;
     }
   }

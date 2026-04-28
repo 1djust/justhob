@@ -1,4 +1,5 @@
 import 'dart:convert';
+import \'package:flutter/foundation.dart\';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -151,6 +152,7 @@ class PaymentsScreen extends ConsumerWidget {
               );
             }
           } catch (e) {
+      debugPrint('Caught error: $e');
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -276,7 +278,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF18181B).withOpacity(0.08),
+                    color: const Color(0xFF18181B).withAlpha(20),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.receipt_long, color: Color(0xFF18181B), size: 22),
@@ -350,7 +352,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
                 gradient: LinearGradient(
                   colors: [
                     const Color(0xFF18181B),
-                    const Color(0xFF18181B).withOpacity(0.85),
+                    const Color(0xFF18181B).withAlpha(216),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -407,7 +409,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
+                          color: Colors.black.withAlpha(153),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.close, color: Colors.white, size: 18),
@@ -562,6 +564,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
         );
       }
     } catch (e) {
+      debugPrint('Caught error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error submitting proof: $e')),
@@ -611,7 +614,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withAlpha(25),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(statusIcon, color: statusColor, size: 28),
@@ -636,7 +639,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withAlpha(25),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -899,6 +902,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                               filename: 'Receipt-${payment.receiptId ?? payment.id}.pdf',
                             );
                           } catch (e) {
+      debugPrint('Caught error: $e');
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Failed to share receipt: $e')),
@@ -978,7 +982,7 @@ class _PaymentAccountCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withOpacity(0.1),
+                  color: const Color(0xFF0284C7).withAlpha(25),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.account_balance_rounded, color: Color(0xFF0284C7), size: 20),
@@ -1045,7 +1049,7 @@ class _PaymentAccountCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withAlpha(127),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(

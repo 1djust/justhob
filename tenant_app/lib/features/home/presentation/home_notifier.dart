@@ -1,4 +1,6 @@
 import 'dart:async';
+import \'package:flutter/foundation.dart\';
+import \'package:flutter/foundation.dart\';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import '../data/tenant_repository.dart';
@@ -35,7 +37,7 @@ class HomeNotifier extends StateNotifier<AsyncValue<Tenant?>> {
     _socketSubscription = SocketService().eventStream.listen((event) {
       if (event['type'] == 'PAYMENT_UPDATED' || 
           event['type'] == 'MAINTENANCE_UPDATED') {
-        print('[HomeNotifier] Socket update: Refreshing dashboard...');
+        debugPrint('[HomeNotifier] Socket update: Refreshing dashboard...');
         _init();
       }
     });
@@ -61,6 +63,7 @@ class HomeNotifier extends StateNotifier<AsyncValue<Tenant?>> {
         state = const AsyncValue.data(null);
       }
     } catch (e, stack) {
+      debugPrint('Caught error: $stack');
       state = AsyncValue.error(e, stack);
     }
   }

@@ -1,4 +1,6 @@
 import 'dart:async';
+import \'package:flutter/foundation.dart\';
+import \'package:flutter/foundation.dart\';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../home/data/tenant_repository.dart';
 import '../../../../shared/domain/payment.dart';
@@ -23,7 +25,7 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
     _socketSubscription?.cancel();
     _socketSubscription = SocketService().eventStream.listen((event) {
       if (event['type'] == 'PAYMENT_UPDATED') {
-        print('[PaymentsNotifier] Socket update: Refreshing payments...');
+        debugPrint('[PaymentsNotifier] Socket update: Refreshing payments...');
         fetchPayments();
       }
     });
@@ -43,6 +45,7 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
       payments.sort((a, b) => b.dueDate.compareTo(a.dueDate));
       state = AsyncValue.data(payments);
     } catch (e, stack) {
+      debugPrint('Caught error: $stack');
       state = AsyncValue.error(e, stack);
     }
   }

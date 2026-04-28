@@ -81,7 +81,7 @@ export default async function publicRoutes(fastify: FastifyInstance) {
   // Submit a new maintenance request from the tenant portal
   fastify.post('/tenants/:tenantId/maintenance', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId } = request.params as { tenantId: string };
-    const { propertyId, description, imageUrl } = request.body as any;
+    const { propertyId, description, imageUrl } = request.body as { propertyId?: any; description?: any; imageUrl?: any };
 
     if (!propertyId || !description) {
       return reply.status(400).send({ error: 'Property ID and description are required' });

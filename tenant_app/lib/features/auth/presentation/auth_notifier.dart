@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import \'package:flutter/foundation.dart\';
 import '../data/auth_repository.dart';
 import '../domain/user.dart';
 import '../../../../core/network/api_client.dart';
@@ -24,6 +25,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
       final user = await _repository.getMe();
       state = AsyncValue.data(user);
     } catch (e) {
+      debugPrint('Caught error: $e');
       // If checkAuth fails (e.g. 401), we treat it as not logged in
       // instead of crashing with an error state.
       state = const AsyncValue.data(null);
@@ -36,6 +38,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
       final user = await _repository.login(email, password);
       state = AsyncValue.data(user);
     } catch (e, stack) {
+      debugPrint('Caught error: $stack');
       state = AsyncValue.error(e, stack);
     }
   }
@@ -64,6 +67,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
       await checkAuth();
       return true;
     } catch (e) {
+      debugPrint('Caught error: $e');
       lastError = e.toString().replaceFirst('Exception: ', '');
       return false;
     }

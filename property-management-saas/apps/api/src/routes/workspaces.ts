@@ -7,7 +7,7 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
 
   // Get all workspaces for the current user
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const workspaces = await prisma.workspaceMember.findMany({
       where: { userId },
       include: { workspace: true }
@@ -17,7 +17,7 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
 
   // Create a new workspace (Current user becomes PROPERTY_MANAGER)
   fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const { name } = request.body as { name: string };
     
     if (!name) return reply.status(400).send({ error: 'Workspace name is required' });
@@ -40,9 +40,9 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
 
   // Update a workspace (e.g. Bank Payout Details)
   fastify.patch('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const { id } = request.params as { id: string };
-    const { bankCode, accountNumber, accountName } = request.body as any;
+    const { bankCode, accountNumber, accountName } = request.body as { bankCode?: any; accountNumber?: any; accountName?: any };
 
     const membership = await prisma.workspaceMember.findFirst({
       where: { workspaceId: id, userId, role: 'PROPERTY_MANAGER' }
@@ -64,7 +64,7 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
 
   // Join a workspace (as TENANT)
   fastify.post('/:workspaceId/join', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const { workspaceId } = request.params as { workspaceId: string };
 
     const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
@@ -91,7 +91,7 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
 
   // Get workspace stats
   fastify.get('/:workspaceId/stats', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const { workspaceId } = request.params as { workspaceId: string };
 
     const member = await prisma.workspaceMember.findUnique({

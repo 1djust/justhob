@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import \'package:flutter/foundation.dart\';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'maintenance_notifier.dart';
 import '../../home/presentation/home_notifier.dart';
@@ -56,6 +57,7 @@ class _CreateMaintenanceScreenState extends ConsumerState<CreateMaintenanceScree
         );
       }
     } catch (e) {
+      debugPrint('Caught error: $e');
       if (mounted) {
         String errorMessage = e.toString();
         if (errorMessage.startsWith('Exception: ')) {

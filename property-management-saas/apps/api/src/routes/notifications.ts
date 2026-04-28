@@ -8,7 +8,7 @@ export default async function notificationRoutes(fastify: FastifyInstance) {
   // Get notifications for the user
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const userId = (request as any).userId;
+      const userId = request.userId!;
 
       const notifications = await prisma.notification.findMany({
         where: { userId },
@@ -18,14 +18,14 @@ export default async function notificationRoutes(fastify: FastifyInstance) {
 
       return reply.send({ notifications });
     } catch (error: any) {
-      console.error('[GetNotificationsError]', error);
+      request.log.error('[GetNotificationsError]', error);
       return reply.status(500).send({ error: 'Failed to fetch notifications: ' + error.message });
     }
   });
 
   // Mark all as read
   fastify.patch('/read-all', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
 
     await prisma.notification.updateMany({
       where: { userId, isRead: false },
@@ -37,7 +37,7 @@ export default async function notificationRoutes(fastify: FastifyInstance) {
 
   // Mark single as read
   fastify.patch('/:id/read', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const { id } = request.params as { id: string };
 
     const notification = await prisma.notification.findUnique({ where: { id } });

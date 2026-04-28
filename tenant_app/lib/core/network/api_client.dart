@@ -3,6 +3,7 @@ import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 
 class ApiConfig {
@@ -65,8 +66,10 @@ class ApiClient {
               options.headers['Authorization'] = 'Bearer $token';
             }
           } catch (e) {
+      debugPrint('Caught error: $e');
             // If secure storage read fails, continue without token
             // This prevents a crash loop on devices with Keystore issues
+            debugPrint('[ApiClient] Secure storage read failed: $e');
           }
           return handler.next(options);
         },
@@ -76,7 +79,9 @@ class ApiClient {
             try {
               await storage.delete(key: 'access_token');
               await cookieJar.deleteAll();
-            } catch (_) {}
+            } catch (clearErr) {
+              debugPrint('[ApiClient] Failed to clear storage on 401: $clearErr');
+            }
             // In a full implementation, you might dispatch a global event here to redirect
             // to login using a GlobalKey<NavigatorState>.
           }

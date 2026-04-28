@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import \'package:flutter/foundation.dart\';
 import '../data/notification_repository.dart';
 import '../../../../shared/domain/notification.dart';
 import '../../../../core/network/api_client.dart';
@@ -22,6 +23,7 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<NotificationIt
       notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       state = AsyncValue.data(notifications);
     } catch (e, stack) {
+      debugPrint('Caught error: $stack');
       state = AsyncValue.error(e, stack);
     }
   }

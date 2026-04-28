@@ -8,7 +8,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
 
   fastify.get('/dashboard', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return reply.status(401).send({ error: 'User not found' });
@@ -96,7 +96,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
   // List maintenance requests for the authenticated tenant
   fastify.get('/maintenance', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return reply.status(401).send({ error: 'User not found' });
 
@@ -129,7 +129,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
   // Create a maintenance request for the authenticated tenant
   fastify.post('/maintenance', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return reply.status(401).send({ error: 'User not found' });
 
@@ -143,7 +143,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     });
     if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
 
-    const { propertyId, description, imageUrl } = request.body as any;
+    const { propertyId, description, imageUrl } = request.body as { propertyId?: any; description?: any; imageUrl?: any };
 
     if (!propertyId || !description) {
       return reply.status(400).send({ error: 'Property ID and description are required' });
@@ -196,7 +196,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
   // List payments for the authenticated tenant
   fastify.get('/payments', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return reply.status(401).send({ error: 'User not found' });
 
@@ -231,7 +231,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
   // Create a payment for the authenticated tenant
   fastify.post('/payments', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return reply.status(401).send({ error: 'User not found' });
 
@@ -245,7 +245,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     });
     if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
 
-    const { amount, leaseId, note } = request.body as any;
+    const { amount, leaseId, note } = request.body as { amount?: any; leaseId?: any; note?: any };
 
     if (!leaseId || !amount) {
       return reply.status(400).send({ error: 'Lease ID and amount are required' });
@@ -330,16 +330,16 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       return reply.status(201).send({ message: 'Payment record created (Gateway Bypass)', paymentId: payment.id });
 
     } catch (e: any) {
-      console.error('[Payment Sync Error]', e.message);
+      request.log.error('[Payment Sync Error]', e.message);
       return reply.status(500).send({ error: 'Failed to create payment record: ' + e.message });
     }
   });
 
   // Submit proof of manual payment
   fastify.post('/payments/:id/submit-proof', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const { id } = request.params as { id: string };
-    const { proofUrl, note } = request.body as any;
+    const { proofUrl, note } = request.body as { proofUrl?: any; note?: any };
 
     if (!proofUrl) {
       return reply.status(400).send({ error: 'Proof image URL (or Base64 string) is required' });
@@ -400,14 +400,14 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
       return reply.send({ success: true, payment: updatedPayment });
     } catch (error: any) {
-      console.error('[SubmitProofError]', error);
+      request.log.error('[SubmitProofError]', error);
       return reply.status(500).send({ error: 'Internal Server Error: ' + error.message });
     }
   });
 
   // Get maintenance request conversation history for the authenticated tenant
   fastify.get('/maintenance/:id/messages', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const { id } = request.params as { id: string };
 
     const membership = await prisma.workspaceMember.findFirst({
@@ -433,9 +433,9 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
   // Send a message in a maintenance request for the authenticated tenant
   fastify.post('/maintenance/:id/messages', async (request: FastifyRequest, reply: FastifyReply) => {
-    const userId = (request as any).userId;
+    const userId = request.userId!;
     const { id } = request.params as { id: string };
-    const { content } = request.body as any;
+    const { content } = request.body as { content?: any };
 
     if (!content) return reply.status(400).send({ error: 'Message content is required' });
 

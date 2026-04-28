@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import \'package:flutter/foundation.dart\';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'auth_notifier.dart';
@@ -323,9 +324,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             height: 64,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              color: theme.colorScheme.primary.withAlpha(25),
                               border: Border.all(
-                                color: theme.colorScheme.primary.withOpacity(0.3),
+                                color: theme.colorScheme.primary.withAlpha(76),
                                 width: 2,
                               ),
                             ),
@@ -405,6 +406,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 );
               } catch (e) {
+      debugPrint('Caught error: $e');
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

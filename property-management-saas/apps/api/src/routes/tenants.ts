@@ -50,7 +50,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
   // Create tenant
   fastify.post('/', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId } = request.params as { workspaceId: string };
-    const { name, email, phone, password } = request.body as any;
+    const { name, email, phone, password } = request.body as { name?: any; email?: any; phone?: any; password?: any };
     if (!name) return reply.status(400).send({ error: 'Tenant name is required' });
 
     // Subscription Limits and Tenant Creation in Transaction to prevent race conditions
@@ -161,7 +161,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
   // Update tenant
   fastify.put('/:id', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { name, email, phone } = request.body as any;
+    const { name, email, phone } = request.body as { name?: any; email?: any; phone?: any };
 
     try {
       const tenant = await prisma.tenant.update({
@@ -210,7 +210,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
   // Assign tenant to property (create lease)
   fastify.post('/:id/leases', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { propertyId, unitId, startDate, endDate, yearlyRent } = request.body as any;
+    const { propertyId, unitId, startDate, endDate, yearlyRent } = request.body as { propertyId?: any; unitId?: any; startDate?: any; endDate?: any; yearlyRent?: any };
 
     if (!propertyId || !startDate) {
       return reply.status(400).send({ error: 'Property ID and start date are required' });

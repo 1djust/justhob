@@ -10,8 +10,8 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
   // List Properties
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId } = request.params as { workspaceId: string };
-    const userRole = (request as any).userRole;
-    const userId = (request as any).userId;
+    const userRole = request.userRole!;
+    const userId = request.userId!;
 
     const whereClause: any = { workspaceId, deletedAt: null };
     if (userRole === 'LANDLORD') {
@@ -32,7 +32,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
   // Create Property
   fastify.post('/', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId } = request.params as { workspaceId: string };
-    const { name, address, ownerId, units } = request.body as any;
+    const { name, address, ownerId, units } = request.body as { name?: any; address?: any; ownerId?: any; units?: any };
 
     if (!name || !address) {
       return reply.status(400).send({ error: 'Name and address are required' });
@@ -102,7 +102,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
   // Update Property
   fastify.put('/:id', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { name, address, ownerId } = request.body as any;
+    const { name, address, ownerId } = request.body as { name?: any; address?: any; ownerId?: any };
 
     try {
       const property = await prisma.property.update({

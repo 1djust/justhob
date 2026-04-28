@@ -1,4 +1,6 @@
 import 'dart:async';
+import \'package:flutter/foundation.dart\';
+import \'package:flutter/foundation.dart\';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../home/data/tenant_repository.dart';
 import '../../../../shared/domain/maintenance_request.dart';
@@ -22,7 +24,7 @@ class MaintenanceNotifier extends StateNotifier<AsyncValue<List<MaintenanceReque
     _socketSubscription?.cancel();
     _socketSubscription = SocketService().eventStream.listen((event) {
       if (event['type'] == 'MAINTENANCE_UPDATED') {
-        print('[MaintenanceNotifier] Socket update: Refreshing requests...');
+        debugPrint('[MaintenanceNotifier] Socket update: Refreshing requests...');
         fetchRequests();
       }
     });
@@ -40,6 +42,7 @@ class MaintenanceNotifier extends StateNotifier<AsyncValue<List<MaintenanceReque
       final requests = await _repository.getMaintenanceRequests();
       state = AsyncValue.data(requests);
     } catch (e, stack) {
+      debugPrint('Caught error: $stack');
       state = AsyncValue.error(e, stack);
     }
   }

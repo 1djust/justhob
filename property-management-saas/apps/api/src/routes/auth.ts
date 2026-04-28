@@ -22,7 +22,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
 
       const supaUser = supaData.user;
-      const { name } = (request.body as any) || {};
+      const { name } = (request.body as Record<string, any>) || {};
 
       // Check if Prisma user already exists
       let user = await prisma.user.findUnique({ 
@@ -133,7 +133,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // Login (called by mobile app)
   fastify.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { email, password } = request.body as any;
+    const { email, password } = request.body as { email?: any; password?: any };
     if (!email || !password) {
       throw new ValidationError('Email and password required');
     }

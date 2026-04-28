@@ -39,7 +39,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   // Record a payment for a specific lease
   fastify.post('/', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId } = request.params as { workspaceId: string };
-    const { leaseId, amount, dueDate, paidDate, status, note } = request.body as any;
+    const { leaseId, amount, dueDate, paidDate, status, note } = request.body as { leaseId?: any; amount?: any; dueDate?: any; paidDate?: any; status?: any; note?: any };
 
     if (!leaseId || !amount || !dueDate) {
       return reply.status(400).send({ error: 'Lease ID, amount, and due date are required' });
@@ -132,7 +132,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   // Review a submitted proof of payment (Manager only)
   fastify.patch('/:id/review', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { status, rejectionReason } = request.body as any; // status expected: 'PAID' or 'REJECTED'
+    const { status, rejectionReason } = request.body as { status?: any; rejectionReason?: any }; // status expected: 'PAID' or 'REJECTED'
 
     if (status !== 'PAID' && status !== 'REJECTED') {
       return reply.status(400).send({ error: 'Status must be PAID or REJECTED' });

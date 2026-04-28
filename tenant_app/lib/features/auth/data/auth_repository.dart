@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../domain/user.dart';
 
@@ -23,13 +24,14 @@ class AuthRepository {
           try {
             await _apiClient.storage.write(key: 'access_token', value: token);
           } catch (storageError) {
-            // Token save failed
+            debugPrint('[AuthRepository] Failed to write access_token to storage: $storageError');
           }
         }
 
         return User.fromJson(userData);
       }
     } on DioException catch (e) {
+      debugPrint('Caught error: $e');
       String message = 'Login failed. Please check your credentials.';
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
@@ -39,7 +41,8 @@ class AuthRepository {
       } else if (e.response != null) {
         dynamic data = e.response?.data;
         if (data is String) {
-          try { data = jsonDecode(data); } catch (_) {}
+          try { data = jsonDecode(data); } catch (_) {
+      debugPrint('Caught error: $_');}
         }
         if (data is Map) {
           final error = data['error'];
@@ -74,6 +77,7 @@ class AuthRepository {
         return User.fromJson(userData);
       }
     } catch (e) {
+      debugPrint('[AuthRepository] getMe error: $e');
       return null;
     }
     return null;
@@ -83,7 +87,7 @@ class AuthRepository {
     try {
       await _apiClient.dio.post('/auth/logout');
     } catch (e) {
-      // Ignore
+      debugPrint('[AuthRepository] logout API error: $e');
     } finally {
       await _apiClient.cookieJar.deleteAll();
       await _apiClient.storage.delete(key: 'access_token');
@@ -98,7 +102,9 @@ class AuthRepository {
       if (response.statusCode == 200 && response.data['access_token'] != null) {
         try {
           await _apiClient.storage.write(key: 'access_token', value: response.data['access_token']);
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('[AuthRepository] Failed to store new token after password change: $e');
+        }
         return User.fromJson(response.data['user']);
       }
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -106,6 +112,7 @@ class AuthRepository {
       }
       return null;
     } on DioException catch (e) {
+      debugPrint('Caught error: $e');
       String message = 'Failed to update password. Please try again.';
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
@@ -115,7 +122,8 @@ class AuthRepository {
       } else if (e.response != null) {
         dynamic data = e.response?.data;
         if (data is String) {
-          try { data = jsonDecode(data); } catch (_) {}
+          try { data = jsonDecode(data); } catch (_) {
+      debugPrint('Caught error: $_');}
         }
         if (data is Map) {
           final error = data['error'];

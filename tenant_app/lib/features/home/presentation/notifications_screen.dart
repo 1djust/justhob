@@ -88,7 +88,7 @@ class _NotificationTile extends ConsumerWidget {
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: iconColor.withOpacity(0.1),
+        backgroundColor: iconColor.withAlpha(25),
         child: Icon(icon, color: iconColor, size: 24),
       ),
       title: Text(

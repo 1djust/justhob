@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import \'package:flutter/foundation.dart\';
 import '../../../../core/network/api_client.dart';
 import '../../../../shared/domain/tenant.dart';
 import '../../../../shared/domain/maintenance_request.dart';
@@ -37,6 +38,7 @@ class TenantRepository {
       );
       return MaintenanceRequest.fromJson(response.data['request']);
     } on DioException catch (e) {
+      debugPrint('Caught error: $e');
       String message = 'Failed to create request.';
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
