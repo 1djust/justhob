@@ -48,7 +48,7 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
   fastify.post('/:id/messages', async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, id } = request.params as { workspaceId: string; id: string };
     const { content } = request.body as { content: string };
-    const userId = (request as FastifyRequest & { userId?: string, userRole?: string }).user.id;
+    const userId = request.userId!;
 
     const message = await prisma.maintenanceMessage.create({
       data: {
