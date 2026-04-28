@@ -5,6 +5,7 @@ import 'home_notifier.dart';
 import 'notifications_notifier.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/domain/payment_info.dart';
+import '../../../core/utils/nigerian_banks.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/widgets/app_update_dialog.dart';
 
@@ -662,7 +663,7 @@ class _DashboardPaymentAccountCard extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Divider(height: 1, color: Color(0xFFE2E8F0)),
                   ),
-                  _AccountRow(label: 'Bank Code / Name', value: paymentInfo.bankCode!),
+                  _AccountRow(label: 'Bank', value: NigerianBanks.getBankName(paymentInfo.bankCode)),
                 ],
               ],
             ),

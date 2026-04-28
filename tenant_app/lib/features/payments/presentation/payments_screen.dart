@@ -10,6 +10,7 @@ import '../../../shared/domain/payment.dart';
 import '../../../shared/domain/property.dart';
 import '../presentation/payments_notifier.dart';
 import '../../../core/services/receipt_service.dart';
+import '../../../core/utils/nigerian_banks.dart';
 
 class PaymentsScreen extends ConsumerWidget {
   const PaymentsScreen({super.key});
@@ -1030,10 +1031,10 @@ class _PaymentAccountCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text('Bank Code', style: TextStyle(color: Color(0xFF0369A1), fontSize: 11)),
+                    const Text('Bank', style: TextStyle(color: Color(0xFF0369A1), fontSize: 11)),
                     const SizedBox(height: 2),
                     Text(
-                      paymentInfo.bankCode!,
+                      NigerianBanks.getBankName(paymentInfo.bankCode),
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0C4A6E)),
                     ),
                   ],
