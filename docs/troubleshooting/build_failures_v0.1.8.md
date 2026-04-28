@@ -22,3 +22,30 @@
 - Added a **Rent Expiry Countdown** (Days Left) badge.
 - Added a clear indicator showing if rent should be paid to the **Landlord** or the **Manager**.
 - Automated the **Landing Page** to fetch the latest version and download link dynamically from `version.json`.
+
+---
+
+# Troubleshooting Log: Tenant App v0.1.9
+
+## Feature: Bank Name Display (Build 12)
+**Date**: April 28, 2026
+**Problem**: The dashboard showed the raw bank code (e.g., `033`) instead of the human-readable bank name.
+**Solution**: Created `nigerian_banks.dart` utility that maps Nigerian CBN bank codes to bank names (e.g., `033` → `United Bank for Africa`). Updated both the Dashboard and Payments screens.
+
+## Feature: Real-time Auto-Refresh (Build 13)
+**Date**: April 28, 2026
+**Problem**: Users had to manually refresh/pull-to-refresh to see updates on both the web app and mobile app.
+**Solution**: 
+- **Mobile App**: Added `StreamSubscription` listeners to `HomeNotifier`, `PaymentsNotifier`, and `MaintenanceNotifier` that listen to the `SocketService` event stream and auto-refresh data when `PAYMENT_UPDATED` or `MAINTENANCE_UPDATED` events arrive.
+- **Web App**: Updated `RealtimeProvider.tsx` to listen for socket events and call `router.refresh()` with toast notifications.
+
+## Feature: Fingerprint Login (Build 14)
+**Date**: April 28, 2026
+**Problem**: Users had to enter email/password every time they opened the app.
+**Solution**: 
+- Added `local_auth` package for biometric authentication.
+- Created `BiometricService` to manage enable/disable and authentication prompts.
+- Updated `MainActivity.kt` to use `FlutterFragmentActivity` (required by `local_auth`).
+- Added `USE_BIOMETRIC` permission to `AndroidManifest.xml`.
+- After first successful password login, the app prompts "Enable Fingerprint?". If enabled, subsequent app opens show a fingerprint icon and auto-prompt biometric authentication.
+
