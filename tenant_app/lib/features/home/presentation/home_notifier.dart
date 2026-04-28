@@ -1,6 +1,6 @@
 import 'dart:async';
-import \'package:flutter/foundation.dart\';
-import \'package:flutter/foundation.dart\';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import '../data/tenant_repository.dart';

@@ -1,6 +1,6 @@
 import 'package:local_auth/local_auth.dart';
-import \'package:flutter/foundation.dart\';
-import \'package:flutter/foundation.dart\';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Service to handle biometric (fingerprint/face) authentication.
