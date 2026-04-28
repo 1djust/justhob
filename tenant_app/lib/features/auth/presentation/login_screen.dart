@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'auth_notifier.dart';
 import '../../../core/services/update_service.dart';
+import '../../../core/services/biometric_service.dart';
 import '../../../core/widgets/app_update_dialog.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -20,11 +21,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isSubmitting = false;
   String? _errorMessage;
   int _shakeCounter = 0;
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _checkForUpdates();
+    _checkBiometric();
   }
 
   Future<void> _checkForUpdates() async {
@@ -32,6 +36,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final updateInfo = await updateService.checkForUpdate();
     if (updateInfo != null && mounted) {
       AppUpdateDialog.show(context, updateInfo);
+    }
+  }
+
+  Future<void> _checkBiometric() async {
+    final bio = BiometricService();
+    final supported = await bio.isDeviceSupported();
+    final enabled = await bio.isBiometricEnabled();
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = supported;
+        _biometricEnabled = enabled;
+      });
+      // Auto-prompt fingerprint if enabled and user has a session
+      if (supported && enabled) {
+        _handleBiometricLogin();
+      }
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    final bio = BiometricService();
+    final success = await bio.authenticate();
+    if (success && mounted) {
+      // Biometric passed — check if we have a valid session
+      final authState = ref.read(authStateProvider);
+      if (authState.hasValue && authState.value != null) {
+        context.go('/');
+      }
     }
   }
 
@@ -80,7 +112,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           });
         }
       }
+
+      // After successful login, offer to enable biometric if device supports it
+      final postLoginState = ref.read(authStateProvider);
+      if (postLoginState.hasValue && postLoginState.value != null && _biometricAvailable && !_biometricEnabled) {
+        _showEnableBiometricDialog();
+      }
     }
+  }
+
+  void _showEnableBiometricDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.fingerprint, color: Theme.of(context).colorScheme.primary, size: 28),
+            const SizedBox(width: 12),
+            const Text('Enable Fingerprint?'),
+          ],
+        ),
+        content: const Text(
+          'Would you like to use your fingerprint to quickly unlock the app next time?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Not Now'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await BiometricService().enableBiometric();
+              setState(() => _biometricEnabled = true);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Enable'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onInputChanged(String _) {
@@ -233,6 +304,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         )
                       : const Text('Sign In'),
                 ),
+                // Fingerprint button
+                if (_biometricAvailable && _biometricEnabled) ...[
+                  const SizedBox(height: 20),
+                  Center(
+                    child: Column(
+                      children: [
+                        const Text(
+                          'or use biometrics',
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                        ),
+                        const SizedBox(height: 12),
+                        InkWell(
+                          onTap: _handleBiometricLogin,
+                          borderRadius: BorderRadius.circular(40),
+                          child: Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              border: Border.all(
+                                color: theme.colorScheme.primary.withOpacity(0.3),
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.fingerprint,
+                              size: 36,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 32),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
