@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../home/data/tenant_repository.dart';
 import '../../../../shared/domain/payment.dart';
@@ -11,6 +12,7 @@ final paymentsProvider = StateNotifierProvider<PaymentsNotifier, AsyncValue<List
 
 class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
   final TenantRepository _repository;
+  StreamSubscription? _socketSubscription;
 
   PaymentsNotifier(this._repository) : super(const AsyncValue.loading()) {
     fetchPayments();
@@ -18,12 +20,19 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
   }
 
   void _listenToSocket() {
-    SocketService().eventStream.listen((event) {
+    _socketSubscription?.cancel();
+    _socketSubscription = SocketService().eventStream.listen((event) {
       if (event['type'] == 'PAYMENT_UPDATED') {
         print('[PaymentsNotifier] Socket update: Refreshing payments...');
         fetchPayments();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _socketSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> fetchPayments() async {

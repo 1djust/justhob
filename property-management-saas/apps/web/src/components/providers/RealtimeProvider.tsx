@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { API_BASE_URL } from '@/lib/api';
 
@@ -25,6 +27,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const workspaceRef = useRef<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     let s: Socket | null = null;
@@ -58,6 +61,19 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       s.on('connect_error', (err) => {
         console.error('[Realtime] Connection error:', err.message);
+      });
+
+      // Global event listeners for auto-refresh
+      s.on('PAYMENT_UPDATED', (data: any) => {
+        console.log('[Realtime] Payment updated:', data);
+        toast.info('Payment updated in real-time');
+        router.refresh();
+      });
+
+      s.on('MAINTENANCE_UPDATED', (data: any) => {
+        console.log('[Realtime] Maintenance updated:', data);
+        toast.info('Maintenance request updated');
+        router.refresh();
       });
 
       setSocket(s);

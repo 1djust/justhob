@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import '../data/tenant_repository.dart';
@@ -20,11 +21,30 @@ final homeStateProvider = StateNotifierProvider<HomeNotifier, AsyncValue<Tenant?
 class HomeNotifier extends StateNotifier<AsyncValue<Tenant?>> {
   final TenantRepository _repository;
   final dynamic _user; // Using dynamic to avoid circular dependency or import issues for now
+  StreamSubscription? _socketSubscription;
 
   HomeNotifier(this._repository, this._user) : super(const AsyncValue.loading()) {
     if (_user != null) {
       _init();
+      _listenToSocket();
     }
+  }
+
+  void _listenToSocket() {
+    _socketSubscription?.cancel();
+    _socketSubscription = SocketService().eventStream.listen((event) {
+      if (event['type'] == 'PAYMENT_UPDATED' || 
+          event['type'] == 'MAINTENANCE_UPDATED') {
+        print('[HomeNotifier] Socket update: Refreshing dashboard...');
+        _init();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _socketSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _init() async {
