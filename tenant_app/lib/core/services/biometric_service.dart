@@ -1,6 +1,5 @@
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Service to handle biometric (fingerprint/face) authentication.
@@ -8,9 +7,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Flow:
 /// 1. User logs in with email/password successfully.
 /// 2. App asks if they want to enable biometric login.
-/// 3. If yes, we store a flag in secure storage.
-/// 4. Next time the app opens with a valid session, we show the biometric prompt
-///    instead of the login screen.
+/// 3. If yes, we store a flag and the credentials securely.
+/// 4. Next time the app opens with a valid session or expired session, 
+///    we show the biometric prompt and use credentials to auto-login.
 class BiometricService {
   static final BiometricService _instance = BiometricService._internal();
   factory BiometricService() => _instance;
@@ -20,6 +19,8 @@ class BiometricService {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   static const String _biometricEnabledKey = 'biometric_enabled';
+  static const String _biometricEmailKey = 'biometric_email';
+  static const String _biometricPasswordKey = 'biometric_password';
 
   /// Check if the device supports biometric authentication.
   Future<bool> isDeviceSupported() async {
@@ -39,14 +40,28 @@ class BiometricService {
     return value == 'true';
   }
 
-  /// Enable biometric login.
-  Future<void> enableBiometric() async {
+  /// Enable biometric login and save credentials.
+  Future<void> enableBiometric(String email, String password) async {
     await _storage.write(key: _biometricEnabledKey, value: 'true');
+    await _storage.write(key: _biometricEmailKey, value: email);
+    await _storage.write(key: _biometricPasswordKey, value: password);
   }
 
   /// Disable biometric login.
   Future<void> disableBiometric() async {
     await _storage.delete(key: _biometricEnabledKey);
+    await _storage.delete(key: _biometricEmailKey);
+    await _storage.delete(key: _biometricPasswordKey);
+  }
+
+  /// Get stored credentials
+  Future<Map<String, String>?> getStoredCredentials() async {
+    final email = await _storage.read(key: _biometricEmailKey);
+    final password = await _storage.read(key: _biometricPasswordKey);
+    if (email != null && password != null) {
+      return {'email': email, 'password': password};
+    }
+    return null;
   }
 
   /// Prompt the user for biometric authentication.

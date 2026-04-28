@@ -49,7 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _biometricAvailable = supported;
         _biometricEnabled = enabled;
       });
-      // Auto-prompt fingerprint if enabled and user has a session
+      // Auto-prompt fingerprint if enabled
       if (supported && enabled) {
         _handleBiometricLogin();
       }
@@ -60,10 +60,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final bio = BiometricService();
     final success = await bio.authenticate();
     if (success && mounted) {
-      // Biometric passed — check if we have a valid session
-      final authState = ref.read(authStateProvider);
-      if (authState.hasValue && authState.value != null) {
-        context.go('/');
+      // Biometric passed — retrieve stored credentials and login
+      final credentials = await bio.getStoredCredentials();
+      if (credentials != null) {
+        setState(() => _isSubmitting = true);
+        await ref.read(authStateProvider.notifier).login(
+              credentials['email']!,
+              credentials['password']!,
+            );
+        final authState = ref.read(authStateProvider);
+        if (authState.hasValue && authState.value != null && mounted) {
+          context.go('/');
+        } else if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+            _errorMessage = 'Biometric login failed. Please sign in manually.';
+          });
+        }
+      } else if (mounted) {
+        setState(() {
+          _errorMessage = 'No saved credentials. Please sign in manually.';
+        });
       }
     }
   }
@@ -92,7 +109,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (mounted) context.go('/');
       } else if (authState.hasError) {
         if (mounted) {
-          // Extract the actual error message instead of showing a generic one
           String errorMsg = 'Login failed. Please try again.';
           final error = authState.error;
           if (error is Exception) {
@@ -144,13 +160,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await BiometricService().enableBiometric();
+              await BiometricService().enableBiometric(
+                _emailController.text,
+                _passwordController.text,
+              );
               setState(() => _biometricEnabled = true);
               if (ctx.mounted) Navigator.pop(ctx);
             },
             child: const Text('Enable'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showBiometricBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _BiometricPromptSheet(
+        onStartScan: () {
+          Navigator.pop(ctx);
+          _handleBiometricLogin();
+        },
       ),
     );
   }
@@ -194,15 +227,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch auth state for navigation redirect, but use local _isSubmitting for UI
     ref.watch(authStateProvider);
     final isLoading = _isSubmitting;
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+          padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 40.0),
           child: TweenAnimationBuilder<double>(
             key: ValueKey(_shakeCounter),
             duration: const Duration(milliseconds: 400),
@@ -219,19 +252,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 40),
-                  Icon(
-                    Icons.apartment_rounded,
-                    size: 80,
-                    color: theme.colorScheme.primary,
+                  const SizedBox(height: 48),
+                  // Logo
+                  Center(
+                    child: Icon(
+                      Icons.apartment_rounded,
+                      size: 72,
+                      color: const Color(0xFF18181B),
+                    ),
                   ),
                   const SizedBox(height: 32),
+                  // Welcome text
                   Text(
                     'Welcome Back',
                     style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF18181B),
                       letterSpacing: -0.5,
+                      fontSize: 28,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -239,37 +277,61 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Text(
                     'Sign in to your tenant portal',
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey.shade600,
+                      color: const Color(0xFF71717A),
+                      fontSize: 15,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 48),
                   _buildErrorBanner(theme),
+                  // Email field
                   TextFormField(
                     controller: _emailController,
                     enabled: !isLoading,
                     onChanged: _onInputChanged,
-                    decoration: const InputDecoration(
-                      labelText: 'Email Address',
-                      prefixIcon: Icon(Icons.email_outlined),
+                    style: const TextStyle(color: Color(0xFF18181B), fontSize: 15),
+                    decoration: InputDecoration(
+                      hintText: 'Email Address',
+                      hintStyle: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 15),
+                      prefixIcon: const Icon(Icons.mail_outline_rounded, color: Color(0xFFA1A1AA), size: 22),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF18181B), width: 1.5),
+                      ),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) =>
                         value?.isEmpty ?? true ? 'Email is required' : null,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+                  // Password field
                   TextFormField(
                     controller: _passwordController,
                     enabled: !isLoading,
                     onChanged: _onInputChanged,
+                    style: const TextStyle(color: Color(0xFF18181B), fontSize: 15),
                     decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline),
+                      hintText: 'Password',
+                      hintStyle: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 15),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFFA1A1AA), size: 22),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
                               ? Icons.visibility_off_outlined
                               : Icons.visibility_outlined,
+                          color: const Color(0xFFA1A1AA),
+                          size: 22,
                         ),
                         onPressed: isLoading
                             ? null
@@ -279,91 +341,119 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 });
                               },
                       ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF18181B), width: 1.5),
+                      ),
                     ),
                     obscureText: _obscurePassword,
                     validator: (value) =>
                         value?.isEmpty ?? true ? 'Password is required' : null,
                   ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => _showForgotPasswordDialog(context),
-                    child: const Text('Forgot Password?'),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: isLoading ? null : _handleLogin,
-                  child: isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Sign In'),
-                ),
-                // Fingerprint button
-                if (_biometricAvailable && _biometricEnabled) ...[
-                  const SizedBox(height: 20),
-                  Center(
-                    child: Column(
-                      children: [
-                        const Text(
-                          'or use biometrics',
-                          style: TextStyle(color: Colors.grey, fontSize: 13),
-                        ),
-                        const SizedBox(height: 12),
-                        InkWell(
-                          onTap: _handleBiometricLogin,
-                          borderRadius: BorderRadius.circular(40),
-                          child: Container(
-                            width: 64,
-                            height: 64,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: theme.colorScheme.primary.withAlpha(25),
-                              border: Border.all(
-                                color: theme.colorScheme.primary.withAlpha(76),
-                                width: 2,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.fingerprint,
-                              size: 36,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                      ],
+                  // Forgot Password
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => _showForgotPasswordDialog(context),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF18181B),
+                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      child: const Text('Forgot Password?'),
                     ),
                   ),
-                ],
-                const SizedBox(height: 32),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Need an account?', style: TextStyle(color: Colors.grey.shade600)),
-                    TextButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Request an invite from your landlord.')),
-                        );
-                      },
-                      child: const Text('Contact Manager'),
+                  const SizedBox(height: 16),
+                  // Sign In button
+                  SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : _handleLogin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF18181B),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: const Color(0xFF18181B).withAlpha(150),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Sign In'),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  // Need an account?
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Need an account?',
+                        style: TextStyle(
+                          color: const Color(0xFF71717A),
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Request an invite from your landlord.')),
+                          );
+                        },
+                        child: const Text(
+                          'Contact Manager',
+                          style: TextStyle(
+                            color: Color(0xFF18181B),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Fingerprint icon at the bottom
+                  if (_biometricAvailable && _biometricEnabled) ...[
+                    const SizedBox(height: 40),
+                    Center(
+                      child: GestureDetector(
+                        onTap: _showBiometricBottomSheet,
+                        child: Icon(
+                          Icons.fingerprint,
+                          size: 44,
+                          color: const Color(0xFF71717A),
+                        ),
+                      ),
                     ),
                   ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
+
   void _showForgotPasswordDialog(BuildContext context) {
     final controller = TextEditingController();
     showAdaptiveDialog(
@@ -406,7 +496,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 );
               } catch (e) {
-      debugPrint('Caught error: $e');
+                debugPrint('Caught error: $e');
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -417,6 +507,118 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               }
             },
             child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bottom sheet that matches the biometric prompt UI from the design.
+class _BiometricPromptSheet extends StatelessWidget {
+  final VoidCallback onStartScan;
+
+  const _BiometricPromptSheet({required this.onStartScan});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE4E4E7),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Back arrow
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back, color: Color(0xFF18181B)),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // App icon
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.apartment_rounded,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // App name
+          const Text(
+            'EstateOS',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF18181B),
+            ),
+          ),
+          const SizedBox(height: 32),
+          // Fingerprint icon
+          Icon(
+            Icons.fingerprint,
+            size: 80,
+            color: const Color(0xFF1E3A5F),
+          ),
+          const SizedBox(height: 20),
+          // Label
+          const Text(
+            'Biometric Authentication',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF18181B),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Place your finger on the sensor',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF71717A),
+            ),
+          ),
+          const SizedBox(height: 32),
+          // Start Scan button
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: onStartScan,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E3A5F),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              child: const Text('Start Scan'),
+            ),
           ),
         ],
       ),
