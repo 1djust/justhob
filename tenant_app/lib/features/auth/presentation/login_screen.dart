@@ -106,6 +106,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       
       final authState = ref.read(authStateProvider);
       if (authState.hasValue && authState.value != null) {
+        // Login succeeded — check if we should offer biometric BEFORE navigating
+        if (_biometricAvailable && !_biometricEnabled && mounted) {
+          setState(() => _isSubmitting = false);
+          await _showEnableBiometricDialog();
+        }
         if (mounted) context.go('/');
       } else if (authState.hasError) {
         if (mounted) {
@@ -129,18 +134,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           });
         }
       }
-
-      // After successful login, offer to enable biometric if device supports it
-      final postLoginState = ref.read(authStateProvider);
-      if (postLoginState.hasValue && postLoginState.value != null && _biometricAvailable && !_biometricEnabled) {
-        _showEnableBiometricDialog();
-      }
     }
   }
 
-  void _showEnableBiometricDialog() {
-    showDialog(
+  Future<void> _showEnableBiometricDialog() {
+    return showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
