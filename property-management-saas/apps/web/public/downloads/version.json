@@ -1,7 +1,7 @@
 {
-  "latestVersion": "0.2.0",
-  "latestBuildNumber": 16,
+  "latestVersion": "0.2.1",
+  "latestBuildNumber": 17,
   "isMandatory": true,
   "downloadUrl": "https://justhob.vercel.app/downloads/justhub-tenant.apk",
-  "releaseNotes": "• Fixed biometric fingerprint login flow\n• Enable fingerprint dialog now shows after login\n• Redesigned login screen"
+  "releaseNotes": "• Added help & support, notification settings, privacy & security screens\n• Updated domain models and improved biometric service\n• Refined all feature screens and notifiers"
 }
