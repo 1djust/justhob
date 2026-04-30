@@ -8,11 +8,11 @@ import 'core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize nested dependencies
   await ApiClient().init();
   await SocketService().init();
-  
+
   runApp(
     const ProviderScope(
       child: MainApp(),
@@ -26,15 +26,16 @@ class MainApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    
+
     // Listen for socket events and refresh global state if needed
     // This could also be used to show in-app notifications
-    ref.listen(StreamProvider((ref) => SocketService().eventStream), (prev, next) {
+    ref.listen(StreamProvider((ref) => SocketService().eventStream),
+        (prev, next) {
       if (next.hasValue) {
         debugPrint('[MainApp] Global Socket Event: ${next.value!['type']}');
       }
     });
-    
+
     return MaterialApp.router(
       title: 'Just Hub Tenant',
       debugShowCheckedModeBanner: false,

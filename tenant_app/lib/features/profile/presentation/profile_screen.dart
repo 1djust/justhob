@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/presentation/auth_notifier.dart';
+import 'notification_settings_screen.dart';
+import 'privacy_security_screen.dart';
+import 'help_support_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -63,17 +66,23 @@ class ProfileScreen extends ConsumerWidget {
                       _ProfileTile(
                         icon: Icons.notifications_none_rounded,
                         label: 'Notifications',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()));
+                        },
                       ),
                       _ProfileTile(
                         icon: Icons.security_rounded,
                         label: 'Privacy & Security',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacySecurityScreen()));
+                        },
                       ),
                       _ProfileTile(
                         icon: Icons.help_outline_rounded,
                         label: 'Help & Support',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
+                        },
                       ),
                     ],
                   ),

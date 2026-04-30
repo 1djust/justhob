@@ -16,7 +16,9 @@ class BiometricService {
   BiometricService._internal();
 
   final LocalAuthentication _auth = LocalAuthentication();
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   static const String _biometricEnabledKey = 'biometric_enabled';
   static const String _biometricEmailKey = 'biometric_email';
@@ -36,15 +38,26 @@ class BiometricService {
 
   /// Check if biometric login has been enabled by the user.
   Future<bool> isBiometricEnabled() async {
-    final value = await _storage.read(key: _biometricEnabledKey);
-    return value == 'true';
+    try {
+      final value = await _storage.read(key: _biometricEnabledKey);
+      return value == 'true';
+    } catch (e) {
+      debugPrint('[BiometricService] isBiometricEnabled error: $e');
+      // If secure storage is corrupted from switching encryption types, clear it
+      await _storage.deleteAll();
+      return false;
+    }
   }
 
   /// Enable biometric login and save credentials.
   Future<void> enableBiometric(String email, String password) async {
-    await _storage.write(key: _biometricEnabledKey, value: 'true');
-    await _storage.write(key: _biometricEmailKey, value: email);
-    await _storage.write(key: _biometricPasswordKey, value: password);
+    try {
+      await _storage.write(key: _biometricEnabledKey, value: 'true');
+      await _storage.write(key: _biometricEmailKey, value: email);
+      await _storage.write(key: _biometricPasswordKey, value: password);
+    } catch (e) {
+      debugPrint('[BiometricService] enableBiometric error: $e');
+    }
   }
 
   /// Disable biometric login.

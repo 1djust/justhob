@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'auth_notifier.dart';
@@ -49,10 +48,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _biometricAvailable = supported;
         _biometricEnabled = enabled;
       });
-      // Auto-prompt fingerprint if enabled
-      if (supported && enabled) {
-        _handleBiometricLogin();
-      }
     }
   }
 
@@ -99,38 +94,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _isSubmitting = true;
       });
 
-      await ref.read(authStateProvider.notifier).login(
-            _emailController.text,
-            _passwordController.text,
-          );
-      
-      final authState = ref.read(authStateProvider);
-      if (authState.hasValue && authState.value != null) {
-        // Login succeeded — check if we should offer biometric BEFORE navigating
+      try {
+        final authRepo = ref.read(authRepositoryProvider);
+        final user = await authRepo.login(
+          _emailController.text,
+          _passwordController.text,
+        );
+
+        // Login succeeded, valid credentials!
+        // Show dialog BEFORE updating the global auth provider
         if (_biometricAvailable && !_biometricEnabled && mounted) {
           setState(() => _isSubmitting = false);
           await _showEnableBiometricDialog();
         }
-        if (mounted) context.go('/');
-      } else if (authState.hasError) {
+
+        // NOW update the global auth provider.
+        // This will instantly trigger the app_router to redirect to '/'
+        if (mounted) {
+          ref.read(authStateProvider.notifier).setUser(user);
+        }
+      } catch (e) {
         if (mounted) {
           String errorMsg = 'Login failed. Please try again.';
-          final error = authState.error;
-          if (error is Exception) {
-            errorMsg = error.toString().replaceFirst('Exception: ', '');
-          } else if (error != null) {
-            errorMsg = error.toString();
+          if (e is Exception) {
+            errorMsg = e.toString().replaceFirst('Exception: ', '');
+          } else {
+            errorMsg = e.toString();
           }
           setState(() {
             _isSubmitting = false;
             _errorMessage = errorMsg;
             _shakeCounter++;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isSubmitting = false;
           });
         }
       }
@@ -147,7 +141,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           children: [
             Icon(Icons.fingerprint, color: Theme.of(context).colorScheme.primary, size: 28),
             const SizedBox(width: 12),
-            const Text('Enable Fingerprint?'),
+            const Expanded(child: Text('Enable Fingerprint?')),
           ],
         ),
         content: const Text(
@@ -174,19 +168,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  void _showBiometricBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _BiometricPromptSheet(
-        onStartScan: () {
-          Navigator.pop(ctx);
-          _handleBiometricLogin();
-        },
-      ),
-    );
-  }
+
 
   void _onInputChanged(String _) {
     if (_errorMessage != null) {
@@ -436,7 +418,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 40),
                     Center(
                       child: GestureDetector(
-                        onTap: _showBiometricBottomSheet,
+                        onTap: _handleBiometricLogin,
                         child: Icon(
                           Icons.fingerprint,
                           size: 44,
@@ -514,114 +496,4 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
-/// Bottom sheet that matches the biometric prompt UI from the design.
-class _BiometricPromptSheet extends StatelessWidget {
-  final VoidCallback onStartScan;
 
-  const _BiometricPromptSheet({required this.onStartScan});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE4E4E7),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Back arrow
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back, color: Color(0xFF18181B)),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // App icon
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.apartment_rounded,
-              color: Colors.white,
-              size: 32,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // App name
-          const Text(
-            'EstateOS',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF18181B),
-            ),
-          ),
-          const SizedBox(height: 32),
-          // Fingerprint icon
-          Icon(
-            Icons.fingerprint,
-            size: 80,
-            color: const Color(0xFF1E3A5F),
-          ),
-          const SizedBox(height: 20),
-          // Label
-          const Text(
-            'Biometric Authentication',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF18181B),
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Place your finger on the sensor',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF71717A),
-            ),
-          ),
-          const SizedBox(height: 32),
-          // Start Scan button
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: onStartScan,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A5F),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 0,
-                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              child: const Text('Start Scan'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

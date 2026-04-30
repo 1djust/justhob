@@ -43,6 +43,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     }
   }
 
+  void setUser(User? user) {
+    state = AsyncValue.data(user);
+  }
+
   Future<void> logout() async {
     try {
       await _repository.logout();
