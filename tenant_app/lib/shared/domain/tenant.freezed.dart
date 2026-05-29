@@ -12,8 +12,7 @@ part of 'tenant.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 Tenant _$TenantFromJson(Map<String, dynamic> json) {
   return _Tenant.fromJson(json);
@@ -44,15 +43,14 @@ abstract class $TenantCopyWith<$Res> {
   factory $TenantCopyWith(Tenant value, $Res Function(Tenant) then) =
       _$TenantCopyWithImpl<$Res, Tenant>;
   @useResult
-  $Res call({
-    String id,
-    String name,
-    String? email,
-    String? phone,
-    String workspaceId,
-    List<Lease>? leases,
-    List<MaintenanceRequest>? maintenanceRequests,
-  });
+  $Res call(
+      {String id,
+      String name,
+      String? email,
+      String? phone,
+      String workspaceId,
+      List<Lease>? leases,
+      List<MaintenanceRequest>? maintenanceRequests});
 }
 
 /// @nodoc
@@ -78,59 +76,54 @@ class _$TenantCopyWithImpl<$Res, $Val extends Tenant>
     Object? leases = freezed,
     Object? maintenanceRequests = freezed,
   }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            name: null == name
-                ? _value.name
-                : name // ignore: cast_nullable_to_non_nullable
-                      as String,
-            email: freezed == email
-                ? _value.email
-                : email // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            phone: freezed == phone
-                ? _value.phone
-                : phone // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            workspaceId: null == workspaceId
-                ? _value.workspaceId
-                : workspaceId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            leases: freezed == leases
-                ? _value.leases
-                : leases // ignore: cast_nullable_to_non_nullable
-                      as List<Lease>?,
-            maintenanceRequests: freezed == maintenanceRequests
-                ? _value.maintenanceRequests
-                : maintenanceRequests // ignore: cast_nullable_to_non_nullable
-                      as List<MaintenanceRequest>?,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: null == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      email: freezed == email
+          ? _value.email
+          : email // ignore: cast_nullable_to_non_nullable
+              as String?,
+      phone: freezed == phone
+          ? _value.phone
+          : phone // ignore: cast_nullable_to_non_nullable
+              as String?,
+      workspaceId: null == workspaceId
+          ? _value.workspaceId
+          : workspaceId // ignore: cast_nullable_to_non_nullable
+              as String,
+      leases: freezed == leases
+          ? _value.leases
+          : leases // ignore: cast_nullable_to_non_nullable
+              as List<Lease>?,
+      maintenanceRequests: freezed == maintenanceRequests
+          ? _value.maintenanceRequests
+          : maintenanceRequests // ignore: cast_nullable_to_non_nullable
+              as List<MaintenanceRequest>?,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$TenantImplCopyWith<$Res> implements $TenantCopyWith<$Res> {
   factory _$$TenantImplCopyWith(
-    _$TenantImpl value,
-    $Res Function(_$TenantImpl) then,
-  ) = __$$TenantImplCopyWithImpl<$Res>;
+          _$TenantImpl value, $Res Function(_$TenantImpl) then) =
+      __$$TenantImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String id,
-    String name,
-    String? email,
-    String? phone,
-    String workspaceId,
-    List<Lease>? leases,
-    List<MaintenanceRequest>? maintenanceRequests,
-  });
+  $Res call(
+      {String id,
+      String name,
+      String? email,
+      String? phone,
+      String workspaceId,
+      List<Lease>? leases,
+      List<MaintenanceRequest>? maintenanceRequests});
 }
 
 /// @nodoc
@@ -138,9 +131,8 @@ class __$$TenantImplCopyWithImpl<$Res>
     extends _$TenantCopyWithImpl<$Res, _$TenantImpl>
     implements _$$TenantImplCopyWith<$Res> {
   __$$TenantImplCopyWithImpl(
-    _$TenantImpl _value,
-    $Res Function(_$TenantImpl) _then,
-  ) : super(_value, _then);
+      _$TenantImpl _value, $Res Function(_$TenantImpl) _then)
+      : super(_value, _then);
 
   /// Create a copy of Tenant
   /// with the given fields replaced by the non-null parameter values.
@@ -155,54 +147,52 @@ class __$$TenantImplCopyWithImpl<$Res>
     Object? leases = freezed,
     Object? maintenanceRequests = freezed,
   }) {
-    return _then(
-      _$TenantImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        name: null == name
-            ? _value.name
-            : name // ignore: cast_nullable_to_non_nullable
-                  as String,
-        email: freezed == email
-            ? _value.email
-            : email // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        phone: freezed == phone
-            ? _value.phone
-            : phone // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        workspaceId: null == workspaceId
-            ? _value.workspaceId
-            : workspaceId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        leases: freezed == leases
-            ? _value._leases
-            : leases // ignore: cast_nullable_to_non_nullable
-                  as List<Lease>?,
-        maintenanceRequests: freezed == maintenanceRequests
-            ? _value._maintenanceRequests
-            : maintenanceRequests // ignore: cast_nullable_to_non_nullable
-                  as List<MaintenanceRequest>?,
-      ),
-    );
+    return _then(_$TenantImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: null == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      email: freezed == email
+          ? _value.email
+          : email // ignore: cast_nullable_to_non_nullable
+              as String?,
+      phone: freezed == phone
+          ? _value.phone
+          : phone // ignore: cast_nullable_to_non_nullable
+              as String?,
+      workspaceId: null == workspaceId
+          ? _value.workspaceId
+          : workspaceId // ignore: cast_nullable_to_non_nullable
+              as String,
+      leases: freezed == leases
+          ? _value._leases
+          : leases // ignore: cast_nullable_to_non_nullable
+              as List<Lease>?,
+      maintenanceRequests: freezed == maintenanceRequests
+          ? _value._maintenanceRequests
+          : maintenanceRequests // ignore: cast_nullable_to_non_nullable
+              as List<MaintenanceRequest>?,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$TenantImpl implements _Tenant {
-  const _$TenantImpl({
-    required this.id,
-    required this.name,
-    this.email,
-    this.phone,
-    required this.workspaceId,
-    final List<Lease>? leases,
-    final List<MaintenanceRequest>? maintenanceRequests,
-  }) : _leases = leases,
-       _maintenanceRequests = maintenanceRequests;
+  const _$TenantImpl(
+      {required this.id,
+      required this.name,
+      this.email,
+      this.phone,
+      required this.workspaceId,
+      final List<Lease>? leases,
+      final List<MaintenanceRequest>? maintenanceRequests})
+      : _leases = leases,
+        _maintenanceRequests = maintenanceRequests;
 
   factory _$TenantImpl.fromJson(Map<String, dynamic> json) =>
       _$$TenantImplFromJson(json);
@@ -255,24 +245,21 @@ class _$TenantImpl implements _Tenant {
             (identical(other.workspaceId, workspaceId) ||
                 other.workspaceId == workspaceId) &&
             const DeepCollectionEquality().equals(other._leases, _leases) &&
-            const DeepCollectionEquality().equals(
-              other._maintenanceRequests,
-              _maintenanceRequests,
-            ));
+            const DeepCollectionEquality()
+                .equals(other._maintenanceRequests, _maintenanceRequests));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
-    runtimeType,
-    id,
-    name,
-    email,
-    phone,
-    workspaceId,
-    const DeepCollectionEquality().hash(_leases),
-    const DeepCollectionEquality().hash(_maintenanceRequests),
-  );
+      runtimeType,
+      id,
+      name,
+      email,
+      phone,
+      workspaceId,
+      const DeepCollectionEquality().hash(_leases),
+      const DeepCollectionEquality().hash(_maintenanceRequests));
 
   /// Create a copy of Tenant
   /// with the given fields replaced by the non-null parameter values.
@@ -284,20 +271,21 @@ class _$TenantImpl implements _Tenant {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$TenantImplToJson(this);
+    return _$$TenantImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _Tenant implements Tenant {
-  const factory _Tenant({
-    required final String id,
-    required final String name,
-    final String? email,
-    final String? phone,
-    required final String workspaceId,
-    final List<Lease>? leases,
-    final List<MaintenanceRequest>? maintenanceRequests,
-  }) = _$TenantImpl;
+  const factory _Tenant(
+      {required final String id,
+      required final String name,
+      final String? email,
+      final String? phone,
+      required final String workspaceId,
+      final List<Lease>? leases,
+      final List<MaintenanceRequest>? maintenanceRequests}) = _$TenantImpl;
 
   factory _Tenant.fromJson(Map<String, dynamic> json) = _$TenantImpl.fromJson;
 

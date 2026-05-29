@@ -12,8 +12,7 @@ part of 'lease.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 Lease _$LeaseFromJson(Map<String, dynamic> json) {
   return _Lease.fromJson(json);
@@ -30,6 +29,8 @@ mixin _$Lease {
   String get status => throw _privateConstructorUsedError;
   Property? get property => throw _privateConstructorUsedError;
   PaymentInfo? get paymentInfo => throw _privateConstructorUsedError;
+  List<LeaseRenewalOffer>? get renewalOffers =>
+      throw _privateConstructorUsedError;
 
   /// Serializes this Lease to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -45,17 +46,17 @@ abstract class $LeaseCopyWith<$Res> {
   factory $LeaseCopyWith(Lease value, $Res Function(Lease) then) =
       _$LeaseCopyWithImpl<$Res, Lease>;
   @useResult
-  $Res call({
-    String id,
-    String tenantId,
-    String propertyId,
-    DateTime startDate,
-    DateTime? endDate,
-    double yearlyRent,
-    String status,
-    Property? property,
-    PaymentInfo? paymentInfo,
-  });
+  $Res call(
+      {String id,
+      String tenantId,
+      String propertyId,
+      DateTime startDate,
+      DateTime? endDate,
+      double yearlyRent,
+      String status,
+      Property? property,
+      PaymentInfo? paymentInfo,
+      List<LeaseRenewalOffer>? renewalOffers});
 
   $PropertyCopyWith<$Res>? get property;
   $PaymentInfoCopyWith<$Res>? get paymentInfo;
@@ -85,48 +86,50 @@ class _$LeaseCopyWithImpl<$Res, $Val extends Lease>
     Object? status = null,
     Object? property = freezed,
     Object? paymentInfo = freezed,
+    Object? renewalOffers = freezed,
   }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            tenantId: null == tenantId
-                ? _value.tenantId
-                : tenantId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            propertyId: null == propertyId
-                ? _value.propertyId
-                : propertyId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            startDate: null == startDate
-                ? _value.startDate
-                : startDate // ignore: cast_nullable_to_non_nullable
-                      as DateTime,
-            endDate: freezed == endDate
-                ? _value.endDate
-                : endDate // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            yearlyRent: null == yearlyRent
-                ? _value.yearlyRent
-                : yearlyRent // ignore: cast_nullable_to_non_nullable
-                      as double,
-            status: null == status
-                ? _value.status
-                : status // ignore: cast_nullable_to_non_nullable
-                      as String,
-            property: freezed == property
-                ? _value.property
-                : property // ignore: cast_nullable_to_non_nullable
-                      as Property?,
-            paymentInfo: freezed == paymentInfo
-                ? _value.paymentInfo
-                : paymentInfo // ignore: cast_nullable_to_non_nullable
-                      as PaymentInfo?,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      tenantId: null == tenantId
+          ? _value.tenantId
+          : tenantId // ignore: cast_nullable_to_non_nullable
+              as String,
+      propertyId: null == propertyId
+          ? _value.propertyId
+          : propertyId // ignore: cast_nullable_to_non_nullable
+              as String,
+      startDate: null == startDate
+          ? _value.startDate
+          : startDate // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      endDate: freezed == endDate
+          ? _value.endDate
+          : endDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      yearlyRent: null == yearlyRent
+          ? _value.yearlyRent
+          : yearlyRent // ignore: cast_nullable_to_non_nullable
+              as double,
+      status: null == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String,
+      property: freezed == property
+          ? _value.property
+          : property // ignore: cast_nullable_to_non_nullable
+              as Property?,
+      paymentInfo: freezed == paymentInfo
+          ? _value.paymentInfo
+          : paymentInfo // ignore: cast_nullable_to_non_nullable
+              as PaymentInfo?,
+      renewalOffers: freezed == renewalOffers
+          ? _value.renewalOffers
+          : renewalOffers // ignore: cast_nullable_to_non_nullable
+              as List<LeaseRenewalOffer>?,
+    ) as $Val);
   }
 
   /// Create a copy of Lease
@@ -161,22 +164,21 @@ class _$LeaseCopyWithImpl<$Res, $Val extends Lease>
 /// @nodoc
 abstract class _$$LeaseImplCopyWith<$Res> implements $LeaseCopyWith<$Res> {
   factory _$$LeaseImplCopyWith(
-    _$LeaseImpl value,
-    $Res Function(_$LeaseImpl) then,
-  ) = __$$LeaseImplCopyWithImpl<$Res>;
+          _$LeaseImpl value, $Res Function(_$LeaseImpl) then) =
+      __$$LeaseImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String id,
-    String tenantId,
-    String propertyId,
-    DateTime startDate,
-    DateTime? endDate,
-    double yearlyRent,
-    String status,
-    Property? property,
-    PaymentInfo? paymentInfo,
-  });
+  $Res call(
+      {String id,
+      String tenantId,
+      String propertyId,
+      DateTime startDate,
+      DateTime? endDate,
+      double yearlyRent,
+      String status,
+      Property? property,
+      PaymentInfo? paymentInfo,
+      List<LeaseRenewalOffer>? renewalOffers});
 
   @override
   $PropertyCopyWith<$Res>? get property;
@@ -189,9 +191,8 @@ class __$$LeaseImplCopyWithImpl<$Res>
     extends _$LeaseCopyWithImpl<$Res, _$LeaseImpl>
     implements _$$LeaseImplCopyWith<$Res> {
   __$$LeaseImplCopyWithImpl(
-    _$LeaseImpl _value,
-    $Res Function(_$LeaseImpl) _then,
-  ) : super(_value, _then);
+      _$LeaseImpl _value, $Res Function(_$LeaseImpl) _then)
+      : super(_value, _then);
 
   /// Create a copy of Lease
   /// with the given fields replaced by the non-null parameter values.
@@ -207,64 +208,68 @@ class __$$LeaseImplCopyWithImpl<$Res>
     Object? status = null,
     Object? property = freezed,
     Object? paymentInfo = freezed,
+    Object? renewalOffers = freezed,
   }) {
-    return _then(
-      _$LeaseImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        tenantId: null == tenantId
-            ? _value.tenantId
-            : tenantId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        propertyId: null == propertyId
-            ? _value.propertyId
-            : propertyId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        startDate: null == startDate
-            ? _value.startDate
-            : startDate // ignore: cast_nullable_to_non_nullable
-                  as DateTime,
-        endDate: freezed == endDate
-            ? _value.endDate
-            : endDate // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        yearlyRent: null == yearlyRent
-            ? _value.yearlyRent
-            : yearlyRent // ignore: cast_nullable_to_non_nullable
-                  as double,
-        status: null == status
-            ? _value.status
-            : status // ignore: cast_nullable_to_non_nullable
-                  as String,
-        property: freezed == property
-            ? _value.property
-            : property // ignore: cast_nullable_to_non_nullable
-                  as Property?,
-        paymentInfo: freezed == paymentInfo
-            ? _value.paymentInfo
-            : paymentInfo // ignore: cast_nullable_to_non_nullable
-                  as PaymentInfo?,
-      ),
-    );
+    return _then(_$LeaseImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      tenantId: null == tenantId
+          ? _value.tenantId
+          : tenantId // ignore: cast_nullable_to_non_nullable
+              as String,
+      propertyId: null == propertyId
+          ? _value.propertyId
+          : propertyId // ignore: cast_nullable_to_non_nullable
+              as String,
+      startDate: null == startDate
+          ? _value.startDate
+          : startDate // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      endDate: freezed == endDate
+          ? _value.endDate
+          : endDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      yearlyRent: null == yearlyRent
+          ? _value.yearlyRent
+          : yearlyRent // ignore: cast_nullable_to_non_nullable
+              as double,
+      status: null == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String,
+      property: freezed == property
+          ? _value.property
+          : property // ignore: cast_nullable_to_non_nullable
+              as Property?,
+      paymentInfo: freezed == paymentInfo
+          ? _value.paymentInfo
+          : paymentInfo // ignore: cast_nullable_to_non_nullable
+              as PaymentInfo?,
+      renewalOffers: freezed == renewalOffers
+          ? _value._renewalOffers
+          : renewalOffers // ignore: cast_nullable_to_non_nullable
+              as List<LeaseRenewalOffer>?,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$LeaseImpl implements _Lease {
-  const _$LeaseImpl({
-    required this.id,
-    required this.tenantId,
-    required this.propertyId,
-    required this.startDate,
-    this.endDate,
-    required this.yearlyRent,
-    required this.status,
-    this.property,
-    this.paymentInfo,
-  });
+  const _$LeaseImpl(
+      {required this.id,
+      required this.tenantId,
+      required this.propertyId,
+      required this.startDate,
+      this.endDate,
+      required this.yearlyRent,
+      required this.status,
+      this.property,
+      this.paymentInfo,
+      final List<LeaseRenewalOffer>? renewalOffers})
+      : _renewalOffers = renewalOffers;
 
   factory _$LeaseImpl.fromJson(Map<String, dynamic> json) =>
       _$$LeaseImplFromJson(json);
@@ -287,10 +292,19 @@ class _$LeaseImpl implements _Lease {
   final Property? property;
   @override
   final PaymentInfo? paymentInfo;
+  final List<LeaseRenewalOffer>? _renewalOffers;
+  @override
+  List<LeaseRenewalOffer>? get renewalOffers {
+    final value = _renewalOffers;
+    if (value == null) return null;
+    if (_renewalOffers is EqualUnmodifiableListView) return _renewalOffers;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
 
   @override
   String toString() {
-    return 'Lease(id: $id, tenantId: $tenantId, propertyId: $propertyId, startDate: $startDate, endDate: $endDate, yearlyRent: $yearlyRent, status: $status, property: $property, paymentInfo: $paymentInfo)';
+    return 'Lease(id: $id, tenantId: $tenantId, propertyId: $propertyId, startDate: $startDate, endDate: $endDate, yearlyRent: $yearlyRent, status: $status, property: $property, paymentInfo: $paymentInfo, renewalOffers: $renewalOffers)';
   }
 
   @override
@@ -312,23 +326,25 @@ class _$LeaseImpl implements _Lease {
             (identical(other.property, property) ||
                 other.property == property) &&
             (identical(other.paymentInfo, paymentInfo) ||
-                other.paymentInfo == paymentInfo));
+                other.paymentInfo == paymentInfo) &&
+            const DeepCollectionEquality()
+                .equals(other._renewalOffers, _renewalOffers));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
-    runtimeType,
-    id,
-    tenantId,
-    propertyId,
-    startDate,
-    endDate,
-    yearlyRent,
-    status,
-    property,
-    paymentInfo,
-  );
+      runtimeType,
+      id,
+      tenantId,
+      propertyId,
+      startDate,
+      endDate,
+      yearlyRent,
+      status,
+      property,
+      paymentInfo,
+      const DeepCollectionEquality().hash(_renewalOffers));
 
   /// Create a copy of Lease
   /// with the given fields replaced by the non-null parameter values.
@@ -340,22 +356,24 @@ class _$LeaseImpl implements _Lease {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$LeaseImplToJson(this);
+    return _$$LeaseImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _Lease implements Lease {
-  const factory _Lease({
-    required final String id,
-    required final String tenantId,
-    required final String propertyId,
-    required final DateTime startDate,
-    final DateTime? endDate,
-    required final double yearlyRent,
-    required final String status,
-    final Property? property,
-    final PaymentInfo? paymentInfo,
-  }) = _$LeaseImpl;
+  const factory _Lease(
+      {required final String id,
+      required final String tenantId,
+      required final String propertyId,
+      required final DateTime startDate,
+      final DateTime? endDate,
+      required final double yearlyRent,
+      required final String status,
+      final Property? property,
+      final PaymentInfo? paymentInfo,
+      final List<LeaseRenewalOffer>? renewalOffers}) = _$LeaseImpl;
 
   factory _Lease.fromJson(Map<String, dynamic> json) = _$LeaseImpl.fromJson;
 
@@ -377,6 +395,8 @@ abstract class _Lease implements Lease {
   Property? get property;
   @override
   PaymentInfo? get paymentInfo;
+  @override
+  List<LeaseRenewalOffer>? get renewalOffers;
 
   /// Create a copy of Lease
   /// with the given fields replaced by the non-null parameter values.

@@ -1,4 +1,5 @@
 #!/bin/bash
+# For full development documentation, see: DEVELOPMENT.md
 
 # Always execute with a clean path
 export PATH="/home/djust/.local/share/fnm:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

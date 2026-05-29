@@ -8,7 +8,9 @@ import {
   Wrench, 
   TrendingUp, 
   ArrowUpRight,
-  ShieldCheck
+  ShieldCheck,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { RevenueChart } from './RevenueChart';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
@@ -25,6 +27,8 @@ interface StatsData {
     totalTenants: number;
     rentCollected: number;
     pendingMaintenance: number;
+    overduePaymentsCount?: number;
+    expiringLeasesCount?: number;
   };
   chartData: { name: string; revenue: number }[];
 }
@@ -66,11 +70,25 @@ export function DashboardStats({ workspaceId, plan }: DashboardStatsProps) {
       socket.on('PAYMENT_UPDATED', handleUpdate);
       socket.on('PAYMENT_SUBMITTED', handleUpdate);
       socket.on('MAINTENANCE_CREATED', handleUpdate);
+      socket.on('PROPERTY_CREATED', handleUpdate);
+      socket.on('PROPERTY_DELETED', handleUpdate);
+      socket.on('TENANT_CREATED', handleUpdate);
+      socket.on('TENANT_DELETED', handleUpdate);
+      socket.on('LEASE_UPDATED', handleUpdate);
+      socket.on('LEASE_RENEWED', handleUpdate);
+      socket.on('LEASE_RENEWAL_REJECTED', handleUpdate);
 
       return () => {
         socket.off('PAYMENT_UPDATED', handleUpdate);
         socket.off('PAYMENT_SUBMITTED', handleUpdate);
         socket.off('MAINTENANCE_CREATED', handleUpdate);
+        socket.off('PROPERTY_CREATED', handleUpdate);
+        socket.off('PROPERTY_DELETED', handleUpdate);
+        socket.off('TENANT_CREATED', handleUpdate);
+        socket.off('TENANT_DELETED', handleUpdate);
+        socket.off('LEASE_UPDATED', handleUpdate);
+        socket.off('LEASE_RENEWED', handleUpdate);
+        socket.off('LEASE_RENEWAL_REJECTED', handleUpdate);
       };
     }
   }, [socket, fetchStats]);
@@ -102,8 +120,8 @@ export function DashboardStats({ workspaceId, plan }: DashboardStatsProps) {
       title: 'Total Tenants',
       value: totalTenants,
       icon: Users,
-      color: 'text-purple-500',
-      bg: 'bg-purple-500/10',
+      color: 'text-teal-500',
+      bg: 'bg-teal-500/10',
       trend: 'Active'
     },
     {
@@ -122,12 +140,30 @@ export function DashboardStats({ workspaceId, plan }: DashboardStatsProps) {
       bg: 'bg-amber-500/10',
       trend: 'Urgent',
       urgent: pendingMaintenance > 0
+    },
+    {
+      title: 'Overdue Payments',
+      value: stats.stats.overduePaymentsCount || 0,
+      icon: AlertCircle,
+      color: 'text-red-500',
+      bg: 'bg-red-500/10',
+      trend: 'Action needed',
+      urgent: (stats.stats.overduePaymentsCount || 0) > 0
+    },
+    {
+      title: 'Expiring Leases',
+      value: stats.stats.expiringLeasesCount || 0,
+      icon: Clock,
+      color: 'text-orange-500',
+      bg: 'bg-orange-500/10',
+      trend: 'Next 30 days',
+      urgent: (stats.stats.expiringLeasesCount || 0) > 0
     }
   ];
 
   return (
-    <div className="space-y-10">
-      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-10" aria-label="Dashboard Stats Form">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
         {statCards.map((card, i) => (
           <div 
             key={i} 

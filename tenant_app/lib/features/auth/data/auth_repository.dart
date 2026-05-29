@@ -22,6 +22,7 @@ class AuthRepository {
         
         if (token != null) {
           try {
+            _apiClient.inMemoryToken = token;
             await _apiClient.storage.write(key: 'access_token', value: token);
           } catch (storageError) {
             debugPrint('[AuthRepository] Failed to write access_token to storage: $storageError');
@@ -41,8 +42,8 @@ class AuthRepository {
       } else if (e.response != null) {
         dynamic data = e.response?.data;
         if (data is String) {
-          try { data = jsonDecode(data); } catch (_) {
-      debugPrint('Caught error: $_');}
+          try { data = jsonDecode(data); } catch (e) {
+      debugPrint('Caught error: $e');}
         }
         if (data is Map) {
           final error = data['error'];
@@ -67,7 +68,12 @@ class AuthRepository {
   }
 
   Future<User?> getMe() async {
-    final token = await _apiClient.storage.read(key: 'access_token');
+    String? token = _apiClient.inMemoryToken;
+    try {
+      token ??= await _apiClient.storage.read(key: 'access_token');
+    } catch (e) {
+      debugPrint('[AuthRepository] Failed to read token from storage in getMe: $e');
+    }
     if (token == null) return null;
 
     try {
@@ -89,6 +95,7 @@ class AuthRepository {
     } catch (e) {
       debugPrint('[AuthRepository] logout API error: $e');
     } finally {
+      _apiClient.inMemoryToken = null;
       await _apiClient.cookieJar.deleteAll();
       await _apiClient.storage.delete(key: 'access_token');
     }
@@ -101,6 +108,7 @@ class AuthRepository {
       });
       if (response.statusCode == 200 && response.data['access_token'] != null) {
         try {
+          _apiClient.inMemoryToken = response.data['access_token'];
           await _apiClient.storage.write(key: 'access_token', value: response.data['access_token']);
         } catch (e) {
           debugPrint('[AuthRepository] Failed to store new token after password change: $e');
@@ -122,8 +130,8 @@ class AuthRepository {
       } else if (e.response != null) {
         dynamic data = e.response?.data;
         if (data is String) {
-          try { data = jsonDecode(data); } catch (_) {
-      debugPrint('Caught error: $_');}
+          try { data = jsonDecode(data); } catch (e) {
+      debugPrint('Caught error: $e');}
         }
         if (data is Map) {
           final error = data['error'];

@@ -12,8 +12,7 @@ part of 'payment.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 Payment _$PaymentFromJson(Map<String, dynamic> json) {
   return _Payment.fromJson(json);
@@ -31,6 +30,9 @@ mixin _$Payment {
   String? get proofUrl => throw _privateConstructorUsedError;
   String? get rejectionReason => throw _privateConstructorUsedError;
   String? get receiptId => throw _privateConstructorUsedError;
+  double? get amountPaid => throw _privateConstructorUsedError;
+  DateTime? get promiseDate => throw _privateConstructorUsedError;
+  DateTime? get gracePeriodEnd => throw _privateConstructorUsedError;
 
   /// Serializes this Payment to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -46,18 +48,20 @@ abstract class $PaymentCopyWith<$Res> {
   factory $PaymentCopyWith(Payment value, $Res Function(Payment) then) =
       _$PaymentCopyWithImpl<$Res, Payment>;
   @useResult
-  $Res call({
-    String id,
-    double amount,
-    DateTime dueDate,
-    DateTime? paidDate,
-    String leaseId,
-    String status,
-    String? note,
-    String? proofUrl,
-    String? rejectionReason,
-    String? receiptId,
-  });
+  $Res call(
+      {String id,
+      double amount,
+      DateTime dueDate,
+      DateTime? paidDate,
+      String leaseId,
+      String status,
+      String? note,
+      String? proofUrl,
+      String? rejectionReason,
+      String? receiptId,
+      double? amountPaid,
+      DateTime? promiseDate,
+      DateTime? gracePeriodEnd});
 }
 
 /// @nodoc
@@ -85,75 +89,88 @@ class _$PaymentCopyWithImpl<$Res, $Val extends Payment>
     Object? proofUrl = freezed,
     Object? rejectionReason = freezed,
     Object? receiptId = freezed,
+    Object? amountPaid = freezed,
+    Object? promiseDate = freezed,
+    Object? gracePeriodEnd = freezed,
   }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            amount: null == amount
-                ? _value.amount
-                : amount // ignore: cast_nullable_to_non_nullable
-                      as double,
-            dueDate: null == dueDate
-                ? _value.dueDate
-                : dueDate // ignore: cast_nullable_to_non_nullable
-                      as DateTime,
-            paidDate: freezed == paidDate
-                ? _value.paidDate
-                : paidDate // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            leaseId: null == leaseId
-                ? _value.leaseId
-                : leaseId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            status: null == status
-                ? _value.status
-                : status // ignore: cast_nullable_to_non_nullable
-                      as String,
-            note: freezed == note
-                ? _value.note
-                : note // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            proofUrl: freezed == proofUrl
-                ? _value.proofUrl
-                : proofUrl // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            rejectionReason: freezed == rejectionReason
-                ? _value.rejectionReason
-                : rejectionReason // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            receiptId: freezed == receiptId
-                ? _value.receiptId
-                : receiptId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      amount: null == amount
+          ? _value.amount
+          : amount // ignore: cast_nullable_to_non_nullable
+              as double,
+      dueDate: null == dueDate
+          ? _value.dueDate
+          : dueDate // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      paidDate: freezed == paidDate
+          ? _value.paidDate
+          : paidDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      leaseId: null == leaseId
+          ? _value.leaseId
+          : leaseId // ignore: cast_nullable_to_non_nullable
+              as String,
+      status: null == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String,
+      note: freezed == note
+          ? _value.note
+          : note // ignore: cast_nullable_to_non_nullable
+              as String?,
+      proofUrl: freezed == proofUrl
+          ? _value.proofUrl
+          : proofUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      rejectionReason: freezed == rejectionReason
+          ? _value.rejectionReason
+          : rejectionReason // ignore: cast_nullable_to_non_nullable
+              as String?,
+      receiptId: freezed == receiptId
+          ? _value.receiptId
+          : receiptId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      amountPaid: freezed == amountPaid
+          ? _value.amountPaid
+          : amountPaid // ignore: cast_nullable_to_non_nullable
+              as double?,
+      promiseDate: freezed == promiseDate
+          ? _value.promiseDate
+          : promiseDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      gracePeriodEnd: freezed == gracePeriodEnd
+          ? _value.gracePeriodEnd
+          : gracePeriodEnd // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$PaymentImplCopyWith<$Res> implements $PaymentCopyWith<$Res> {
   factory _$$PaymentImplCopyWith(
-    _$PaymentImpl value,
-    $Res Function(_$PaymentImpl) then,
-  ) = __$$PaymentImplCopyWithImpl<$Res>;
+          _$PaymentImpl value, $Res Function(_$PaymentImpl) then) =
+      __$$PaymentImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String id,
-    double amount,
-    DateTime dueDate,
-    DateTime? paidDate,
-    String leaseId,
-    String status,
-    String? note,
-    String? proofUrl,
-    String? rejectionReason,
-    String? receiptId,
-  });
+  $Res call(
+      {String id,
+      double amount,
+      DateTime dueDate,
+      DateTime? paidDate,
+      String leaseId,
+      String status,
+      String? note,
+      String? proofUrl,
+      String? rejectionReason,
+      String? receiptId,
+      double? amountPaid,
+      DateTime? promiseDate,
+      DateTime? gracePeriodEnd});
 }
 
 /// @nodoc
@@ -161,9 +178,8 @@ class __$$PaymentImplCopyWithImpl<$Res>
     extends _$PaymentCopyWithImpl<$Res, _$PaymentImpl>
     implements _$$PaymentImplCopyWith<$Res> {
   __$$PaymentImplCopyWithImpl(
-    _$PaymentImpl _value,
-    $Res Function(_$PaymentImpl) _then,
-  ) : super(_value, _then);
+      _$PaymentImpl _value, $Res Function(_$PaymentImpl) _then)
+      : super(_value, _then);
 
   /// Create a copy of Payment
   /// with the given fields replaced by the non-null parameter values.
@@ -180,69 +196,84 @@ class __$$PaymentImplCopyWithImpl<$Res>
     Object? proofUrl = freezed,
     Object? rejectionReason = freezed,
     Object? receiptId = freezed,
+    Object? amountPaid = freezed,
+    Object? promiseDate = freezed,
+    Object? gracePeriodEnd = freezed,
   }) {
-    return _then(
-      _$PaymentImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        amount: null == amount
-            ? _value.amount
-            : amount // ignore: cast_nullable_to_non_nullable
-                  as double,
-        dueDate: null == dueDate
-            ? _value.dueDate
-            : dueDate // ignore: cast_nullable_to_non_nullable
-                  as DateTime,
-        paidDate: freezed == paidDate
-            ? _value.paidDate
-            : paidDate // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        leaseId: null == leaseId
-            ? _value.leaseId
-            : leaseId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        status: null == status
-            ? _value.status
-            : status // ignore: cast_nullable_to_non_nullable
-                  as String,
-        note: freezed == note
-            ? _value.note
-            : note // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        proofUrl: freezed == proofUrl
-            ? _value.proofUrl
-            : proofUrl // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        rejectionReason: freezed == rejectionReason
-            ? _value.rejectionReason
-            : rejectionReason // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        receiptId: freezed == receiptId
-            ? _value.receiptId
-            : receiptId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-      ),
-    );
+    return _then(_$PaymentImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      amount: null == amount
+          ? _value.amount
+          : amount // ignore: cast_nullable_to_non_nullable
+              as double,
+      dueDate: null == dueDate
+          ? _value.dueDate
+          : dueDate // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      paidDate: freezed == paidDate
+          ? _value.paidDate
+          : paidDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      leaseId: null == leaseId
+          ? _value.leaseId
+          : leaseId // ignore: cast_nullable_to_non_nullable
+              as String,
+      status: null == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String,
+      note: freezed == note
+          ? _value.note
+          : note // ignore: cast_nullable_to_non_nullable
+              as String?,
+      proofUrl: freezed == proofUrl
+          ? _value.proofUrl
+          : proofUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      rejectionReason: freezed == rejectionReason
+          ? _value.rejectionReason
+          : rejectionReason // ignore: cast_nullable_to_non_nullable
+              as String?,
+      receiptId: freezed == receiptId
+          ? _value.receiptId
+          : receiptId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      amountPaid: freezed == amountPaid
+          ? _value.amountPaid
+          : amountPaid // ignore: cast_nullable_to_non_nullable
+              as double?,
+      promiseDate: freezed == promiseDate
+          ? _value.promiseDate
+          : promiseDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      gracePeriodEnd: freezed == gracePeriodEnd
+          ? _value.gracePeriodEnd
+          : gracePeriodEnd // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$PaymentImpl implements _Payment {
-  const _$PaymentImpl({
-    required this.id,
-    required this.amount,
-    required this.dueDate,
-    this.paidDate,
-    required this.leaseId,
-    required this.status,
-    this.note,
-    this.proofUrl,
-    this.rejectionReason,
-    this.receiptId,
-  });
+  const _$PaymentImpl(
+      {required this.id,
+      required this.amount,
+      required this.dueDate,
+      this.paidDate,
+      required this.leaseId,
+      required this.status,
+      this.note,
+      this.proofUrl,
+      this.rejectionReason,
+      this.receiptId,
+      this.amountPaid,
+      this.promiseDate,
+      this.gracePeriodEnd});
 
   factory _$PaymentImpl.fromJson(Map<String, dynamic> json) =>
       _$$PaymentImplFromJson(json);
@@ -267,10 +298,16 @@ class _$PaymentImpl implements _Payment {
   final String? rejectionReason;
   @override
   final String? receiptId;
+  @override
+  final double? amountPaid;
+  @override
+  final DateTime? promiseDate;
+  @override
+  final DateTime? gracePeriodEnd;
 
   @override
   String toString() {
-    return 'Payment(id: $id, amount: $amount, dueDate: $dueDate, paidDate: $paidDate, leaseId: $leaseId, status: $status, note: $note, proofUrl: $proofUrl, rejectionReason: $rejectionReason, receiptId: $receiptId)';
+    return 'Payment(id: $id, amount: $amount, dueDate: $dueDate, paidDate: $paidDate, leaseId: $leaseId, status: $status, note: $note, proofUrl: $proofUrl, rejectionReason: $rejectionReason, receiptId: $receiptId, amountPaid: $amountPaid, promiseDate: $promiseDate, gracePeriodEnd: $gracePeriodEnd)';
   }
 
   @override
@@ -291,24 +328,32 @@ class _$PaymentImpl implements _Payment {
             (identical(other.rejectionReason, rejectionReason) ||
                 other.rejectionReason == rejectionReason) &&
             (identical(other.receiptId, receiptId) ||
-                other.receiptId == receiptId));
+                other.receiptId == receiptId) &&
+            (identical(other.amountPaid, amountPaid) ||
+                other.amountPaid == amountPaid) &&
+            (identical(other.promiseDate, promiseDate) ||
+                other.promiseDate == promiseDate) &&
+            (identical(other.gracePeriodEnd, gracePeriodEnd) ||
+                other.gracePeriodEnd == gracePeriodEnd));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
-    runtimeType,
-    id,
-    amount,
-    dueDate,
-    paidDate,
-    leaseId,
-    status,
-    note,
-    proofUrl,
-    rejectionReason,
-    receiptId,
-  );
+      runtimeType,
+      id,
+      amount,
+      dueDate,
+      paidDate,
+      leaseId,
+      status,
+      note,
+      proofUrl,
+      rejectionReason,
+      receiptId,
+      amountPaid,
+      promiseDate,
+      gracePeriodEnd);
 
   /// Create a copy of Payment
   /// with the given fields replaced by the non-null parameter values.
@@ -320,23 +365,27 @@ class _$PaymentImpl implements _Payment {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$PaymentImplToJson(this);
+    return _$$PaymentImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _Payment implements Payment {
-  const factory _Payment({
-    required final String id,
-    required final double amount,
-    required final DateTime dueDate,
-    final DateTime? paidDate,
-    required final String leaseId,
-    required final String status,
-    final String? note,
-    final String? proofUrl,
-    final String? rejectionReason,
-    final String? receiptId,
-  }) = _$PaymentImpl;
+  const factory _Payment(
+      {required final String id,
+      required final double amount,
+      required final DateTime dueDate,
+      final DateTime? paidDate,
+      required final String leaseId,
+      required final String status,
+      final String? note,
+      final String? proofUrl,
+      final String? rejectionReason,
+      final String? receiptId,
+      final double? amountPaid,
+      final DateTime? promiseDate,
+      final DateTime? gracePeriodEnd}) = _$PaymentImpl;
 
   factory _Payment.fromJson(Map<String, dynamic> json) = _$PaymentImpl.fromJson;
 
@@ -360,6 +409,12 @@ abstract class _Payment implements Payment {
   String? get rejectionReason;
   @override
   String? get receiptId;
+  @override
+  double? get amountPaid;
+  @override
+  DateTime? get promiseDate;
+  @override
+  DateTime? get gracePeriodEnd;
 
   /// Create a copy of Payment
   /// with the given fields replaced by the non-null parameter values.

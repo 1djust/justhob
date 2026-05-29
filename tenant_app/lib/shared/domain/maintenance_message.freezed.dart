@@ -12,8 +12,7 @@ part of 'maintenance_message.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 MaintenanceMessage _$MaintenanceMessageFromJson(Map<String, dynamic> json) {
   return _MaintenanceMessage.fromJson(json);
@@ -42,19 +41,17 @@ mixin _$MaintenanceMessage {
 /// @nodoc
 abstract class $MaintenanceMessageCopyWith<$Res> {
   factory $MaintenanceMessageCopyWith(
-    MaintenanceMessage value,
-    $Res Function(MaintenanceMessage) then,
-  ) = _$MaintenanceMessageCopyWithImpl<$Res, MaintenanceMessage>;
+          MaintenanceMessage value, $Res Function(MaintenanceMessage) then) =
+      _$MaintenanceMessageCopyWithImpl<$Res, MaintenanceMessage>;
   @useResult
-  $Res call({
-    String id,
-    String content,
-    String type,
-    String requestId,
-    String? senderId,
-    Map<String, dynamic>? sender,
-    DateTime createdAt,
-  });
+  $Res call(
+      {String id,
+      String content,
+      String type,
+      String requestId,
+      String? senderId,
+      Map<String, dynamic>? sender,
+      DateTime createdAt});
 }
 
 /// @nodoc
@@ -80,70 +77,64 @@ class _$MaintenanceMessageCopyWithImpl<$Res, $Val extends MaintenanceMessage>
     Object? sender = freezed,
     Object? createdAt = null,
   }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            content: null == content
-                ? _value.content
-                : content // ignore: cast_nullable_to_non_nullable
-                      as String,
-            type: null == type
-                ? _value.type
-                : type // ignore: cast_nullable_to_non_nullable
-                      as String,
-            requestId: null == requestId
-                ? _value.requestId
-                : requestId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            senderId: freezed == senderId
-                ? _value.senderId
-                : senderId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            sender: freezed == sender
-                ? _value.sender
-                : sender // ignore: cast_nullable_to_non_nullable
-                      as Map<String, dynamic>?,
-            createdAt: null == createdAt
-                ? _value.createdAt
-                : createdAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      content: null == content
+          ? _value.content
+          : content // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
+      requestId: null == requestId
+          ? _value.requestId
+          : requestId // ignore: cast_nullable_to_non_nullable
+              as String,
+      senderId: freezed == senderId
+          ? _value.senderId
+          : senderId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sender: freezed == sender
+          ? _value.sender
+          : sender // ignore: cast_nullable_to_non_nullable
+              as Map<String, dynamic>?,
+      createdAt: null == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$MaintenanceMessageImplCopyWith<$Res>
     implements $MaintenanceMessageCopyWith<$Res> {
-  factory _$$MaintenanceMessageImplCopyWith(
-    _$MaintenanceMessageImpl value,
-    $Res Function(_$MaintenanceMessageImpl) then,
-  ) = __$$MaintenanceMessageImplCopyWithImpl<$Res>;
+  factory _$$MaintenanceMessageImplCopyWith(_$MaintenanceMessageImpl value,
+          $Res Function(_$MaintenanceMessageImpl) then) =
+      __$$MaintenanceMessageImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String id,
-    String content,
-    String type,
-    String requestId,
-    String? senderId,
-    Map<String, dynamic>? sender,
-    DateTime createdAt,
-  });
+  $Res call(
+      {String id,
+      String content,
+      String type,
+      String requestId,
+      String? senderId,
+      Map<String, dynamic>? sender,
+      DateTime createdAt});
 }
 
 /// @nodoc
 class __$$MaintenanceMessageImplCopyWithImpl<$Res>
     extends _$MaintenanceMessageCopyWithImpl<$Res, _$MaintenanceMessageImpl>
     implements _$$MaintenanceMessageImplCopyWith<$Res> {
-  __$$MaintenanceMessageImplCopyWithImpl(
-    _$MaintenanceMessageImpl _value,
-    $Res Function(_$MaintenanceMessageImpl) _then,
-  ) : super(_value, _then);
+  __$$MaintenanceMessageImplCopyWithImpl(_$MaintenanceMessageImpl _value,
+      $Res Function(_$MaintenanceMessageImpl) _then)
+      : super(_value, _then);
 
   /// Create a copy of MaintenanceMessage
   /// with the given fields replaced by the non-null parameter values.
@@ -158,53 +149,51 @@ class __$$MaintenanceMessageImplCopyWithImpl<$Res>
     Object? sender = freezed,
     Object? createdAt = null,
   }) {
-    return _then(
-      _$MaintenanceMessageImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        content: null == content
-            ? _value.content
-            : content // ignore: cast_nullable_to_non_nullable
-                  as String,
-        type: null == type
-            ? _value.type
-            : type // ignore: cast_nullable_to_non_nullable
-                  as String,
-        requestId: null == requestId
-            ? _value.requestId
-            : requestId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        senderId: freezed == senderId
-            ? _value.senderId
-            : senderId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        sender: freezed == sender
-            ? _value._sender
-            : sender // ignore: cast_nullable_to_non_nullable
-                  as Map<String, dynamic>?,
-        createdAt: null == createdAt
-            ? _value.createdAt
-            : createdAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime,
-      ),
-    );
+    return _then(_$MaintenanceMessageImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      content: null == content
+          ? _value.content
+          : content // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
+      requestId: null == requestId
+          ? _value.requestId
+          : requestId // ignore: cast_nullable_to_non_nullable
+              as String,
+      senderId: freezed == senderId
+          ? _value.senderId
+          : senderId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sender: freezed == sender
+          ? _value._sender
+          : sender // ignore: cast_nullable_to_non_nullable
+              as Map<String, dynamic>?,
+      createdAt: null == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$MaintenanceMessageImpl implements _MaintenanceMessage {
-  const _$MaintenanceMessageImpl({
-    required this.id,
-    required this.content,
-    this.type = 'USER',
-    required this.requestId,
-    this.senderId,
-    final Map<String, dynamic>? sender,
-    required this.createdAt,
-  }) : _sender = sender;
+  const _$MaintenanceMessageImpl(
+      {required this.id,
+      required this.content,
+      this.type = 'USER',
+      required this.requestId,
+      this.senderId,
+      final Map<String, dynamic>? sender,
+      required this.createdAt})
+      : _sender = sender;
 
   factory _$MaintenanceMessageImpl.fromJson(Map<String, dynamic> json) =>
       _$$MaintenanceMessageImplFromJson(json);
@@ -257,16 +246,8 @@ class _$MaintenanceMessageImpl implements _MaintenanceMessage {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    id,
-    content,
-    type,
-    requestId,
-    senderId,
-    const DeepCollectionEquality().hash(_sender),
-    createdAt,
-  );
+  int get hashCode => Object.hash(runtimeType, id, content, type, requestId,
+      senderId, const DeepCollectionEquality().hash(_sender), createdAt);
 
   /// Create a copy of MaintenanceMessage
   /// with the given fields replaced by the non-null parameter values.
@@ -275,26 +256,25 @@ class _$MaintenanceMessageImpl implements _MaintenanceMessage {
   @pragma('vm:prefer-inline')
   _$$MaintenanceMessageImplCopyWith<_$MaintenanceMessageImpl> get copyWith =>
       __$$MaintenanceMessageImplCopyWithImpl<_$MaintenanceMessageImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$MaintenanceMessageImplToJson(this);
+    return _$$MaintenanceMessageImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _MaintenanceMessage implements MaintenanceMessage {
-  const factory _MaintenanceMessage({
-    required final String id,
-    required final String content,
-    final String type,
-    required final String requestId,
-    final String? senderId,
-    final Map<String, dynamic>? sender,
-    required final DateTime createdAt,
-  }) = _$MaintenanceMessageImpl;
+  const factory _MaintenanceMessage(
+      {required final String id,
+      required final String content,
+      final String type,
+      required final String requestId,
+      final String? senderId,
+      final Map<String, dynamic>? sender,
+      required final DateTime createdAt}) = _$MaintenanceMessageImpl;
 
   factory _MaintenanceMessage.fromJson(Map<String, dynamic> json) =
       _$MaintenanceMessageImpl.fromJson;

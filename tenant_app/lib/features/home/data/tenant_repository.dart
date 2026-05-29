@@ -137,4 +137,11 @@ class TenantRepository {
     );
     return MaintenanceMessage.fromJson(response.data['message']);
   }
+
+  Future<void> respondToRenewalOffer(String leaseId, String offerId, bool accept) async {
+    await _apiClient.dio.put(
+      '/tenant/leases/$leaseId/renewal-offers/$offerId/respond',
+      data: {'accept': accept},
+    );
+  }
 }

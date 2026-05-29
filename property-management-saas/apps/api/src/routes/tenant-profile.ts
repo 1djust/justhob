@@ -38,9 +38,13 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
                 address: true,
                 owner: { select: { id: true, name: true, email: true } }
               } 
+            },
+            renewalOffers: {
+              where: { status: 'PENDING' },
+              orderBy: { sentAt: 'desc' }
             }
           },
-          where: { status: 'ACTIVE' }
+          where: { status: { in: ['ACTIVE', 'PENDING_RENEWAL'] } }
         },
         maintenanceRequests: {
           orderBy: { createdAt: 'desc' },
@@ -190,6 +194,23 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       propertyId,
       message: 'A new maintenance request has been submitted.'
     });
+
+    // Notify all managers in this workspace persistently
+    const managers = await prisma.workspaceMember.findMany({
+      where: { workspaceId: membership.workspaceId, role: 'PROPERTY_MANAGER' },
+      select: { userId: true }
+    });
+
+    const notifications = managers.map((m: any) => ({
+      userId: m.userId,
+      title: 'New Maintenance Request',
+      message: `A new maintenance request has been submitted.`,
+      type: 'MAINTENANCE_CREATED'
+    }));
+
+    if (notifications.length > 0) {
+      await prisma.notification.createMany({ data: notifications });
+    }
 
     return reply.status(201).send({ request: maintenanceRequest });
   });
@@ -469,6 +490,120 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     });
 
     return reply.status(201).send({ message });
+  });
+
+  // Respond to lease renewal offer
+  fastify.put('/leases/:leaseId/renewal-offers/:offerId/respond', async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = request.userId!;
+    const { leaseId, offerId } = request.params as { leaseId: string; offerId: string };
+    const { accept } = request.body as { accept: boolean };
+
+    const membership = await prisma.workspaceMember.findFirst({
+      where: { userId, role: 'TENANT' }
+    });
+    if (!membership) return reply.status(403).send({ error: 'No tenant profile found' });
+
+    const tenant = await prisma.tenant.findFirst({
+      where: { workspaceId: membership.workspaceId, deletedAt: null, leases: { some: { id: leaseId } } }
+    });
+    if (!tenant) return reply.status(404).send({ error: 'Tenant or lease not found' });
+
+    const offer = await prisma.leaseRenewalOffer.findUnique({
+      where: { id: offerId },
+      include: { lease: { include: { tenant: true } } }
+    });
+
+    if (!offer || offer.leaseId !== leaseId) {
+      return reply.status(404).send({ error: 'Offer not found' });
+    }
+
+    if (offer.status !== 'PENDING') {
+      return reply.status(400).send({ error: 'Offer has already been responded to' });
+    }
+
+    const updatedOffer = await prisma.leaseRenewalOffer.update({
+      where: { id: offerId },
+      data: {
+        status: accept ? 'ACCEPTED' : 'REJECTED',
+        respondedAt: new Date()
+      }
+    });
+
+    if (accept) {
+      const newLease = await prisma.lease.create({
+        data: {
+          tenantId: offer.lease.tenantId,
+          propertyId: offer.lease.propertyId,
+          unitId: offer.lease.unitId,
+          startDate: offer.newStartDate,
+          endDate: offer.newEndDate,
+          yearlyRent: offer.newRent,
+          status: 'ACTIVE'
+        }
+      });
+
+      await prisma.lease.update({
+        where: { id: offer.lease.id },
+        data: { status: 'EXPIRED' }
+      });
+
+      // Create notifications for managers
+      const managers = await prisma.workspaceMember.findMany({
+        where: { workspaceId: membership.workspaceId, role: { in: ['PROPERTY_MANAGER', 'LANDLORD'] } }
+      });
+      for (const m of managers) {
+        await prisma.notification.create({
+          data: {
+            userId: m.userId,
+            title: 'Lease Renewal Accepted',
+            message: `Tenant ${offer.lease.tenant.name} accepted the lease renewal offer.`,
+            type: 'LEASE_RENEWED'
+          }
+        });
+      }
+
+      const room = `workspace:${membership.workspaceId}`;
+      console.log(`[TenantProfile] Emitting LEASE_RENEWED to ${room}`);
+      (fastify as any).io.to(room).emit('LEASE_RENEWED', {
+        leaseId: newLease.id,
+        message: `Tenant ${offer.lease.tenant.name} accepted the lease renewal offer.`
+      });
+    } else {
+      const otherPendingOffers = await prisma.leaseRenewalOffer.count({
+        where: { leaseId: offer.lease.id, status: 'PENDING', id: { not: offerId } }
+      });
+
+      if (otherPendingOffers === 0) {
+        await prisma.lease.update({
+          where: { id: offer.lease.id },
+          data: { status: 'ACTIVE' }
+        });
+      }
+
+      // Create notifications for managers
+      const managers = await prisma.workspaceMember.findMany({
+        where: { workspaceId: membership.workspaceId, role: { in: ['PROPERTY_MANAGER', 'LANDLORD'] } }
+      });
+      for (const m of managers) {
+        await prisma.notification.create({
+          data: {
+            userId: m.userId,
+            title: 'Lease Renewal Rejected',
+            message: `Tenant ${offer.lease.tenant.name} rejected the lease renewal offer.`,
+            type: 'LEASE_RENEWAL_REJECTED'
+          }
+        });
+      }
+
+      const room = `workspace:${membership.workspaceId}`;
+      console.log(`[TenantProfile] Emitting LEASE_RENEWAL_REJECTED to ${room}`);
+      (fastify as any).io.to(room).emit('LEASE_RENEWAL_REJECTED', {
+        leaseId: offer.lease.id,
+        message: `Tenant ${offer.lease.tenant.name} rejected the lease renewal offer.`
+      });
+    }
+
+    return reply.send({ offer: updatedOffer });
   });
 
 }

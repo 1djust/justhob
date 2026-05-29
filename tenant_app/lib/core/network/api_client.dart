@@ -7,11 +7,17 @@ import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 
 class ApiConfig {
-  static const bool isProduction = true;
+  static const bool isProduction = false;
   static const String prodUrl = 'https://justhob.onrender.com/api';
-  static const String devUrl = 'http://10.0.2.2:3001/api'; // Android Emulator localhost
+  static const String devUrl = 'http://localhost:3001/api'; // USB tunnel via `adb reverse tcp:3001 tcp:3001`
   
-  static String get baseUrl => isProduction ? prodUrl : devUrl;
+  static String get baseUrl {
+    if (isProduction) return prodUrl;
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      return 'http://127.0.0.1:3001/api';
+    }
+    return devUrl;
+  }
 }
 
 class ApiClient {
@@ -21,6 +27,7 @@ class ApiClient {
   late final Dio dio;
   late final CookieJar cookieJar;
   late final FlutterSecureStorage storage;
+  String? inMemoryToken;
 
   ApiClient._internal();
 
@@ -61,14 +68,19 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           try {
-            final token = await storage.read(key: 'access_token');
+            String? token = inMemoryToken;
+            if (token == null) {
+              token = await storage.read(key: 'access_token');
+            }
             if (token != null) {
               options.headers['Authorization'] = 'Bearer $token';
             }
           } catch (e) {
       debugPrint('Caught error: $e');
-            // If secure storage read fails, continue without token
-            // This prevents a crash loop on devices with Keystore issues
+            // If secure storage read fails, fallback to inMemoryToken
+            if (inMemoryToken != null) {
+              options.headers['Authorization'] = 'Bearer $inMemoryToken';
+            }
             debugPrint('[ApiClient] Secure storage read failed: $e');
           }
           return handler.next(options);
@@ -76,6 +88,7 @@ class ApiClient {
         onError: (DioException e, handler) async {
           if (e.response?.statusCode == 401) {
             // Token expired or invalid, clear it
+            inMemoryToken = null;
             try {
               await storage.delete(key: 'access_token');
               await cookieJar.deleteAll();

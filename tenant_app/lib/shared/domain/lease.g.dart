@@ -7,22 +7,25 @@ part of 'lease.dart';
 // **************************************************************************
 
 _$LeaseImpl _$$LeaseImplFromJson(Map<String, dynamic> json) => _$LeaseImpl(
-  id: json['id'] as String,
-  tenantId: json['tenantId'] as String,
-  propertyId: json['propertyId'] as String,
-  startDate: DateTime.parse(json['startDate'] as String),
-  endDate: json['endDate'] == null
-      ? null
-      : DateTime.parse(json['endDate'] as String),
-  yearlyRent: (json['yearlyRent'] as num).toDouble(),
-  status: json['status'] as String,
-  property: json['property'] == null
-      ? null
-      : Property.fromJson(json['property'] as Map<String, dynamic>),
-  paymentInfo: json['paymentInfo'] == null
-      ? null
-      : PaymentInfo.fromJson(json['paymentInfo'] as Map<String, dynamic>),
-);
+      id: json['id'] as String,
+      tenantId: json['tenantId'] as String,
+      propertyId: json['propertyId'] as String,
+      startDate: DateTime.parse(json['startDate'] as String),
+      endDate: json['endDate'] == null
+          ? null
+          : DateTime.parse(json['endDate'] as String),
+      yearlyRent: (json['yearlyRent'] as num).toDouble(),
+      status: json['status'] as String,
+      property: json['property'] == null
+          ? null
+          : Property.fromJson(json['property'] as Map<String, dynamic>),
+      paymentInfo: json['paymentInfo'] == null
+          ? null
+          : PaymentInfo.fromJson(json['paymentInfo'] as Map<String, dynamic>),
+      renewalOffers: (json['renewalOffers'] as List<dynamic>?)
+          ?.map((e) => LeaseRenewalOffer.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
 
 Map<String, dynamic> _$$LeaseImplToJson(_$LeaseImpl instance) =>
     <String, dynamic>{
@@ -35,4 +38,5 @@ Map<String, dynamic> _$$LeaseImplToJson(_$LeaseImpl instance) =>
       'status': instance.status,
       'property': instance.property,
       'paymentInfo': instance.paymentInfo,
+      'renewalOffers': instance.renewalOffers,
     };

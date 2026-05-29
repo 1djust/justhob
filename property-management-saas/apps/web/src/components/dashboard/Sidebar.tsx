@@ -17,7 +17,8 @@ import {
   Bell,
   FileCheck,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
@@ -32,7 +33,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type DashboardView = 'dashboard' | 'properties' | 'tenants' | 'owners' | 'payments' | 'maintenance' | 'settings';
+type DashboardView = 'dashboard' | 'properties' | 'tenants' | 'owners' | 'payments' | 'maintenance' | 'settings' | 'admin';
 
 interface SidebarProps {
   activeView: string;
@@ -41,6 +42,8 @@ interface SidebarProps {
   userEmail?: string;
   plan?: string;
   onLogout: () => void;
+  workspaceId?: string | null;
+  isSuperAdmin?: boolean;
 }
 
 interface Notification {
@@ -52,10 +55,11 @@ interface Notification {
   createdAt: string;
 }
 
-export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail, plan, onLogout }: SidebarProps) {
+export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail, plan, onLogout, workspaceId, isSuperAdmin }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
+  const [stats, setStats] = React.useState<any>(null);
   const [showNotifications, setShowNotifications] = React.useState(false);
   const notifRef = React.useRef<HTMLDivElement>(null);
 
@@ -70,28 +74,48 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
     }
   }, []);
 
+  const fetchStats = React.useCallback(async () => {
+    if (!workspaceId) return;
+    try {
+      const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/stats`, { silent: true } as any);
+      setStats(data.stats);
+    } catch (e) {
+      // Silent fail
+    }
+  }, [workspaceId]);
+
   const { socket } = useRealtime();
 
   React.useEffect(() => {
     fetchNotifications();
+    fetchStats();
     
     if (socket) {
       const handleRealtimeNotif = () => {
-        console.log('[Realtime] New notification event received');
+        console.log('[Realtime] New notification/event received');
         fetchNotifications();
+        fetchStats();
       };
 
       socket.on('PAYMENT_SUBMITTED', handleRealtimeNotif);
       socket.on('PAYMENT_UPDATED', handleRealtimeNotif);
       socket.on('MAINTENANCE_CREATED', handleRealtimeNotif);
+      socket.on('PROPERTY_CREATED', handleRealtimeNotif);
+      socket.on('PROPERTY_DELETED', handleRealtimeNotif);
+      socket.on('TENANT_CREATED', handleRealtimeNotif);
+      socket.on('TENANT_DELETED', handleRealtimeNotif);
 
       return () => {
         socket.off('PAYMENT_SUBMITTED', handleRealtimeNotif);
         socket.off('PAYMENT_UPDATED', handleRealtimeNotif);
         socket.off('MAINTENANCE_CREATED', handleRealtimeNotif);
+        socket.off('PROPERTY_CREATED', handleRealtimeNotif);
+        socket.off('PROPERTY_DELETED', handleRealtimeNotif);
+        socket.off('TENANT_CREATED', handleRealtimeNotif);
+        socket.off('TENANT_DELETED', handleRealtimeNotif);
       };
     }
-  }, [fetchNotifications, socket]);
+  }, [fetchNotifications, fetchStats, socket]);
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
@@ -103,6 +127,15 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const markAsRead = async (id: string) => {
+    try {
+      await apiFetch(`${API_BASE_URL}/api/notifications/${id}/read`, { method: 'PATCH' });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (e) {
+      // Silent fail
+    }
+  };
 
   const markAllRead = async () => {
     try {
@@ -118,6 +151,7 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
       case 'PAYMENT_SUBMITTED': return <FileCheck className="w-4 h-4 text-blue-500" />;
       case 'PAYMENT_APPROVED': return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
       case 'PAYMENT_REJECTED': return <AlertCircle className="w-4 h-4 text-rose-500" />;
+      case 'MAINTENANCE_CREATED': return <Wrench className="w-4 h-4 text-amber-500" />;
       default: return <Bell className="w-4 h-4 text-zinc-400" />;
     }
   };
@@ -133,6 +167,10 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
   ];
 
   const filteredItems = navItems.filter(item => !item.managerOnly || isPropertyManager);
+
+  const adminItems = [
+    { id: 'admin', label: 'Platform Admin', icon: ShieldAlert, color: 'text-rose-500 hover:text-rose-600' },
+  ];
 
   return (
     <>
@@ -155,7 +193,7 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
       </div>
 
       {/* Sidebar Container */}
-      <aside className={cn(
+      <aside aria-label="Sidebar Navigation" className={cn(
         "fixed inset-y-0 left-0 z-50 flex flex-col bg-white dark:bg-zinc-950 border-r border-border transition-all duration-300 ease-in-out",
         isCollapsed ? "w-20" : "w-64",
         isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -213,10 +251,10 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
                     {item.label}
                   </span>
                 )}
-                {/* Show badge on Payments nav when there are PAYMENT_SUBMITTED notifications */}
-                {item.id === 'payments' && !isCollapsed && unreadCount > 0 && notifications.some(n => !n.isRead && n.type === 'PAYMENT_SUBMITTED') && (
+                {/* Show badge on Payments nav for payments UNDER_REVIEW */}
+                {item.id === 'payments' && !isCollapsed && stats?.underReviewPayments > 0 && (
                   <span className="ml-auto bg-blue-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center animate-pulse">
-                    {notifications.filter(n => !n.isRead && n.type === 'PAYMENT_SUBMITTED').length}
+                    {stats.underReviewPayments}
                   </span>
                 )}
                 {/* Active Indicator Tooltip (Optional, for collapsed state) */}
@@ -226,6 +264,47 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
               </button>
             );
           })}
+
+          {isSuperAdmin && (
+            <div className="mt-8 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+              <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-rose-500 opacity-70">
+                Platform
+              </p>
+              {adminItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeView === item.id;
+                
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      onViewChange(item.id as DashboardView);
+                      if (isMobileOpen) setIsMobileOpen(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+                      isActive 
+                        ? "bg-rose-500 text-white shadow-sm shadow-rose-500/20" 
+                        : "text-zinc-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/10"
+                    ) }
+                  >
+                    <Icon className={cn(
+                      "h-5 w-5 flex-shrink-0 transition-transform duration-200", 
+                      isActive ? "scale-100" : "group-hover:scale-110"
+                    )} />
+                    {!isCollapsed && (
+                      <span className="font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+                        {item.label}
+                      </span>
+                    )}
+                    {isCollapsed && isActive && (
+                       <div className="absolute left-0 w-1 h-6 bg-rose-500 rounded-r-full" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Notification Bell */}
           <div ref={notifRef} className="relative mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
@@ -277,7 +356,14 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
                       <div
                         key={n.id}
                         onClick={() => {
+                          markAsRead(n.id);
                           if (n.type === 'PAYMENT_SUBMITTED') {
+                            onViewChange('payments');
+                            setShowNotifications(false);
+                          } else if (n.type === 'MAINTENANCE_CREATED') {
+                            onViewChange('maintenance');
+                            setShowNotifications(false);
+                          } else if (n.type === 'PAYMENT_APPROVED' || n.type === 'PAYMENT_REJECTED') {
                             onViewChange('payments');
                             setShowNotifications(false);
                           }

@@ -12,10 +12,13 @@ import {
   Mail, 
   ChevronRight,
   ExternalLink,
-  Plus
+  Plus,
+  RefreshCw
 } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { ExportButton } from '@/components/shared/ExportButton';
+import { LeaseRenewalManager } from '@/components/tenants/LeaseRenewalManager';
+import { useRealtime } from '@/components/providers/RealtimeProvider';
 
 interface Lease {
   id: string;
@@ -49,10 +52,13 @@ interface TenantProps {
 }
 
 export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: TenantProps) {
+  const { socket, isConnected } = useRealtime();
   const [tenants, setTenants] = React.useState<Tenant[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
   const [assigningTenantId, setAssigningTenantId] = React.useState<string | null>(null);
+  const [renewalLeaseId, setRenewalLeaseId] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = React.useState<'all' | 'renewals'>('all');
 
   const fetchTenants = async () => {
     try {
@@ -74,6 +80,26 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
     if (workspaceId) fetchTenants();
   }, [workspaceId]);
 
+  // Real-time updates
+  React.useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleUpdate = () => {
+      console.log('[TenantsList] Real-time update received, refreshing...');
+      fetchTenants();
+    };
+
+    socket.on('LEASE_UPDATED', handleUpdate);
+    socket.on('LEASE_RENEWED', handleUpdate);
+    socket.on('LEASE_RENEWAL_REJECTED', handleUpdate);
+
+    return () => {
+      socket.off('LEASE_UPDATED', handleUpdate);
+      socket.off('LEASE_RENEWED', handleUpdate);
+      socket.off('LEASE_RENEWAL_REJECTED', handleUpdate);
+    };
+  }, [socket, isConnected]);
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to remove this tenant? This will effectively archive their profile.')) return;
     try {
@@ -84,6 +110,23 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
       fetchTenants();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleEndTenancy = async (id: string) => {
+    const reason = prompt("Enter reason for ending tenancy (VOLUNTARY, EVICTION, LEASE_EXPIRED, OTHER):", "VOLUNTARY");
+    if (!reason) return;
+    try {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants/${id}/end-tenancy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason.toUpperCase(), note: 'Ended from dashboard' }),
+        credentials: 'include'
+      });
+      alert('Tenancy ended successfully');
+      fetchTenants();
+    } catch (e: any) {
+      alert(e.message || 'Failed to end tenancy');
     }
   };
 
@@ -114,7 +157,36 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
         </div>
       </div>
 
-      {showForm && (
+      <div className="flex space-x-2 mb-6 border-b border-zinc-200 dark:border-zinc-800">
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'all'
+              ? 'border-zinc-900 text-zinc-900 dark:border-white dark:text-white'
+              : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
+          }`}
+        >
+          All Tenants
+        </button>
+        <button
+          onClick={() => setActiveTab('renewals')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'renewals'
+              ? 'border-zinc-900 text-zinc-900 dark:border-white dark:text-white'
+              : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
+          }`}
+        >
+          Lease Renewals
+        </button>
+      </div>
+
+      {activeTab === 'renewals' && (
+        <LeaseRenewalManager workspaceId={workspaceId} />
+      )}
+
+      {activeTab === 'all' && (
+        <>
+          {showForm && (
         <div className="animate-in zoom-in-95 fade-in duration-300">
           <TenantForm workspaceId={workspaceId} onComplete={() => { setShowForm(false); fetchTenants(); }} />
         </div>
@@ -177,6 +249,14 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
                       {assigningTenantId === t.id ? 'Cancel' : 'Assign Unit'}
                     </button>
                   )}
+                  {t.leases?.some(l => l.status === 'ACTIVE') && (
+                    <button
+                      onClick={() => handleEndTenancy(t.id)}
+                      className="flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full border bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/20 dark:border-rose-900/50 dark:hover:bg-rose-900/40 transition-all"
+                    >
+                      End Tenancy
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDelete(t.id)}
                     className="p-2 rounded-full text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
@@ -207,7 +287,8 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
                 {t.leases.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {t.leases.map((l) => (
-                      <div key={l.id} className="flex items-center gap-4 bg-zinc-50 dark:bg-zinc-900/50 p-2.5 pl-3 pr-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 group/lease hover:border-zinc-400 transition-colors">
+                      <React.Fragment key={l.id}>
+                      <div className="flex items-center gap-4 bg-zinc-50 dark:bg-zinc-900/50 p-2.5 pl-3 pr-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 group/lease hover:border-zinc-400 transition-colors">
                         <div className="flex items-center gap-3 min-w-[140px]">
                           <div className="w-8 h-8 rounded-xl bg-white dark:bg-zinc-950 flex items-center justify-center text-[11px] font-bold border border-zinc-100 dark:border-zinc-800 shadow-sm shrink-0">
                             {l.unit?.unitNumber || 'U'}
@@ -247,10 +328,31 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
                           </div>
                         )}
 
-                        <div className="ml-auto pl-2">
+                        <div className="ml-auto pl-2 flex items-center gap-1">
+                          {l.status === 'ACTIVE' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setRenewalLeaseId(renewalLeaseId === l.id ? null : l.id); }}
+                              className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/40 transition-all"
+                              title="Send renewal offer"
+                            >
+                              <RefreshCw className="w-3 h-3" /> Renew
+                            </button>
+                          )}
                           <ChevronRight className="w-3.5 h-3.5 text-zinc-300 group-hover/lease:translate-x-1 group-hover/lease:text-zinc-500 transition-all" />
                         </div>
                       </div>
+                      {renewalLeaseId === l.id && (
+                        <div className="mt-3 animate-in slide-in-from-top-2 duration-300">
+                          <RenewalOfferForm
+                            workspaceId={workspaceId}
+                            leaseId={l.id}
+                            currentRent={l.yearlyRent || 0}
+                            onComplete={() => { setRenewalLeaseId(null); fetchTenants(); }}
+                            onCancel={() => setRenewalLeaseId(null)}
+                          />
+                        </div>
+                      )}
+                      </React.Fragment>
                     ))}
                   </div>
                 ) : (
@@ -260,6 +362,8 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
             </div>
           ))}
         </div>
+      )}
+        </>
       )}
     </div>
   );
@@ -543,6 +647,122 @@ function LeaseForm({ workspaceId, tenantId, properties, onComplete }: { workspac
           className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 px-6 py-2 rounded-full text-xs font-bold hover:opacity-90 transition-all active:scale-95 disabled:opacity-50"
         >
           {loading ? 'Creating Lease...' : 'Initialize Lease'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function RenewalOfferForm({ workspaceId, leaseId, currentRent, onComplete, onCancel }: {
+  workspaceId: string;
+  leaseId: string;
+  currentRent: number;
+  onComplete: () => void;
+  onCancel: () => void;
+}) {
+  const [formData, setFormData] = React.useState({
+    newRent: String(currentRent),
+    newStartDate: '',
+    newEndDate: '',
+    terms: ''
+  });
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/leases/${leaseId}/renewal-offer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+        credentials: 'include'
+      });
+      onComplete();
+    } catch (e: any) {
+      setError(e.message || 'Failed to send renewal offer');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-5 border border-amber-200 dark:border-amber-800 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 space-y-4">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="p-1.5 bg-amber-600 rounded-lg">
+          <RefreshCw className="w-3 h-3 text-white" />
+        </div>
+        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Send Lease Renewal Offer</p>
+      </div>
+
+      {error && (
+        <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 font-medium">
+          {error}
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">New Yearly Rent (₦)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            required
+            value={formData.newRent}
+            onChange={e => setFormData({ ...formData, newRent: e.target.value })}
+            className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">New Start Date</label>
+          <input
+            type="date"
+            required
+            value={formData.newStartDate}
+            onChange={e => setFormData({ ...formData, newStartDate: e.target.value })}
+            className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">New End Date</label>
+          <input
+            type="date"
+            required
+            value={formData.newEndDate}
+            onChange={e => setFormData({ ...formData, newEndDate: e.target.value })}
+            className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Terms (Optional)</label>
+          <input
+            type="text"
+            value={formData.terms}
+            onChange={e => setFormData({ ...formData, terms: e.target.value })}
+            className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+            placeholder="e.g. Standard terms apply"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-5 py-2 rounded-full text-xs font-bold border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all"
+        >
+          Cancel
+        </button>
+        <button
+          disabled={loading}
+          type="submit"
+          className="bg-amber-600 text-white px-6 py-2 rounded-full text-xs font-bold hover:bg-amber-700 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
+        >
+          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'Sending...' : 'Send Renewal Offer'}
         </button>
       </div>
     </form>

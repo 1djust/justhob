@@ -134,9 +134,37 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
 
     const rentCollected = paidPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
 
+    let underReviewWhere: any = { workspaceId, status: 'UNDER_REVIEW' };
+    if (member.role === 'LANDLORD') {
+      underReviewWhere.lease = { property: { ownerId: userId } };
+    }
+    const underReviewPayments = await prisma.payment.count({ where: underReviewWhere });
+
+    let overdueWhere: any = {
+      workspaceId,
+      status: { in: ['OVERDUE', 'PARTIALLY_PAID'] }
+    };
+    if (member.role === 'LANDLORD') {
+      overdueWhere.lease = { property: { ownerId: userId } };
+    }
+    const overduePaymentsCount = await prisma.payment.count({ where: overdueWhere });
+
+    const now = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    let expiringLeaseWhere: any = {
+      status: 'ACTIVE',
+      endDate: { gte: now, lte: thirtyDaysFromNow },
+      tenant: { workspaceId }
+    };
+    if (member.role === 'LANDLORD') {
+      expiringLeaseWhere.property = { ownerId: userId };
+    }
+    const expiringLeasesCount = await prisma.lease.count({ where: expiringLeaseWhere });
+
     // Simple revenue chart data: last 6 months
     const revenueByMonth: Record<string, number> = {};
-    const now = new Date();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const month = d.toLocaleString('default', { month: 'short' });
@@ -162,7 +190,10 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
         totalProperties,
         totalTenants,
         rentCollected,
-        pendingMaintenance
+        pendingMaintenance,
+        underReviewPayments,
+        overduePaymentsCount,
+        expiringLeasesCount
       },
       chartData
     });

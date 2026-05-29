@@ -20,7 +20,7 @@ const socketPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
   fastify.register(fastifySocketIO, {
     cors: {
-      origin: allowedOrigins,
+      origin: true, // Permissive for mobile/development
       methods: ["GET", "POST"],
       credentials: true
     }
@@ -47,20 +47,44 @@ const socketPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       }
 
       const userId = data.user.id;
-      console.log(`[Socket] User connected: ${userId} (${socket.id})`);
+      const userEmail = data.user.email;
+      console.log(`[Socket] User connected: ${userId} (${userEmail}) - Socket: ${socket.id}`);
+      
+      // Join user-specific rooms for direct notifications
+      socket.join(`user:${userId}`);
+      if (userEmail) {
+        socket.join(`user:${userEmail}`);
+        console.log(`[Socket] ${userId} joined room user:${userEmail}`);
+      }
+      console.log(`[Socket] ${userId} joined personal room user:${userId}`);
 
       // Allow users to join workspace-specific rooms
       socket.on('join-workspace', async (workspaceId: string) => {
         try {
-          // PRODUCTION HARDENING: Verify workspace membership
+          // Verify workspace membership (Manager/Landlord)
+          let isAuthorized = false;
+          
           const membership = await prisma.workspaceMember.findFirst({
-            where: {
-              workspaceId,
-              userId: userId
-            }
+            where: { workspaceId, userId: userId }
           });
 
-          if (!membership) {
+          if (membership) {
+            isAuthorized = true;
+          } else {
+            // Check if user is a tenant in this workspace
+            const userEmail = (data.user as any).email;
+            if (userEmail) {
+              const tenant = await prisma.tenant.findFirst({
+                where: { workspaceId, email: userEmail, deletedAt: null }
+              });
+              if (tenant) {
+                isAuthorized = true;
+                console.log(`[Socket] ${userId} authorized as tenant for workspace:${workspaceId}`);
+              }
+            }
+          }
+
+          if (!isAuthorized) {
             console.warn(`[Socket] Forbidden: ${userId} tried to join workspace:${workspaceId} (Unauthorized)`);
             socket.emit('error', { message: 'Forbidden: You are not a member of this workspace' });
             return;

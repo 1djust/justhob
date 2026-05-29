@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
 import '../network/api_client.dart';
 
 class UpdateInfo {
@@ -42,7 +43,9 @@ class UpdateService {
     if (ApiConfig.isProduction) {
       return 'https://justhob.vercel.app';
     }
-    // For local dev, you might want to point this to your local next.js if running
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      return 'http://localhost:3000';
+    }
     return 'http://10.0.2.2:3000';
   }
 

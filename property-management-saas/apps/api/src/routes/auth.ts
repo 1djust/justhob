@@ -97,6 +97,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const userWithWorkspaces = {
         ...user,
         role: (user as any).workspaces?.[0]?.role || 'USER',
+        globalRole: (user as any).role,
         workspaceId: (user as any).workspaces?.[0]?.workspaceId || null,
         mustChangePassword: mustChange
       };
@@ -128,7 +129,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const mustChange = freshMeta?.mustChangePassword === true;
     const role = user?.workspaces?.[0]?.role || freshMeta.role || 'TENANT';
 
-    return reply.send({ user: user ? { ...user, role, mustChangePassword: mustChange } : null });
+    return reply.send({ user: user ? { ...user, role, globalRole: user.role, mustChangePassword: mustChange } : null });
   });
 
   // Login (called by mobile app)
@@ -177,7 +178,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const mustChange = data.user.user_metadata?.mustChangePassword === true;
       return reply.send({
         access_token: data.session.access_token,
-        user: { ...newUser, role, mustChangePassword: mustChange }
+        user: { ...newUser, role, globalRole: newUser.role, mustChangePassword: mustChange }
       });
     }
 
@@ -186,7 +187,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     return reply.send({
       access_token: data.session.access_token,
-      user: { ...user, role, mustChangePassword: mustChange }
+      user: { ...user, role, globalRole: user.role, mustChangePassword: mustChange }
     });
   });
 
@@ -240,7 +241,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     return reply.send({
       success: true,
       access_token: loginData.session.access_token,
-      user: { ...user, role, mustChangePassword: false }
+      user: { ...user, role, globalRole: user?.role, mustChangePassword: false }
     });
   });
 

@@ -16,6 +16,9 @@ class Payment with _$Payment {
     String? proofUrl,
     String? rejectionReason,
     String? receiptId,
+    double? amountPaid,
+    DateTime? promiseDate,
+    DateTime? gracePeriodEnd,
   }) = _Payment;
 
   factory Payment.fromJson(Map<String, dynamic> json) => _$PaymentFromJson(json);

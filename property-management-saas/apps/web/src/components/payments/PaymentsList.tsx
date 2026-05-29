@@ -66,6 +66,7 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true, pl
   const [reviewingPayment, setReviewingPayment] = React.useState<Payment | null>(null);
   const [proofViewPayment, setProofViewPayment] = React.useState<Payment | null>(null);
   const [receiptViewPayment, setReceiptViewPayment] = React.useState<Payment | null>(null);
+  const [partialPaymentView, setPartialPaymentView] = React.useState<Payment | null>(null);
 
   const fetchPayments = async () => {
     try {
@@ -351,14 +352,22 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true, pl
                             </button>
                           )}
 
-                          {/* PENDING: Mark as settled */}
-                          {p.status === 'PENDING' && isPropertyManager && (
-                            <button
-                              onClick={() => handleMarkPaid(p.id)}
-                              className="text-[10px] uppercase font-black px-4 py-2 rounded-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-500/20 transition-all active:scale-95"
-                            >
-                              Mark Settled
-                            </button>
+                          {/* PENDING / OVERDUE: Actions */}
+                          {(p.status === 'PENDING' || p.status === 'OVERDUE') && isPropertyManager && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setPartialPaymentView(p)}
+                                className="text-[10px] uppercase font-black px-3 py-2 rounded-full border border-amber-600 text-amber-600 hover:bg-amber-600 hover:text-white dark:hover:bg-amber-500/20 transition-all active:scale-95"
+                              >
+                                Partial Pay
+                              </button>
+                              <button
+                                onClick={() => handleMarkPaid(p.id)}
+                                className="text-[10px] uppercase font-black px-4 py-2 rounded-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-500/20 transition-all active:scale-95"
+                              >
+                                Mark Settled
+                              </button>
+                            </div>
                           )}
                           {/* PAID: Show paid date + View Receipt */}
                           {p.status === 'PAID' && (
@@ -421,6 +430,19 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true, pl
         <ReceiptModal
           payment={receiptViewPayment}
           onClose={() => setReceiptViewPayment(null)}
+        />
+      )}
+      
+      {/* Partial Payment Modal */}
+      {partialPaymentView && (
+        <PartialPaymentModal
+          payment={partialPaymentView}
+          workspaceId={workspaceId}
+          onClose={() => setPartialPaymentView(null)}
+          onComplete={() => {
+            setPartialPaymentView(null);
+            fetchPayments();
+          }}
         />
       )}
     </div>
@@ -1010,5 +1032,111 @@ function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string;
         </button>
       </div>
     </form>
+  );
+}
+
+/* ─── Partial Payment Modal ─── */
+function PartialPaymentModal({ payment, workspaceId, onClose, onComplete }: { 
+  payment: Payment; 
+  workspaceId: string;
+  onClose: () => void;
+  onComplete: () => void;
+}) {
+  const [amount, setAmount] = React.useState('');
+  const [date, setDate] = React.useState('');
+  const [note, setNote] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments/${payment.id}/partial-pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(amount),
+          balancePromiseDate: date || undefined,
+          balancePromiseNote: note || undefined,
+        }),
+        credentials: 'include',
+      });
+      onComplete();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to record partial payment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+      <form 
+        onSubmit={handleSubmit}
+        className="relative bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Record Partial Payment</h3>
+            <p className="text-xs text-zinc-500 mt-1">Total due: ₦{payment.amount.toLocaleString()}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Amount Paid Now (₦)</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              required 
+              max={payment.amount}
+              value={amount} 
+              onChange={e => setAmount(e.target.value)} 
+              className="w-full mt-1.5 px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-bold" 
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Promise Date for Balance</label>
+            <input 
+              type="date" 
+              value={date} 
+              onChange={e => setDate(e.target.value)} 
+              className="w-full mt-1.5 px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-medium" 
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Note / Agreement</label>
+            <textarea 
+              value={note} 
+              onChange={e => setNote(e.target.value)} 
+              rows={2}
+              className="w-full mt-1.5 px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-medium resize-none" 
+              placeholder="e.g. Tenant promised to pay the rest next week."
+            />
+          </div>
+        </div>
+
+        <div className="p-6 bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800">
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-amber-600 text-white py-3.5 rounded-2xl font-bold shadow-lg hover:bg-amber-700 active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {loading ? 'Saving...' : 'Record Partial Payment'}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

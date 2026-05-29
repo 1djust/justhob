@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'home_notifier.dart';
 import 'notifications_notifier.dart';
+import '../../payments/presentation/payments_notifier.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/domain/payment_info.dart';
 import '../../../core/utils/nigerian_banks.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/widgets/app_update_dialog.dart';
+import '../../../shared/domain/lease_renewal_offer.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -34,7 +36,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final homeState = ref.watch(homeStateProvider);
+    final paymentsState = ref.watch(paymentsProvider);
     final theme = Theme.of(context);
+    
+    final overduePayments = paymentsState.valueOrNull
+        ?.where((p) => p.status == 'OVERDUE' || p.status == 'PARTIALLY_PAID')
+        .toList() ?? [];
+        
+    final pendingRenewals = homeState.valueOrNull?.leases
+        ?.expand((l) => l.renewalOffers ?? [])
+        .whereType<LeaseRenewalOffer>()
+        .toList() ?? [];
 
     return Scaffold(
       appBar: AppBar(
@@ -107,7 +119,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
           return RefreshIndicator(
             onRefresh: () async {
-              // Option: ref.read(homeStateProvider.notifier)._init();
+              await ref.read(homeStateProvider.notifier).refresh();
+              // Also refresh notifications count
+              await ref.read(notificationsProvider.notifier).fetchNotifications();
             },
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
@@ -132,8 +146,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(height: 24),
                   
+                  if (pendingRenewals.isNotEmpty) ...[
+                    _LeaseRenewalBanner(offers: pendingRenewals),
+                    const SizedBox(height: 24),
+                  ],
+
+                  if (overduePayments.isNotEmpty) ...[
+                    _OverdueBanner(payments: overduePayments),
+                    const SizedBox(height: 24),
+                  ],
+                  
                   // Active Lease Card
-                  _LeaseCard(property: property, lease: lease),
+                  if (lease != null)
+                    _LeaseCard(property: property, lease: lease),
                   
                   if (lease?.paymentInfo != null) ...[
                     const SizedBox(height: 24),
@@ -291,7 +316,6 @@ class _LeaseCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.circle, size: 8, color: Colors.greenAccent),
                     const SizedBox(width: 6),
@@ -333,7 +357,7 @@ class _LeaseCard extends StatelessWidget {
           
           // Expiry Date Section
           if (lease?.endDate != null) ...[
-            _ExpiryBadge(endDate: lease!.endDate!),
+            _ExpiryBadge(endDate: lease.endDate!),
             const SizedBox(height: 16),
           ],
 
@@ -676,7 +700,6 @@ class _DashboardPaymentAccountCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   isDirect ? Icons.person_pin_rounded : Icons.business_center_rounded,
@@ -739,6 +762,341 @@ class _AccountRow extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _OverdueBanner extends StatelessWidget {
+  final List<dynamic> payments;
+
+  const _OverdueBanner({required this.payments});
+
+  @override
+  Widget build(BuildContext context) {
+    final payment = payments.isNotEmpty ? payments.first : null;
+    if (payment == null) return const SizedBox.shrink();
+    
+    final isPartial = payment.status == 'PARTIALLY_PAID';
+    final amount = isPartial 
+        ? ((payment.amount ?? 0) - (payment.amountPaid ?? 0)) 
+        : (payment.amount ?? 0);
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.red.shade600, size: 28),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isPartial ? 'Partial Payment Due' : 'Rent Overdue',
+                  style: TextStyle(
+                    color: Colors.red.shade900,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Please pay the outstanding balance of ₦${NumberFormat('#,##0').format(amount)} immediately.',
+                  style: TextStyle(
+                    color: Colors.red.shade700,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => context.push('/payments'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            child: const Text('Pay Now'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LeaseRenewalBanner extends ConsumerWidget {
+  final List<LeaseRenewalOffer> offers;
+
+  const _LeaseRenewalBanner({required this.offers});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Default to the first pending offer
+    final offer = offers.first;
+    final newRent = offer.newRent;
+    final formatter = NumberFormat.currency(symbol: '₦', decimalDigits: 0);
+    
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.blue.shade800,
+            Colors.blue.shade600,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // Navigate to a dedicated renewals screen or show dialog
+            // For now, let's open a bottom sheet
+            _showRenewalBottomSheet(context, offer, ref);
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.description_outlined,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Lease Renewal Offer',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'New rent: ${formatter.format(newRent)} / year',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showRenewalBottomSheet(BuildContext context, LeaseRenewalOffer offer, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _RenewalOfferSheet(offer: offer),
+    );
+  }
+}
+
+class _RenewalOfferSheet extends ConsumerStatefulWidget {
+  final LeaseRenewalOffer offer;
+
+  const _RenewalOfferSheet({required this.offer});
+
+  @override
+  ConsumerState<_RenewalOfferSheet> createState() => _RenewalOfferSheetState();
+}
+
+class _RenewalOfferSheetState extends ConsumerState<_RenewalOfferSheet> {
+  bool _isLoading = false;
+
+  Future<void> _respond(bool accept) async {
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(homeStateProvider.notifier).respondToRenewalOffer(
+        widget.offer.leaseId,
+        widget.offer.id,
+        accept,
+      );
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(accept ? 'Renewal offer accepted' : 'Renewal offer rejected'),
+            backgroundColor: accept ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final formatter = NumberFormat.currency(symbol: '₦', decimalDigits: 0);
+    final dateFormat = DateFormat('MMM d, yyyy');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              'Lease Renewal Offer',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            _buildDetailRow('New Rent', '${formatter.format(widget.offer.newRent)} / year', theme),
+            const SizedBox(height: 12),
+            _buildDetailRow('Start Date', dateFormat.format(widget.offer.newStartDate), theme),
+            const SizedBox(height: 12),
+            _buildDetailRow('End Date', dateFormat.format(widget.offer.newEndDate), theme),
+            if (widget.offer.terms != null && widget.offer.terms!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 12),
+              Text(
+                'Terms',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.offer.terms!,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+            const SizedBox(height: 32),
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _respond(false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Reject', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _respond(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Accept', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, ThemeData theme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: Colors.grey.shade600,
+          ),
+        ),
+        Text(
+          value,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );

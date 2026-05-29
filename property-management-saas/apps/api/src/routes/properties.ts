@@ -96,6 +96,12 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
       throw err;
     });
 
+    // Emit real-time update to the workspace room
+    (fastify as any).io.to(`workspace:${workspaceId}`).emit('PROPERTY_CREATED', {
+      propertyId: property.id,
+      message: 'A new property has been created.'
+    });
+
     return reply.status(201).send({ property });
   });
 
@@ -128,6 +134,13 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
         where: { property_workspace_id: { id, workspaceId } },
         data: { deletedAt: new Date() }
       });
+
+      // Emit real-time update to the workspace room
+      (fastify as any).io.to(`workspace:${workspaceId}`).emit('PROPERTY_DELETED', {
+        propertyId: id,
+        message: 'A property has been deleted.'
+      });
+
       return reply.send({ success: true });
     } catch (e) {
       return reply.status(404).send({ error: 'Property not found' });

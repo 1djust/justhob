@@ -8,9 +8,11 @@ import { TenantsList } from '@/components/tenants/TenantsList';
 import { PaymentsList } from '@/components/payments/PaymentsList';
 import { MaintenanceList } from '@/components/maintenance/MaintenanceList';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
+import { OverdueTenantsWidget } from '@/components/dashboard/OverdueTenantsWidget';
 import { WorkspaceSettings } from '@/components/settings/WorkspaceSettings';
 import { OwnerManagement } from '@/components/owners/OwnerManagement';
 import { Sidebar } from '@/components/dashboard/Sidebar';
+import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { IdleTimeoutProvider } from '@/components/auth/IdleTimeoutProvider';
 import { 
   Plus, 
@@ -30,12 +32,15 @@ interface WorkspaceMember {
 }
 
 interface User {
+  id: string;
   email: string;
   name?: string;
+  role: string;
+  globalRole?: string;
   workspaces?: WorkspaceMember[];
 }
 
-type DashboardView = 'dashboard' | 'properties' | 'tenants' | 'owners' | 'payments' | 'maintenance' | 'settings';
+type DashboardView = 'dashboard' | 'properties' | 'tenants' | 'owners' | 'payments' | 'maintenance' | 'settings' | 'admin';
 
 export default function DashboardPage() {
   const [user, setUser] = React.useState<User | null>(null);
@@ -164,6 +169,8 @@ export default function DashboardPage() {
               plan={user?.workspaces?.find(w => w?.workspace?.id === selectedWorkspaceId)?.workspace?.plan}
             />
 
+            <OverdueTenantsWidget workspaceId={selectedWorkspaceId} />
+
             <div className="relative rounded-[2.5rem] border border-white/20 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md p-8 shadow-2xl overflow-hidden">
               <div className="flex justify-between items-center mb-8">
                 <div>
@@ -227,6 +234,8 @@ export default function DashboardPage() {
         return <MaintenanceList workspaceId={selectedWorkspaceId} isPropertyManager={isPropertyManager} />;
       case 'settings':
         return isPropertyManager ? <WorkspaceSettings workspaceId={selectedWorkspaceId} /> : null;
+      case 'admin':
+        return user?.globalRole === 'SUPER_ADMIN' ? <AdminDashboard /> : null;
       default:
         return null;
     }
@@ -242,6 +251,8 @@ export default function DashboardPage() {
           userEmail={user?.email}
           plan={user?.workspaces?.find(w => w?.workspace?.id === selectedWorkspaceId)?.workspace?.plan}
           onLogout={handleLogout}
+          workspaceId={selectedWorkspaceId}
+          isSuperAdmin={user?.globalRole === 'SUPER_ADMIN'}
         />
         
         <main className="flex-1 lg:ml-64 transition-all duration-300 min-h-screen">
@@ -253,3 +264,5 @@ export default function DashboardPage() {
     </IdleTimeoutProvider>
   );
 }
+
+// aria-label

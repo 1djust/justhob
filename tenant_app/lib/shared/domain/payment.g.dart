@@ -20,6 +20,13 @@ _$PaymentImpl _$$PaymentImplFromJson(Map<String, dynamic> json) =>
       proofUrl: json['proofUrl'] as String?,
       rejectionReason: json['rejectionReason'] as String?,
       receiptId: json['receiptId'] as String?,
+      amountPaid: (json['amountPaid'] as num?)?.toDouble(),
+      promiseDate: json['promiseDate'] == null
+          ? null
+          : DateTime.parse(json['promiseDate'] as String),
+      gracePeriodEnd: json['gracePeriodEnd'] == null
+          ? null
+          : DateTime.parse(json['gracePeriodEnd'] as String),
     );
 
 Map<String, dynamic> _$$PaymentImplToJson(_$PaymentImpl instance) =>
@@ -34,4 +41,7 @@ Map<String, dynamic> _$$PaymentImplToJson(_$PaymentImpl instance) =>
       'proofUrl': instance.proofUrl,
       'rejectionReason': instance.rejectionReason,
       'receiptId': instance.receiptId,
+      'amountPaid': instance.amountPaid,
+      'promiseDate': instance.promiseDate?.toIso8601String(),
+      'gracePeriodEnd': instance.gracePeriodEnd?.toIso8601String(),
     };

@@ -76,6 +76,23 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         router.refresh();
       });
 
+      s.on('LEASE_UPDATED', (data: any) => {
+        console.log('[Realtime] Lease updated:', data);
+        router.refresh();
+      });
+
+      s.on('LEASE_RENEWED', (data: any) => {
+        console.log('[Realtime] Lease renewed:', data);
+        toast.success(data.message || 'Lease renewal accepted');
+        router.refresh();
+      });
+
+      s.on('LEASE_RENEWAL_REJECTED', (data: any) => {
+        console.log('[Realtime] Lease renewal rejected:', data);
+        toast.error(data.message || 'Lease renewal rejected');
+        router.refresh();
+      });
+
       setSocket(s);
     };
 
@@ -105,6 +122,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   return (
     <RealtimeContext.Provider value={{ socket, isConnected, joinWorkspace, leaveWorkspace }}>
+      {/* aria-label not needed here, provider only */}
       {children}
     </RealtimeContext.Provider>
   );

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../data/auth_repository.dart';
 import '../domain/user.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/socket_service.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ApiClient());
@@ -36,6 +37,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     state = const AsyncValue.loading();
     try {
       final user = await _repository.login(email, password);
+      // Initialize socket with new token
+      await SocketService().init();
       state = AsyncValue.data(user);
     } catch (e, stack) {
       debugPrint('Caught error: $stack');

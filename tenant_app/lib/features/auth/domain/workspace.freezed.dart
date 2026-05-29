@@ -12,8 +12,7 @@ part of 'workspace.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 Workspace _$WorkspaceFromJson(Map<String, dynamic> json) {
   return _Workspace.fromJson(json);
@@ -56,20 +55,20 @@ class _$WorkspaceCopyWithImpl<$Res, $Val extends Workspace>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? id = null, Object? name = null}) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            name: null == name
-                ? _value.name
-                : name // ignore: cast_nullable_to_non_nullable
-                      as String,
-          )
-          as $Val,
-    );
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+  }) {
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: null == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
   }
 }
 
@@ -77,9 +76,8 @@ class _$WorkspaceCopyWithImpl<$Res, $Val extends Workspace>
 abstract class _$$WorkspaceImplCopyWith<$Res>
     implements $WorkspaceCopyWith<$Res> {
   factory _$$WorkspaceImplCopyWith(
-    _$WorkspaceImpl value,
-    $Res Function(_$WorkspaceImpl) then,
-  ) = __$$WorkspaceImplCopyWithImpl<$Res>;
+          _$WorkspaceImpl value, $Res Function(_$WorkspaceImpl) then) =
+      __$$WorkspaceImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({String id, String name});
@@ -90,27 +88,27 @@ class __$$WorkspaceImplCopyWithImpl<$Res>
     extends _$WorkspaceCopyWithImpl<$Res, _$WorkspaceImpl>
     implements _$$WorkspaceImplCopyWith<$Res> {
   __$$WorkspaceImplCopyWithImpl(
-    _$WorkspaceImpl _value,
-    $Res Function(_$WorkspaceImpl) _then,
-  ) : super(_value, _then);
+      _$WorkspaceImpl _value, $Res Function(_$WorkspaceImpl) _then)
+      : super(_value, _then);
 
   /// Create a copy of Workspace
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? id = null, Object? name = null}) {
-    return _then(
-      _$WorkspaceImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        name: null == name
-            ? _value.name
-            : name // ignore: cast_nullable_to_non_nullable
-                  as String,
-      ),
-    );
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+  }) {
+    return _then(_$WorkspaceImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: null == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
   }
 }
 
@@ -155,15 +153,15 @@ class _$WorkspaceImpl implements _Workspace {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$WorkspaceImplToJson(this);
+    return _$$WorkspaceImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _Workspace implements Workspace {
-  const factory _Workspace({
-    required final String id,
-    required final String name,
-  }) = _$WorkspaceImpl;
+  const factory _Workspace(
+      {required final String id, required final String name}) = _$WorkspaceImpl;
 
   factory _Workspace.fromJson(Map<String, dynamic> json) =
       _$WorkspaceImpl.fromJson;
@@ -205,9 +203,8 @@ mixin _$WorkspaceMember {
 /// @nodoc
 abstract class $WorkspaceMemberCopyWith<$Res> {
   factory $WorkspaceMemberCopyWith(
-    WorkspaceMember value,
-    $Res Function(WorkspaceMember) then,
-  ) = _$WorkspaceMemberCopyWithImpl<$Res, WorkspaceMember>;
+          WorkspaceMember value, $Res Function(WorkspaceMember) then) =
+      _$WorkspaceMemberCopyWithImpl<$Res, WorkspaceMember>;
   @useResult
   $Res call({String id, String role, String workspaceId, Workspace workspace});
 
@@ -234,27 +231,24 @@ class _$WorkspaceMemberCopyWithImpl<$Res, $Val extends WorkspaceMember>
     Object? workspaceId = null,
     Object? workspace = null,
   }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            role: null == role
-                ? _value.role
-                : role // ignore: cast_nullable_to_non_nullable
-                      as String,
-            workspaceId: null == workspaceId
-                ? _value.workspaceId
-                : workspaceId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            workspace: null == workspace
-                ? _value.workspace
-                : workspace // ignore: cast_nullable_to_non_nullable
-                      as Workspace,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      role: null == role
+          ? _value.role
+          : role // ignore: cast_nullable_to_non_nullable
+              as String,
+      workspaceId: null == workspaceId
+          ? _value.workspaceId
+          : workspaceId // ignore: cast_nullable_to_non_nullable
+              as String,
+      workspace: null == workspace
+          ? _value.workspace
+          : workspace // ignore: cast_nullable_to_non_nullable
+              as Workspace,
+    ) as $Val);
   }
 
   /// Create a copy of WorkspaceMember
@@ -271,10 +265,9 @@ class _$WorkspaceMemberCopyWithImpl<$Res, $Val extends WorkspaceMember>
 /// @nodoc
 abstract class _$$WorkspaceMemberImplCopyWith<$Res>
     implements $WorkspaceMemberCopyWith<$Res> {
-  factory _$$WorkspaceMemberImplCopyWith(
-    _$WorkspaceMemberImpl value,
-    $Res Function(_$WorkspaceMemberImpl) then,
-  ) = __$$WorkspaceMemberImplCopyWithImpl<$Res>;
+  factory _$$WorkspaceMemberImplCopyWith(_$WorkspaceMemberImpl value,
+          $Res Function(_$WorkspaceMemberImpl) then) =
+      __$$WorkspaceMemberImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({String id, String role, String workspaceId, Workspace workspace});
@@ -288,9 +281,8 @@ class __$$WorkspaceMemberImplCopyWithImpl<$Res>
     extends _$WorkspaceMemberCopyWithImpl<$Res, _$WorkspaceMemberImpl>
     implements _$$WorkspaceMemberImplCopyWith<$Res> {
   __$$WorkspaceMemberImplCopyWithImpl(
-    _$WorkspaceMemberImpl _value,
-    $Res Function(_$WorkspaceMemberImpl) _then,
-  ) : super(_value, _then);
+      _$WorkspaceMemberImpl _value, $Res Function(_$WorkspaceMemberImpl) _then)
+      : super(_value, _then);
 
   /// Create a copy of WorkspaceMember
   /// with the given fields replaced by the non-null parameter values.
@@ -302,38 +294,35 @@ class __$$WorkspaceMemberImplCopyWithImpl<$Res>
     Object? workspaceId = null,
     Object? workspace = null,
   }) {
-    return _then(
-      _$WorkspaceMemberImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        role: null == role
-            ? _value.role
-            : role // ignore: cast_nullable_to_non_nullable
-                  as String,
-        workspaceId: null == workspaceId
-            ? _value.workspaceId
-            : workspaceId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        workspace: null == workspace
-            ? _value.workspace
-            : workspace // ignore: cast_nullable_to_non_nullable
-                  as Workspace,
-      ),
-    );
+    return _then(_$WorkspaceMemberImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      role: null == role
+          ? _value.role
+          : role // ignore: cast_nullable_to_non_nullable
+              as String,
+      workspaceId: null == workspaceId
+          ? _value.workspaceId
+          : workspaceId // ignore: cast_nullable_to_non_nullable
+              as String,
+      workspace: null == workspace
+          ? _value.workspace
+          : workspace // ignore: cast_nullable_to_non_nullable
+              as Workspace,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$WorkspaceMemberImpl implements _WorkspaceMember {
-  const _$WorkspaceMemberImpl({
-    required this.id,
-    required this.role,
-    required this.workspaceId,
-    required this.workspace,
-  });
+  const _$WorkspaceMemberImpl(
+      {required this.id,
+      required this.role,
+      required this.workspaceId,
+      required this.workspace});
 
   factory _$WorkspaceMemberImpl.fromJson(Map<String, dynamic> json) =>
       _$$WorkspaceMemberImplFromJson(json);
@@ -377,23 +366,22 @@ class _$WorkspaceMemberImpl implements _WorkspaceMember {
   @pragma('vm:prefer-inline')
   _$$WorkspaceMemberImplCopyWith<_$WorkspaceMemberImpl> get copyWith =>
       __$$WorkspaceMemberImplCopyWithImpl<_$WorkspaceMemberImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$WorkspaceMemberImplToJson(this);
+    return _$$WorkspaceMemberImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _WorkspaceMember implements WorkspaceMember {
-  const factory _WorkspaceMember({
-    required final String id,
-    required final String role,
-    required final String workspaceId,
-    required final Workspace workspace,
-  }) = _$WorkspaceMemberImpl;
+  const factory _WorkspaceMember(
+      {required final String id,
+      required final String role,
+      required final String workspaceId,
+      required final Workspace workspace}) = _$WorkspaceMemberImpl;
 
   factory _WorkspaceMember.fromJson(Map<String, dynamic> json) =
       _$WorkspaceMemberImpl.fromJson;

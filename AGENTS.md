@@ -12,17 +12,19 @@ This is a Turbo monorepo workspace at `C:\Users\USER\Desktop\Just hub`. Key proj
 
 > **CRITICAL**: The web application and API have been migrated to native Ubuntu (WSL 2) to resolve performance bottlenecks. 
 
-### Location Guide
-- **Web & API Backend**: Lives exclusively in the Linux filesystem at `~/projects/justhub/property-management-saas`. ALL editing, running, and npm commands for the web stack MUST happen in the Ubuntu terminal or via VS Code attached to WSL.
-- **Flutter Mobile App**: Remains on the Windows filesystem at `C:\Users\USER\Desktop\Just hub\tenant_app` to support native Android USB debugging.
-- **Cross-OS Networking**: The Windows Flutter app connects to the WSL backend via `localhost` (Windows 11 automatically bridges WSL ports).
+## Quick Start
+For detailed instructions on setting up and running the project, refer to the [DEVELOPMENT.md](file:///home/djust/projects/justhub/DEVELOPMENT.md) guide.
 
 ### Starting the Servers
-1. Open Ubuntu terminal
-2. `cd ~/projects/justhub`
-3. `git pull` (always pull to ensure your Windows and Linux sides are in sync if you made mobile changes!) 
-4. `cd property-management-saas`
-5. `npm run dev`
+1. **Web & API Backend**:
+   ```bash
+   bash wsl_start_dev.sh
+   ```
+2. **Mobile App**:
+   ```bash
+   cd tenant_app
+   ./run.sh
+   ```
 
 ### Code Syncing (Windows vs Linux)
 Because the codebase is split for performance reasons, always use `git push` from one environment and `git pull` in the other if you have made cross-stack changes.

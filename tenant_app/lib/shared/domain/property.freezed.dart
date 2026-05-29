@@ -12,8 +12,7 @@ part of 'property.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 Property _$PropertyFromJson(Map<String, dynamic> json) {
   return _Property.fromJson(json);
@@ -57,24 +56,25 @@ class _$PropertyCopyWithImpl<$Res, $Val extends Property>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? id = null, Object? name = null, Object? address = null}) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            name: null == name
-                ? _value.name
-                : name // ignore: cast_nullable_to_non_nullable
-                      as String,
-            address: null == address
-                ? _value.address
-                : address // ignore: cast_nullable_to_non_nullable
-                      as String,
-          )
-          as $Val,
-    );
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+    Object? address = null,
+  }) {
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: null == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      address: null == address
+          ? _value.address
+          : address // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
   }
 }
 
@@ -82,9 +82,8 @@ class _$PropertyCopyWithImpl<$Res, $Val extends Property>
 abstract class _$$PropertyImplCopyWith<$Res>
     implements $PropertyCopyWith<$Res> {
   factory _$$PropertyImplCopyWith(
-    _$PropertyImpl value,
-    $Res Function(_$PropertyImpl) then,
-  ) = __$$PropertyImplCopyWithImpl<$Res>;
+          _$PropertyImpl value, $Res Function(_$PropertyImpl) then) =
+      __$$PropertyImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({String id, String name, String address});
@@ -95,42 +94,40 @@ class __$$PropertyImplCopyWithImpl<$Res>
     extends _$PropertyCopyWithImpl<$Res, _$PropertyImpl>
     implements _$$PropertyImplCopyWith<$Res> {
   __$$PropertyImplCopyWithImpl(
-    _$PropertyImpl _value,
-    $Res Function(_$PropertyImpl) _then,
-  ) : super(_value, _then);
+      _$PropertyImpl _value, $Res Function(_$PropertyImpl) _then)
+      : super(_value, _then);
 
   /// Create a copy of Property
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? id = null, Object? name = null, Object? address = null}) {
-    return _then(
-      _$PropertyImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        name: null == name
-            ? _value.name
-            : name // ignore: cast_nullable_to_non_nullable
-                  as String,
-        address: null == address
-            ? _value.address
-            : address // ignore: cast_nullable_to_non_nullable
-                  as String,
-      ),
-    );
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+    Object? address = null,
+  }) {
+    return _then(_$PropertyImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: null == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      address: null == address
+          ? _value.address
+          : address // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$PropertyImpl implements _Property {
-  const _$PropertyImpl({
-    required this.id,
-    required this.name,
-    required this.address,
-  });
+  const _$PropertyImpl(
+      {required this.id, required this.name, required this.address});
 
   factory _$PropertyImpl.fromJson(Map<String, dynamic> json) =>
       _$$PropertyImplFromJson(json);
@@ -171,16 +168,17 @@ class _$PropertyImpl implements _Property {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$PropertyImplToJson(this);
+    return _$$PropertyImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _Property implements Property {
-  const factory _Property({
-    required final String id,
-    required final String name,
-    required final String address,
-  }) = _$PropertyImpl;
+  const factory _Property(
+      {required final String id,
+      required final String name,
+      required final String address}) = _$PropertyImpl;
 
   factory _Property.fromJson(Map<String, dynamic> json) =
       _$PropertyImpl.fromJson;

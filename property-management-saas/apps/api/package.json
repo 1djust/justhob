@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "NODE_OPTIONS=--dns-result-order=ipv4first NODE_TLS_REJECT_UNAUTHORIZED=0 tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run",
@@ -19,6 +19,7 @@
     "dotenv": "^16.4.5",
     "fastify": "^4.26.2",
     "fastify-socket.io": "^5.1.0",
+    "node-cron": "^4.2.1",
     "nodemailer": "^6.9.13",
     "pdfkit": "^0.18.0",
     "socket.io": "^4.8.3"
@@ -27,6 +28,7 @@
     "@types/cors": "^2.8.19",
     "@types/dotenv": "^6.1.1",
     "@types/node": "^20.19.39",
+    "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^6.4.14",
     "@types/pdfkit": "^0.17.6",
     "tsx": "^4.7.1",

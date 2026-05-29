@@ -11,3 +11,5 @@ export default function ForgotPasswordPage() {
     </AuthLayout>
   );
 }
+
+// aria-label

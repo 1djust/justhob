@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -584,6 +583,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
     final isUnderReview = payment.status == 'UNDER_REVIEW';
     final isRejected = payment.status == 'REJECTED';
     final isOverdue = (!isPaid && !isUnderReview) && payment.dueDate.isBefore(DateTime.now());
+    final isPartial = payment.status == 'PARTIALLY_PAID';
 
     Color statusColor;
     IconData statusIcon;
@@ -596,6 +596,9 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
     } else if (isRejected) {
       statusColor = Colors.red.shade500;
       statusIcon = Icons.cancel_outlined;
+    } else if (isPartial) {
+      statusColor = Colors.orange.shade700;
+      statusIcon = Icons.pie_chart_outline;
     } else if (isOverdue) {
       statusColor = Colors.red.shade500;
       statusIcon = Icons.warning_amber_rounded;
@@ -603,6 +606,10 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
       statusColor = Colors.orange.shade500;
       statusIcon = Icons.pending_actions_outlined;
     }
+
+    final displayAmount = isPartial 
+        ? (payment.amount - (payment.amountPaid ?? 0))
+        : payment.amount;
 
     return Card(
       child: Padding(
@@ -624,14 +631,33 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        NumberFormat.currency(symbol: '₦ ', decimalDigits: 2).format(payment.amount),
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            NumberFormat.currency(symbol: '₦ ', decimalDigits: 2).format(displayAmount),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                          ),
+                          if (isPartial) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              'Bal',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade700),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Due: ${DateFormat.yMMMd().format(payment.dueDate)}',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500),
+                        isPartial && payment.promiseDate != null
+                            ? 'Promised by: ${DateFormat.yMMMd().format(payment.promiseDate!)}'
+                            : 'Due: ${DateFormat.yMMMd().format(payment.dueDate)}',
+                        style: TextStyle(
+                            color: isPartial && payment.promiseDate != null && payment.promiseDate!.isBefore(DateTime.now()) 
+                                ? Colors.red.shade600 
+                                : Colors.grey.shade600, 
+                            fontSize: 13, 
+                            fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
@@ -964,7 +990,6 @@ class _PaymentAccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isDirect = paymentInfo.payoutStrategy == 'DIRECT_TO_LANDLORD';
 
     return Container(

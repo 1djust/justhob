@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import '../data/notification_repository.dart';
 import '../../../../shared/domain/notification.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/socket_service.dart';
 
 final notificationsProvider = StateNotifierProvider<NotificationsNotifier, AsyncValue<List<NotificationItem>>>((ref) {
   return NotificationsNotifier(NotificationRepository(ApiClient()));
@@ -10,21 +12,53 @@ final notificationsProvider = StateNotifierProvider<NotificationsNotifier, Async
 
 class NotificationsNotifier extends StateNotifier<AsyncValue<List<NotificationItem>>> {
   final NotificationRepository _repository;
+  StreamSubscription? _socketSubscription;
+  Timer? _pollTimer;
 
   NotificationsNotifier(this._repository) : super(const AsyncValue.loading()) {
     fetchNotifications();
+    _listenToSocket();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      fetchNotifications();
+    });
+  }
+
+  void _listenToSocket() {
+    _socketSubscription?.cancel();
+    _socketSubscription = SocketService().eventStream.listen((event) {
+      final type = event['type'];
+      if (type == 'socket-connected' || type == 'NOTIFICATION_CREATED' || type == 'LEASE_RENEWAL_OFFER') {
+        debugPrint('[NotificationsNotifier] Socket update ($type): Refreshing notifications...');
+        fetchNotifications();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _socketSubscription?.cancel();
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> fetchNotifications() async {
-    state = const AsyncValue.loading();
     try {
       final notifications = await _repository.getNotifications();
       // Sort by creation date descending
       notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      state = AsyncValue.data(notifications);
+      if (mounted) {
+        state = AsyncValue.data(notifications);
+      }
     } catch (e, stack) {
       debugPrint('Caught error: $stack');
-      state = AsyncValue.error(e, stack);
+      if (mounted) {
+        state = AsyncValue.error(e, stack);
+      }
     }
   }
 
@@ -35,7 +69,8 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<NotificationIt
       state = AsyncValue.data(
         currentData.map((n) => n.copyWith(isRead: true)).toList(),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Error marking all as read: $e\n$stack');
       rethrow;
     }
   }
@@ -47,7 +82,8 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<NotificationIt
       state = AsyncValue.data(
         currentData.map((n) => n.id == id ? n.copyWith(isRead: true) : n).toList(),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Error marking as read: $e\n$stack');
       rethrow;
     }
   }

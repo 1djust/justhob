@@ -12,8 +12,7 @@ part of 'notification.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 NotificationItem _$NotificationItemFromJson(Map<String, dynamic> json) {
   return _NotificationItem.fromJson(json);
@@ -41,18 +40,16 @@ mixin _$NotificationItem {
 /// @nodoc
 abstract class $NotificationItemCopyWith<$Res> {
   factory $NotificationItemCopyWith(
-    NotificationItem value,
-    $Res Function(NotificationItem) then,
-  ) = _$NotificationItemCopyWithImpl<$Res, NotificationItem>;
+          NotificationItem value, $Res Function(NotificationItem) then) =
+      _$NotificationItemCopyWithImpl<$Res, NotificationItem>;
   @useResult
-  $Res call({
-    String id,
-    String title,
-    String message,
-    String type,
-    bool isRead,
-    DateTime createdAt,
-  });
+  $Res call(
+      {String id,
+      String title,
+      String message,
+      String type,
+      bool isRead,
+      DateTime createdAt});
 }
 
 /// @nodoc
@@ -77,65 +74,59 @@ class _$NotificationItemCopyWithImpl<$Res, $Val extends NotificationItem>
     Object? isRead = null,
     Object? createdAt = null,
   }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            title: null == title
-                ? _value.title
-                : title // ignore: cast_nullable_to_non_nullable
-                      as String,
-            message: null == message
-                ? _value.message
-                : message // ignore: cast_nullable_to_non_nullable
-                      as String,
-            type: null == type
-                ? _value.type
-                : type // ignore: cast_nullable_to_non_nullable
-                      as String,
-            isRead: null == isRead
-                ? _value.isRead
-                : isRead // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            createdAt: null == createdAt
-                ? _value.createdAt
-                : createdAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      title: null == title
+          ? _value.title
+          : title // ignore: cast_nullable_to_non_nullable
+              as String,
+      message: null == message
+          ? _value.message
+          : message // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
+      isRead: null == isRead
+          ? _value.isRead
+          : isRead // ignore: cast_nullable_to_non_nullable
+              as bool,
+      createdAt: null == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$NotificationItemImplCopyWith<$Res>
     implements $NotificationItemCopyWith<$Res> {
-  factory _$$NotificationItemImplCopyWith(
-    _$NotificationItemImpl value,
-    $Res Function(_$NotificationItemImpl) then,
-  ) = __$$NotificationItemImplCopyWithImpl<$Res>;
+  factory _$$NotificationItemImplCopyWith(_$NotificationItemImpl value,
+          $Res Function(_$NotificationItemImpl) then) =
+      __$$NotificationItemImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String id,
-    String title,
-    String message,
-    String type,
-    bool isRead,
-    DateTime createdAt,
-  });
+  $Res call(
+      {String id,
+      String title,
+      String message,
+      String type,
+      bool isRead,
+      DateTime createdAt});
 }
 
 /// @nodoc
 class __$$NotificationItemImplCopyWithImpl<$Res>
     extends _$NotificationItemCopyWithImpl<$Res, _$NotificationItemImpl>
     implements _$$NotificationItemImplCopyWith<$Res> {
-  __$$NotificationItemImplCopyWithImpl(
-    _$NotificationItemImpl _value,
-    $Res Function(_$NotificationItemImpl) _then,
-  ) : super(_value, _then);
+  __$$NotificationItemImplCopyWithImpl(_$NotificationItemImpl _value,
+      $Res Function(_$NotificationItemImpl) _then)
+      : super(_value, _then);
 
   /// Create a copy of NotificationItem
   /// with the given fields replaced by the non-null parameter values.
@@ -149,48 +140,45 @@ class __$$NotificationItemImplCopyWithImpl<$Res>
     Object? isRead = null,
     Object? createdAt = null,
   }) {
-    return _then(
-      _$NotificationItemImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        title: null == title
-            ? _value.title
-            : title // ignore: cast_nullable_to_non_nullable
-                  as String,
-        message: null == message
-            ? _value.message
-            : message // ignore: cast_nullable_to_non_nullable
-                  as String,
-        type: null == type
-            ? _value.type
-            : type // ignore: cast_nullable_to_non_nullable
-                  as String,
-        isRead: null == isRead
-            ? _value.isRead
-            : isRead // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        createdAt: null == createdAt
-            ? _value.createdAt
-            : createdAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime,
-      ),
-    );
+    return _then(_$NotificationItemImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      title: null == title
+          ? _value.title
+          : title // ignore: cast_nullable_to_non_nullable
+              as String,
+      message: null == message
+          ? _value.message
+          : message // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
+      isRead: null == isRead
+          ? _value.isRead
+          : isRead // ignore: cast_nullable_to_non_nullable
+              as bool,
+      createdAt: null == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$NotificationItemImpl implements _NotificationItem {
-  const _$NotificationItemImpl({
-    required this.id,
-    required this.title,
-    required this.message,
-    required this.type,
-    required this.isRead,
-    required this.createdAt,
-  });
+  const _$NotificationItemImpl(
+      {required this.id,
+      required this.title,
+      required this.message,
+      required this.type,
+      required this.isRead,
+      required this.createdAt});
 
   factory _$NotificationItemImpl.fromJson(Map<String, dynamic> json) =>
       _$$NotificationItemImplFromJson(json);
@@ -239,25 +227,24 @@ class _$NotificationItemImpl implements _NotificationItem {
   @pragma('vm:prefer-inline')
   _$$NotificationItemImplCopyWith<_$NotificationItemImpl> get copyWith =>
       __$$NotificationItemImplCopyWithImpl<_$NotificationItemImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$NotificationItemImplToJson(this);
+    return _$$NotificationItemImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _NotificationItem implements NotificationItem {
-  const factory _NotificationItem({
-    required final String id,
-    required final String title,
-    required final String message,
-    required final String type,
-    required final bool isRead,
-    required final DateTime createdAt,
-  }) = _$NotificationItemImpl;
+  const factory _NotificationItem(
+      {required final String id,
+      required final String title,
+      required final String message,
+      required final String type,
+      required final bool isRead,
+      required final DateTime createdAt}) = _$NotificationItemImpl;
 
   factory _NotificationItem.fromJson(Map<String, dynamic> json) =
       _$NotificationItemImpl.fromJson;

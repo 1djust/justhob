@@ -12,8 +12,7 @@ part of 'maintenance_request.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 MaintenanceRequest _$MaintenanceRequestFromJson(Map<String, dynamic> json) {
   return _MaintenanceRequest.fromJson(json);
@@ -41,18 +40,16 @@ mixin _$MaintenanceRequest {
 /// @nodoc
 abstract class $MaintenanceRequestCopyWith<$Res> {
   factory $MaintenanceRequestCopyWith(
-    MaintenanceRequest value,
-    $Res Function(MaintenanceRequest) then,
-  ) = _$MaintenanceRequestCopyWithImpl<$Res, MaintenanceRequest>;
+          MaintenanceRequest value, $Res Function(MaintenanceRequest) then) =
+      _$MaintenanceRequestCopyWithImpl<$Res, MaintenanceRequest>;
   @useResult
-  $Res call({
-    String id,
-    String description,
-    String? imageUrl,
-    String status,
-    DateTime createdAt,
-    String propertyId,
-  });
+  $Res call(
+      {String id,
+      String description,
+      String? imageUrl,
+      String status,
+      DateTime createdAt,
+      String propertyId});
 }
 
 /// @nodoc
@@ -77,65 +74,59 @@ class _$MaintenanceRequestCopyWithImpl<$Res, $Val extends MaintenanceRequest>
     Object? createdAt = null,
     Object? propertyId = null,
   }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            description: null == description
-                ? _value.description
-                : description // ignore: cast_nullable_to_non_nullable
-                      as String,
-            imageUrl: freezed == imageUrl
-                ? _value.imageUrl
-                : imageUrl // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            status: null == status
-                ? _value.status
-                : status // ignore: cast_nullable_to_non_nullable
-                      as String,
-            createdAt: null == createdAt
-                ? _value.createdAt
-                : createdAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime,
-            propertyId: null == propertyId
-                ? _value.propertyId
-                : propertyId // ignore: cast_nullable_to_non_nullable
-                      as String,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      description: null == description
+          ? _value.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String,
+      imageUrl: freezed == imageUrl
+          ? _value.imageUrl
+          : imageUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      status: null == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String,
+      createdAt: null == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      propertyId: null == propertyId
+          ? _value.propertyId
+          : propertyId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$MaintenanceRequestImplCopyWith<$Res>
     implements $MaintenanceRequestCopyWith<$Res> {
-  factory _$$MaintenanceRequestImplCopyWith(
-    _$MaintenanceRequestImpl value,
-    $Res Function(_$MaintenanceRequestImpl) then,
-  ) = __$$MaintenanceRequestImplCopyWithImpl<$Res>;
+  factory _$$MaintenanceRequestImplCopyWith(_$MaintenanceRequestImpl value,
+          $Res Function(_$MaintenanceRequestImpl) then) =
+      __$$MaintenanceRequestImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String id,
-    String description,
-    String? imageUrl,
-    String status,
-    DateTime createdAt,
-    String propertyId,
-  });
+  $Res call(
+      {String id,
+      String description,
+      String? imageUrl,
+      String status,
+      DateTime createdAt,
+      String propertyId});
 }
 
 /// @nodoc
 class __$$MaintenanceRequestImplCopyWithImpl<$Res>
     extends _$MaintenanceRequestCopyWithImpl<$Res, _$MaintenanceRequestImpl>
     implements _$$MaintenanceRequestImplCopyWith<$Res> {
-  __$$MaintenanceRequestImplCopyWithImpl(
-    _$MaintenanceRequestImpl _value,
-    $Res Function(_$MaintenanceRequestImpl) _then,
-  ) : super(_value, _then);
+  __$$MaintenanceRequestImplCopyWithImpl(_$MaintenanceRequestImpl _value,
+      $Res Function(_$MaintenanceRequestImpl) _then)
+      : super(_value, _then);
 
   /// Create a copy of MaintenanceRequest
   /// with the given fields replaced by the non-null parameter values.
@@ -149,48 +140,45 @@ class __$$MaintenanceRequestImplCopyWithImpl<$Res>
     Object? createdAt = null,
     Object? propertyId = null,
   }) {
-    return _then(
-      _$MaintenanceRequestImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        description: null == description
-            ? _value.description
-            : description // ignore: cast_nullable_to_non_nullable
-                  as String,
-        imageUrl: freezed == imageUrl
-            ? _value.imageUrl
-            : imageUrl // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        status: null == status
-            ? _value.status
-            : status // ignore: cast_nullable_to_non_nullable
-                  as String,
-        createdAt: null == createdAt
-            ? _value.createdAt
-            : createdAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime,
-        propertyId: null == propertyId
-            ? _value.propertyId
-            : propertyId // ignore: cast_nullable_to_non_nullable
-                  as String,
-      ),
-    );
+    return _then(_$MaintenanceRequestImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      description: null == description
+          ? _value.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String,
+      imageUrl: freezed == imageUrl
+          ? _value.imageUrl
+          : imageUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      status: null == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String,
+      createdAt: null == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      propertyId: null == propertyId
+          ? _value.propertyId
+          : propertyId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$MaintenanceRequestImpl implements _MaintenanceRequest {
-  const _$MaintenanceRequestImpl({
-    required this.id,
-    required this.description,
-    this.imageUrl,
-    required this.status,
-    required this.createdAt,
-    required this.propertyId,
-  });
+  const _$MaintenanceRequestImpl(
+      {required this.id,
+      required this.description,
+      this.imageUrl,
+      required this.status,
+      required this.createdAt,
+      required this.propertyId});
 
   factory _$MaintenanceRequestImpl.fromJson(Map<String, dynamic> json) =>
       _$$MaintenanceRequestImplFromJson(json);
@@ -233,14 +221,7 @@ class _$MaintenanceRequestImpl implements _MaintenanceRequest {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
-    runtimeType,
-    id,
-    description,
-    imageUrl,
-    status,
-    createdAt,
-    propertyId,
-  );
+      runtimeType, id, description, imageUrl, status, createdAt, propertyId);
 
   /// Create a copy of MaintenanceRequest
   /// with the given fields replaced by the non-null parameter values.
@@ -249,25 +230,24 @@ class _$MaintenanceRequestImpl implements _MaintenanceRequest {
   @pragma('vm:prefer-inline')
   _$$MaintenanceRequestImplCopyWith<_$MaintenanceRequestImpl> get copyWith =>
       __$$MaintenanceRequestImplCopyWithImpl<_$MaintenanceRequestImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$MaintenanceRequestImplToJson(this);
+    return _$$MaintenanceRequestImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _MaintenanceRequest implements MaintenanceRequest {
-  const factory _MaintenanceRequest({
-    required final String id,
-    required final String description,
-    final String? imageUrl,
-    required final String status,
-    required final DateTime createdAt,
-    required final String propertyId,
-  }) = _$MaintenanceRequestImpl;
+  const factory _MaintenanceRequest(
+      {required final String id,
+      required final String description,
+      final String? imageUrl,
+      required final String status,
+      required final DateTime createdAt,
+      required final String propertyId}) = _$MaintenanceRequestImpl;
 
   factory _MaintenanceRequest.fromJson(Map<String, dynamic> json) =
       _$MaintenanceRequestImpl.fromJson;

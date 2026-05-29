@@ -129,6 +129,102 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     return reply.send({ payments });
   });
 
+  // Get overdue summary for a workspace
+  fastify.get('/overdue-summary', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { workspaceId } = request.params as { workspaceId: string };
+    const now = new Date();
+    
+    const overduePayments = await prisma.payment.findMany({
+      where: {
+        workspaceId,
+        status: { in: ['OVERDUE', 'PARTIALLY_PAID'] }
+      }
+    });
+
+    const summary = {
+      totalOverdueCount: overduePayments.length,
+      totalOverdueAmount: 0,
+      brackets: {
+        '0-30': { count: 0, amount: 0 },
+        '30-60': { count: 0, amount: 0 },
+        '60-90': { count: 0, amount: 0 },
+        '90+': { count: 0, amount: 0 }
+      }
+    };
+
+    overduePayments.forEach((payment: any) => {
+      // Determine what constitutes an overdue payment. If not overdue yet but partially paid, should it count?
+      // Since we query OVERDUE and PARTIALLY_PAID, let's include if dueDate < now.
+      if (payment.dueDate > now && payment.status === 'PARTIALLY_PAID') return;
+      
+      const remainingAmount = payment.amount - (payment.amountPaid || 0);
+      summary.totalOverdueAmount += remainingAmount;
+      
+      const daysOverdue = Math.floor((now.getTime() - payment.dueDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysOverdue <= 30) {
+        summary.brackets['0-30'].count++;
+        summary.brackets['0-30'].amount += remainingAmount;
+      } else if (daysOverdue <= 60) {
+        summary.brackets['30-60'].count++;
+        summary.brackets['30-60'].amount += remainingAmount;
+      } else if (daysOverdue <= 90) {
+        summary.brackets['60-90'].count++;
+        summary.brackets['60-90'].amount += remainingAmount;
+      } else {
+        summary.brackets['90+'].count++;
+        summary.brackets['90+'].amount += remainingAmount;
+      }
+    });
+
+    return reply.send({ summary });
+  });
+
+  // Record a partial payment
+  fastify.post('/:id/partial-pay', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+    const { amountPaid, balancePromise, balanceNote } = request.body as { amountPaid: number, balancePromise?: string, balanceNote?: string };
+
+    if (!amountPaid || amountPaid <= 0) {
+      return reply.status(400).send({ error: 'Valid partial amount is required' });
+    }
+
+    const payment = await prisma.payment.findUnique({
+      where: { payment_workspace_id: { id, workspaceId } },
+      include: { lease: { include: { tenant: true } } }
+    });
+
+    if (!payment) return reply.status(404).send({ error: 'Payment not found' });
+    
+    const newAmountPaid = (payment.amountPaid || 0) + parseFloat(amountPaid.toString());
+    
+    if (newAmountPaid >= payment.amount) {
+      const updated = await prisma.payment.update({
+        where: { id },
+        data: { status: 'PAID', amountPaid: payment.amount, paidDate: new Date() }
+      });
+      return reply.send({ payment: updated, fullyPaid: true });
+    }
+
+    const updated = await prisma.payment.update({
+      where: { id },
+      data: {
+        status: 'PARTIALLY_PAID',
+        amountPaid: newAmountPaid,
+        balancePromise: balancePromise ? new Date(balancePromise) : null,
+        balanceNote
+      }
+    });
+
+    (fastify as any).io.to(`workspace:${workspaceId}`).emit('PAYMENT_UPDATED', {
+      paymentId: id,
+      status: 'PARTIALLY_PAID',
+      message: `A partial payment of ₦${amountPaid} was recorded.`
+    });
+
+    return reply.send({ payment: updated, fullyPaid: false });
+  });
+
   // Review a submitted proof of payment (Manager only)
   fastify.patch('/:id/review', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { workspaceId, id } = request.params as { workspaceId: string; id: string };

@@ -19,7 +19,11 @@ import notificationRoutes from './routes/notifications';
 import bankVerificationRoutes from './routes/bank-verification';
 import leaseRoutes from './routes/leases';
 import exportRoutes from './routes/exports';
+import leaseRenewalRoutes from './routes/lease-renewals';
+import adminRoutes from './routes/admin';
 import socketPlugin from './plugins/socket';
+import { setupOverdueChecker } from './cron/overdue-checker';
+import { setupLeaseExpiryReminder } from './cron/lease-expiry-reminder';
 
 export function buildApp() {
   const fastify = Fastify({ 
@@ -50,6 +54,10 @@ export function buildApp() {
   // Real-time synchronization
   fastify.register(socketPlugin);
 
+  // Initialize background cron jobs
+  setupOverdueChecker(fastify);
+  setupLeaseExpiryReminder(fastify);
+
   // Global Error Handler
   fastify.setErrorHandler((error, request, reply) => {
     // Determine status code
@@ -72,12 +80,21 @@ export function buildApp() {
     let errorDetails = (error as Error & { statusCode?: number; status?: number; code?: string; details?: any }).details || undefined;
     
     // Log the error
-    console.error({ 
-      err: error, 
-      requestId: request.id,
-      url: request.url,
-      method: request.method
-    });
+    if (statusCode === 400) {
+      console.error(`[400 Error] ${request.method} ${request.url}:`, {
+        message: error.message,
+        body: request.body,
+        params: request.params,
+        query: request.query
+      });
+    } else {
+      console.error({ 
+        err: error, 
+        requestId: request.id,
+        url: request.url,
+        method: request.method
+      });
+    }
 
     // Send structured response
     return reply.status(statusCode).send({
@@ -121,7 +138,9 @@ export function buildApp() {
   fastify.register(publicLogRoutes, { prefix: '/api/public' });
   fastify.register(bankVerificationRoutes, { prefix: '/api/workspaces/:workspaceId/bank' });
   fastify.register(leaseRoutes, { prefix: '/api/workspaces/:workspaceId/leases' });
+  fastify.register(leaseRenewalRoutes, { prefix: '/api/workspaces/:workspaceId' });
   fastify.register(exportRoutes, { prefix: '/api/workspaces/:workspaceId/export' });
+  fastify.register(adminRoutes, { prefix: '/api/admin' });
 
   return fastify;
 }

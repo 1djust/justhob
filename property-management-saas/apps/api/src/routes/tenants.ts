@@ -152,6 +152,12 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       throw err;
     });
 
+    // Emit real-time update to the workspace room
+    (fastify as any).io.to(`workspace:${workspaceId}`).emit('TENANT_CREATED', {
+      tenantId: (result as any).tenant.id,
+      message: 'A new tenant has been created.'
+    });
+
     return reply.status(201).send({ 
       tenant: (result as any).tenant,
       credentials: email ? { email, tempPassword: (result as any).tempPassword, inviteLink: (result as any).inviteLink } : null
@@ -201,6 +207,12 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       // Hard-delete the tenant record
       await prisma.tenant.delete({ where: { tenant_workspace_id: { id, workspaceId } } });
       
+      // Emit real-time update to the workspace room
+      (fastify as any).io.to(`workspace:${workspaceId}`).emit('TENANT_DELETED', {
+        tenantId: id,
+        message: 'A tenant has been deleted.'
+      });
+
       return reply.send({ success: true });
     } catch (e) {
       return reply.status(404).send({ error: 'Tenant not found or could not be deleted' });
@@ -254,5 +266,66 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
     }
 
     return reply.status(201).send({ lease });
+  });
+
+  // End tenancy - Only allowed after 3-month grace period, expired, or voluntary
+  fastify.post('/:id/end-tenancy', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+    const { leaseId, reason } = request.body as { leaseId: string; reason?: string };
+
+    if (!leaseId) {
+      return reply.status(400).send({ error: 'Lease ID is required' });
+    }
+
+    const lease = await prisma.lease.findFirst({
+      where: { id: leaseId, tenantId: id, tenant: { workspaceId } },
+      include: { 
+        payments: { orderBy: { dueDate: 'desc' } },
+        tenant: true,
+        property: true
+      }
+    });
+
+    if (!lease) {
+      return reply.status(404).send({ error: 'Lease not found' });
+    }
+
+    const now = new Date();
+    const hasOverdueGraceEnded = lease.payments.some((p: any) => p.gracePeriodEnd && p.gracePeriodEnd <= now);
+    
+    if (!hasOverdueGraceEnded && lease.status !== 'EXPIRED' && reason !== 'VOLUNTARY_LEAVE') {
+       return reply.status(403).send({ error: 'Cannot end tenancy: 3-month grace period has not ended.' });
+    }
+
+    const updatedLease = await prisma.lease.update({
+      where: { id: leaseId },
+      data: { status: 'TERMINATED', endDate: now }
+    });
+
+    if (lease.unitId) {
+      await prisma.unit.update({
+        where: { id: lease.unitId },
+        data: { status: 'VACANT' }
+      });
+    }
+
+    const tenantUser = await prisma.user.findUnique({ where: { email: lease.tenant.email || '' } });
+    if (tenantUser) {
+       await prisma.notification.create({
+         data: {
+           userId: tenantUser.id,
+           title: 'Tenancy Ended',
+           message: `Your tenancy at ${lease.property.name} has been ended.`,
+           type: 'TENANCY_ENDED'
+         }
+       });
+    }
+
+    (fastify as any).io.to(`workspace:${workspaceId}`).emit('TENANT_DELETED', {
+      tenantId: id,
+      message: 'A tenancy has been ended.'
+    });
+
+    return reply.send({ success: true, lease: updatedLease });
   });
 }

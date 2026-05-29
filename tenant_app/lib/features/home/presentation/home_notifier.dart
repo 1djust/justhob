@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import '../data/tenant_repository.dart';
@@ -22,22 +21,48 @@ final homeStateProvider = StateNotifierProvider<HomeNotifier, AsyncValue<Tenant?
 
 class HomeNotifier extends StateNotifier<AsyncValue<Tenant?>> {
   final TenantRepository _repository;
-  final dynamic _user; // Using dynamic to avoid circular dependency or import issues for now
+  final dynamic _user;
   StreamSubscription? _socketSubscription;
+  Timer? _pollTimer;
 
   HomeNotifier(this._repository, this._user) : super(const AsyncValue.loading()) {
     if (_user != null) {
       _init();
       _listenToSocket();
+      _startPolling();
     }
+  }
+
+  /// Periodic polling every 15 seconds as a guaranteed fallback.
+  /// This ensures the dashboard updates even if the socket connection
+  /// is broken, the token is stale, or events are missed.
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      debugPrint('[HomeNotifier] Periodic poll: refreshing dashboard...');
+      _init();
+    });
   }
 
   void _listenToSocket() {
     _socketSubscription?.cancel();
     _socketSubscription = SocketService().eventStream.listen((event) {
-      if (event['type'] == 'PAYMENT_UPDATED' || 
-          event['type'] == 'MAINTENANCE_UPDATED') {
-        debugPrint('[HomeNotifier] Socket update: Refreshing dashboard...');
+      final type = event['type'];
+
+      if (type == 'socket-connected') {
+        debugPrint('[HomeNotifier] Socket re-connected: Syncing data...');
+        _init();
+        return;
+      }
+
+      if (type == 'PAYMENT_UPDATED' ||
+          type == 'MAINTENANCE_UPDATED' ||
+          type == 'LEASE_UPDATED' ||
+          type == 'LEASE_RENEWAL_OFFER' ||
+          type == 'LEASE_RENEWED' ||
+          type == 'LEASE_RENEWAL_REJECTED' ||
+          type == 'NOTIFICATION_CREATED') {
+        debugPrint('[HomeNotifier] Socket event ($type): Refreshing dashboard...');
         _init();
       }
     });
@@ -46,7 +71,12 @@ class HomeNotifier extends StateNotifier<AsyncValue<Tenant?>> {
   @override
   void dispose() {
     _socketSubscription?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> refresh() async {
+    await _init();
   }
 
   Future<void> _init() async {
@@ -65,6 +95,16 @@ class HomeNotifier extends StateNotifier<AsyncValue<Tenant?>> {
     } catch (e, stack) {
       debugPrint('Caught error: $stack');
       state = AsyncValue.error(e, stack);
+    }
+  }
+
+  Future<void> respondToRenewalOffer(String leaseId, String offerId, bool accept) async {
+    try {
+      await _repository.respondToRenewalOffer(leaseId, offerId, accept);
+      await _init(); // Refresh data
+    } catch (e) {
+      debugPrint('Error responding to renewal: $e');
+      rethrow;
     }
   }
 }

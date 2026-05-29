@@ -51,7 +51,7 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-indigo-500 selection:text-white" aria-label="Landing Page">
       {/* Navigation */}
       <nav className="fixed w-full z-50 top-0 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -100,7 +100,7 @@ export function LandingPage() {
             </motion.div>
             
             <motion.h1 variants={fadeInUp} className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8">
-              Property Management, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400">Simplified.</span>
+              Property Management, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-teal-600 dark:from-indigo-400 dark:to-teal-400">Simplified.</span>
             </motion.h1>
             
             <motion.p variants={fadeInUp} className="text-xl text-slate-600 dark:text-slate-300 md:leading-relaxed mb-10">
@@ -193,17 +193,17 @@ export function LandingPage() {
             className="flex flex-col md:flex-row md:items-center justify-between mb-12 border-b border-indigo-100 dark:border-indigo-900/50 pb-6 gap-4"
           >
             <div>
-               <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-indigo-500 to-violet-500 text-white px-4 py-1.5 rounded-full text-sm font-bold mb-4">
+               <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-indigo-500 to-teal-500 text-white px-4 py-1.5 rounded-full text-sm font-bold mb-4">
                  <Sparkles className="h-4 w-4" />
                  <span>Version {version} Released</span>
                </div>
                <h2 className="text-3xl md:text-4xl font-bold">What's New in Just Hub</h2>
             </div>
             <div className="hidden md:block">
-              <Link href="/register" className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center space-x-1 hover:text-indigo-700 dark:hover:text-indigo-300">
+              <span onClick={() => window.location.href='/register'} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center space-x-1 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer">
                 <span>Explore all updates</span>
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </span>
             </div>
           </motion.div>
 
@@ -267,7 +267,7 @@ export function LandingPage() {
               variants={{ hidden: { opacity: 0, x: 20 }, visible: { opacity: 1, x: 0, transition: { duration: 0.5, delay: 0.3 } } }}
               className="bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-6 items-start hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
             >
-               <div className="p-4 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400">
+               <div className="p-4 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400">
                  <ShieldCheck className="h-8 w-8" />
                </div>
                <div>
@@ -328,7 +328,7 @@ export function LandingPage() {
               }}
               className="lg:w-1/2 relative"
             >
-              <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-[2rem] opacity-20 blur-2xl" />
+              <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500 to-teal-500 rounded-[2rem] opacity-20 blur-2xl" />
               <div className="relative">
                 <DashboardCarousel />
               </div>

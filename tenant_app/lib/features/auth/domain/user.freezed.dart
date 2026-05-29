@@ -12,8 +12,7 @@ part of 'user.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 User _$UserFromJson(Map<String, dynamic> json) {
   return _User.fromJson(json);
@@ -41,13 +40,12 @@ abstract class $UserCopyWith<$Res> {
   factory $UserCopyWith(User value, $Res Function(User) then) =
       _$UserCopyWithImpl<$Res, User>;
   @useResult
-  $Res call({
-    String id,
-    String email,
-    String? name,
-    List<WorkspaceMember> workspaces,
-    bool mustChangePassword,
-  });
+  $Res call(
+      {String id,
+      String email,
+      String? name,
+      List<WorkspaceMember> workspaces,
+      bool mustChangePassword});
 }
 
 /// @nodoc
@@ -71,49 +69,44 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
     Object? workspaces = null,
     Object? mustChangePassword = null,
   }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            email: null == email
-                ? _value.email
-                : email // ignore: cast_nullable_to_non_nullable
-                      as String,
-            name: freezed == name
-                ? _value.name
-                : name // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            workspaces: null == workspaces
-                ? _value.workspaces
-                : workspaces // ignore: cast_nullable_to_non_nullable
-                      as List<WorkspaceMember>,
-            mustChangePassword: null == mustChangePassword
-                ? _value.mustChangePassword
-                : mustChangePassword // ignore: cast_nullable_to_non_nullable
-                      as bool,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      email: null == email
+          ? _value.email
+          : email // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: freezed == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String?,
+      workspaces: null == workspaces
+          ? _value.workspaces
+          : workspaces // ignore: cast_nullable_to_non_nullable
+              as List<WorkspaceMember>,
+      mustChangePassword: null == mustChangePassword
+          ? _value.mustChangePassword
+          : mustChangePassword // ignore: cast_nullable_to_non_nullable
+              as bool,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
   factory _$$UserImplCopyWith(
-    _$UserImpl value,
-    $Res Function(_$UserImpl) then,
-  ) = __$$UserImplCopyWithImpl<$Res>;
+          _$UserImpl value, $Res Function(_$UserImpl) then) =
+      __$$UserImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String id,
-    String email,
-    String? name,
-    List<WorkspaceMember> workspaces,
-    bool mustChangePassword,
-  });
+  $Res call(
+      {String id,
+      String email,
+      String? name,
+      List<WorkspaceMember> workspaces,
+      bool mustChangePassword});
 }
 
 /// @nodoc
@@ -121,7 +114,7 @@ class __$$UserImplCopyWithImpl<$Res>
     extends _$UserCopyWithImpl<$Res, _$UserImpl>
     implements _$$UserImplCopyWith<$Res> {
   __$$UserImplCopyWithImpl(_$UserImpl _value, $Res Function(_$UserImpl) _then)
-    : super(_value, _then);
+      : super(_value, _then);
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.
@@ -134,43 +127,41 @@ class __$$UserImplCopyWithImpl<$Res>
     Object? workspaces = null,
     Object? mustChangePassword = null,
   }) {
-    return _then(
-      _$UserImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        email: null == email
-            ? _value.email
-            : email // ignore: cast_nullable_to_non_nullable
-                  as String,
-        name: freezed == name
-            ? _value.name
-            : name // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        workspaces: null == workspaces
-            ? _value._workspaces
-            : workspaces // ignore: cast_nullable_to_non_nullable
-                  as List<WorkspaceMember>,
-        mustChangePassword: null == mustChangePassword
-            ? _value.mustChangePassword
-            : mustChangePassword // ignore: cast_nullable_to_non_nullable
-                  as bool,
-      ),
-    );
+    return _then(_$UserImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      email: null == email
+          ? _value.email
+          : email // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: freezed == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String?,
+      workspaces: null == workspaces
+          ? _value._workspaces
+          : workspaces // ignore: cast_nullable_to_non_nullable
+              as List<WorkspaceMember>,
+      mustChangePassword: null == mustChangePassword
+          ? _value.mustChangePassword
+          : mustChangePassword // ignore: cast_nullable_to_non_nullable
+              as bool,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$UserImpl implements _User {
-  const _$UserImpl({
-    required this.id,
-    required this.email,
-    this.name,
-    final List<WorkspaceMember> workspaces = const [],
-    this.mustChangePassword = false,
-  }) : _workspaces = workspaces;
+  const _$UserImpl(
+      {required this.id,
+      required this.email,
+      this.name,
+      final List<WorkspaceMember> workspaces = const [],
+      this.mustChangePassword = false})
+      : _workspaces = workspaces;
 
   factory _$UserImpl.fromJson(Map<String, dynamic> json) =>
       _$$UserImplFromJson(json);
@@ -207,24 +198,16 @@ class _$UserImpl implements _User {
             (identical(other.id, id) || other.id == id) &&
             (identical(other.email, email) || other.email == email) &&
             (identical(other.name, name) || other.name == name) &&
-            const DeepCollectionEquality().equals(
-              other._workspaces,
-              _workspaces,
-            ) &&
+            const DeepCollectionEquality()
+                .equals(other._workspaces, _workspaces) &&
             (identical(other.mustChangePassword, mustChangePassword) ||
                 other.mustChangePassword == mustChangePassword));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    id,
-    email,
-    name,
-    const DeepCollectionEquality().hash(_workspaces),
-    mustChangePassword,
-  );
+  int get hashCode => Object.hash(runtimeType, id, email, name,
+      const DeepCollectionEquality().hash(_workspaces), mustChangePassword);
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.
@@ -236,18 +219,19 @@ class _$UserImpl implements _User {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$UserImplToJson(this);
+    return _$$UserImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _User implements User {
-  const factory _User({
-    required final String id,
-    required final String email,
-    final String? name,
-    final List<WorkspaceMember> workspaces,
-    final bool mustChangePassword,
-  }) = _$UserImpl;
+  const factory _User(
+      {required final String id,
+      required final String email,
+      final String? name,
+      final List<WorkspaceMember> workspaces,
+      final bool mustChangePassword}) = _$UserImpl;
 
   factory _User.fromJson(Map<String, dynamic> json) = _$UserImpl.fromJson;
 

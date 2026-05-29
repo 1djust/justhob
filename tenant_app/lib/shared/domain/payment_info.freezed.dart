@@ -12,8 +12,7 @@ part of 'payment_info.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 PaymentInfo _$PaymentInfoFromJson(Map<String, dynamic> json) {
   return _PaymentInfo.fromJson(json);
@@ -69,27 +68,24 @@ class _$PaymentInfoCopyWithImpl<$Res, $Val extends PaymentInfo>
     Object? accountNumber = freezed,
     Object? accountName = freezed,
   }) {
-    return _then(
-      _value.copyWith(
-            payoutStrategy: freezed == payoutStrategy
-                ? _value.payoutStrategy
-                : payoutStrategy // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            bankCode: freezed == bankCode
-                ? _value.bankCode
-                : bankCode // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            accountNumber: freezed == accountNumber
-                ? _value.accountNumber
-                : accountNumber // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            accountName: freezed == accountName
-                ? _value.accountName
-                : accountName // ignore: cast_nullable_to_non_nullable
-                      as String?,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      payoutStrategy: freezed == payoutStrategy
+          ? _value.payoutStrategy
+          : payoutStrategy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      bankCode: freezed == bankCode
+          ? _value.bankCode
+          : bankCode // ignore: cast_nullable_to_non_nullable
+              as String?,
+      accountNumber: freezed == accountNumber
+          ? _value.accountNumber
+          : accountNumber // ignore: cast_nullable_to_non_nullable
+              as String?,
+      accountName: freezed == accountName
+          ? _value.accountName
+          : accountName // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ) as $Val);
   }
 }
 
@@ -97,9 +93,8 @@ class _$PaymentInfoCopyWithImpl<$Res, $Val extends PaymentInfo>
 abstract class _$$PaymentInfoImplCopyWith<$Res>
     implements $PaymentInfoCopyWith<$Res> {
   factory _$$PaymentInfoImplCopyWith(
-    _$PaymentInfoImpl value,
-    $Res Function(_$PaymentInfoImpl) then,
-  ) = __$$PaymentInfoImplCopyWithImpl<$Res>;
+          _$PaymentInfoImpl value, $Res Function(_$PaymentInfoImpl) then) =
+      __$$PaymentInfoImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
@@ -114,9 +109,8 @@ class __$$PaymentInfoImplCopyWithImpl<$Res>
     extends _$PaymentInfoCopyWithImpl<$Res, _$PaymentInfoImpl>
     implements _$$PaymentInfoImplCopyWith<$Res> {
   __$$PaymentInfoImplCopyWithImpl(
-    _$PaymentInfoImpl _value,
-    $Res Function(_$PaymentInfoImpl) _then,
-  ) : super(_value, _then);
+      _$PaymentInfoImpl _value, $Res Function(_$PaymentInfoImpl) _then)
+      : super(_value, _then);
 
   /// Create a copy of PaymentInfo
   /// with the given fields replaced by the non-null parameter values.
@@ -128,38 +122,35 @@ class __$$PaymentInfoImplCopyWithImpl<$Res>
     Object? accountNumber = freezed,
     Object? accountName = freezed,
   }) {
-    return _then(
-      _$PaymentInfoImpl(
-        payoutStrategy: freezed == payoutStrategy
-            ? _value.payoutStrategy
-            : payoutStrategy // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        bankCode: freezed == bankCode
-            ? _value.bankCode
-            : bankCode // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        accountNumber: freezed == accountNumber
-            ? _value.accountNumber
-            : accountNumber // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        accountName: freezed == accountName
-            ? _value.accountName
-            : accountName // ignore: cast_nullable_to_non_nullable
-                  as String?,
-      ),
-    );
+    return _then(_$PaymentInfoImpl(
+      payoutStrategy: freezed == payoutStrategy
+          ? _value.payoutStrategy
+          : payoutStrategy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      bankCode: freezed == bankCode
+          ? _value.bankCode
+          : bankCode // ignore: cast_nullable_to_non_nullable
+              as String?,
+      accountNumber: freezed == accountNumber
+          ? _value.accountNumber
+          : accountNumber // ignore: cast_nullable_to_non_nullable
+              as String?,
+      accountName: freezed == accountName
+          ? _value.accountName
+          : accountName // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$PaymentInfoImpl implements _PaymentInfo {
-  const _$PaymentInfoImpl({
-    this.payoutStrategy,
-    this.bankCode,
-    this.accountNumber,
-    this.accountName,
-  });
+  const _$PaymentInfoImpl(
+      {this.payoutStrategy,
+      this.bankCode,
+      this.accountNumber,
+      this.accountName});
 
   factory _$PaymentInfoImpl.fromJson(Map<String, dynamic> json) =>
       _$$PaymentInfoImplFromJson(json);
@@ -196,12 +187,7 @@ class _$PaymentInfoImpl implements _PaymentInfo {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
-        runtimeType,
-        payoutStrategy,
-        bankCode,
-        accountNumber,
-        accountName,
-      );
+      runtimeType, payoutStrategy, bankCode, accountNumber, accountName);
 
   /// Create a copy of PaymentInfo
   /// with the given fields replaced by the non-null parameter values.
@@ -213,17 +199,18 @@ class _$PaymentInfoImpl implements _PaymentInfo {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$PaymentInfoImplToJson(this);
+    return _$$PaymentInfoImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _PaymentInfo implements PaymentInfo {
-  const factory _PaymentInfo({
-    final String? payoutStrategy,
-    final String? bankCode,
-    final String? accountNumber,
-    final String? accountName,
-  }) = _$PaymentInfoImpl;
+  const factory _PaymentInfo(
+      {final String? payoutStrategy,
+      final String? bankCode,
+      final String? accountNumber,
+      final String? accountName}) = _$PaymentInfoImpl;
 
   factory _PaymentInfo.fromJson(Map<String, dynamic> json) =
       _$PaymentInfoImpl.fromJson;

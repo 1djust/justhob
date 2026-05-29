@@ -13,7 +13,7 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingObserver {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -27,6 +27,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkForUpdates();
     _checkBiometric();
   }
@@ -48,6 +49,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _biometricAvailable = supported;
         _biometricEnabled = enabled;
       });
+
+      // Auto-trigger biometric prompt if enabled for seamless re-entry
+      if (enabled) {
+        _handleBiometricLogin();
+      }
     }
   }
 
@@ -82,9 +88,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _biometricEnabled && !_isSubmitting) {
+      _handleBiometricLogin();
+    }
   }
 
   void _handleLogin() async {
@@ -385,8 +399,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 28),
                   // Need an account?
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 4,
                     children: [
                       Text(
                         'Need an account?',
@@ -395,7 +411,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           fontSize: 14,
                         ),
                       ),
-                      const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(

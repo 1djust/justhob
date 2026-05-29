@@ -7,16 +7,15 @@ part of 'user.dart';
 // **************************************************************************
 
 _$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
-  id: json['id'] as String,
-  email: json['email'] as String,
-  name: json['name'] as String?,
-  workspaces:
-      (json['workspaces'] as List<dynamic>?)
-          ?.map((e) => WorkspaceMember.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const [],
-  mustChangePassword: json['mustChangePassword'] as bool? ?? false,
-);
+      id: json['id'] as String,
+      email: json['email'] as String,
+      name: json['name'] as String?,
+      workspaces: (json['workspaces'] as List<dynamic>?)
+              ?.map((e) => WorkspaceMember.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      mustChangePassword: json['mustChangePassword'] as bool? ?? false,
+    );
 
 Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
     <String, dynamic>{
