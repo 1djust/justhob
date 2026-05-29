@@ -14,3 +14,15 @@ coverage/
 .idea/
 *.iml
 .dart_tool/
+
+# Scratch & Debug files
+property-management-saas/test-*
+property-management-saas/fix-*
+property-management-saas/debug-*
+property-management-saas/scratch/
+property-management-saas/update-admin.ts
+property-management-saas/verify-notifications.ts
+property-management-saas/check-pending-payments.ts
+property-management-saas/apps/api/test-*
+property-management-saas/apps/api/src/test-*
+property-management-saas/apps/api/src/debug-*
