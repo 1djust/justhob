@@ -34,13 +34,22 @@ export async function apiFetch(url: string, options: ApiOptions = {}) {
     headers.set('Authorization', `Bearer ${session.access_token}`);
   }
 
-  // Ensure Content-Type is set if body is present and not form data
-  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+  const method = options.method?.toUpperCase() || 'GET';
+
+  // Ensure Content-Type is set if body is present or if it's a mutation, and not form data
+  if (['POST', 'PUT', 'PATCH'].includes(method) && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
+  }
+
+  let finalBody = options.body;
+  // If no body is provided for a POST request that expects JSON, send an empty object
+  if (['POST', 'PUT', 'PATCH'].includes(method) && !finalBody && headers.get('Content-Type') === 'application/json') {
+    finalBody = JSON.stringify({});
   }
 
   const response = await fetch(url.startsWith('http') ? url : `${API_BASE_URL}${url}`, {
     ...options,
+    body: finalBody,
     headers,
   });
 
