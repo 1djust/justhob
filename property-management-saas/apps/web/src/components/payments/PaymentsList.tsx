@@ -25,6 +25,7 @@ import {
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
 import { ExportButton } from '@/components/shared/ExportButton';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Lease {
   id: string;
@@ -34,9 +35,19 @@ interface Lease {
   yearlyRent?: number;
 }
 
+interface PaymentTransaction {
+  id: string;
+  amount: number;
+  status: string;
+  note?: string;
+  paidDate: string;
+  receiptId?: string;
+}
+
 interface Payment {
   id: string;
   amount: number;
+  amountPaid?: number;
   status: string;
   dueDate: string;
   paidDate?: string;
@@ -48,6 +59,7 @@ interface Payment {
     tenant?: { id: string; name: string };
     property?: { id: string; name: string };
   };
+  transactions?: PaymentTransaction[];
 }
 
 interface PaymentsListProps {
@@ -58,41 +70,42 @@ interface PaymentsListProps {
 }
 
 export function PaymentsList({ workspaceId, leases, isPropertyManager = true, plan }: PaymentsListProps) {
-  const [payments, setPayments] = React.useState<Payment[]>([]);
-  const { socket, joinWorkspace, leaveWorkspace } = useRealtime();
-  const [loading, setLoading] = React.useState(true);
+  const queryClient = useQueryClient();
+  const { socket, joinWorkspace } = useRealtime();
   const [showForm, setShowForm] = React.useState(false);
   const [filter, setFilter] = React.useState<string>('');
+  const [page, setPage] = React.useState(1);
   const [reviewingPayment, setReviewingPayment] = React.useState<Payment | null>(null);
   const [proofViewPayment, setProofViewPayment] = React.useState<Payment | null>(null);
   const [receiptViewPayment, setReceiptViewPayment] = React.useState<Payment | null>(null);
   const [partialPaymentView, setPartialPaymentView] = React.useState<Payment | null>(null);
 
-  const fetchPayments = async () => {
-    try {
-      const url = `${API_BASE_URL}/api/workspaces/${workspaceId}/payments${filter ? `?status=${filter}` : ''}`;
+  const { data: paymentsData, isLoading: loading } = useQuery({
+    queryKey: ['payments', workspaceId, page, filter],
+    queryFn: async () => {
+      const url = `${API_BASE_URL}/api/workspaces/${workspaceId}/payments?page=${page}&limit=20${filter ? `&status=${filter}` : ''}`;
       const data = await apiFetch(url, { credentials: 'include' });
-      setPayments(data.payments || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data;
+    },
+    enabled: !!workspaceId
+  });
+
+  const payments: Payment[] = paymentsData?.payments || [];
+  const totalPages = paymentsData?.pagination?.totalPages || 1;
 
   React.useEffect(() => {
     if (workspaceId) {
-      fetchPayments();
       joinWorkspace(workspaceId);
     }
-  }, [workspaceId, filter, joinWorkspace]);
+  }, [workspaceId, joinWorkspace]);
 
   // Real-time listener
   React.useEffect(() => {
     if (socket) {
       const handleUpdate = (data: any) => {
         console.log('[Realtime] Payment event received:', data);
-        fetchPayments();
+        queryClient.invalidateQueries({ queryKey: ['payments', workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ['overdue-payments', workspaceId] });
       };
 
       socket.on('PAYMENT_UPDATED', handleUpdate);
@@ -103,19 +116,22 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true, pl
         socket.off('PAYMENT_SUBMITTED', handleUpdate);
       };
     }
-  }, [socket, filter]);
+  }, [socket, workspaceId, queryClient]);
 
-  const handleMarkPaid = async (paymentId: string) => {
-    try {
+  const markPaidMutation = useMutation({
+    mutationFn: async (paymentId: string) => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments/${paymentId}/pay`, {
         method: 'PUT',
         credentials: 'include'
       });
-      fetchPayments();
-    } catch (e) {
-      console.error(e);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-payments', workspaceId] });
     }
-  };
+  });
+
+  const handleMarkPaid = (paymentId: string) => markPaidMutation.mutate(paymentId);
 
   if (loading) {
     return (
@@ -281,7 +297,7 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true, pl
 
       {showForm && isPropertyManager && (
         <div className="animate-in zoom-in-95 fade-in duration-300">
-          <PaymentForm workspaceId={workspaceId} leases={leases} onComplete={() => { setShowForm(false); fetchPayments(); }} />
+          <PaymentForm workspaceId={workspaceId} leases={leases} onComplete={() => setShowForm(false)} />
         </div>
       )}
 
@@ -402,6 +418,30 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true, pl
               </tbody>
             </table>
           </div>
+          
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/10">
+              <p className="text-xs text-zinc-500 font-medium">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 text-xs font-bold rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 text-xs font-bold rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -419,10 +459,7 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true, pl
           payment={reviewingPayment}
           workspaceId={workspaceId}
           onClose={() => setReviewingPayment(null)}
-          onComplete={() => {
-            setReviewingPayment(null);
-            fetchPayments();
-          }}
+          onComplete={() => setReviewingPayment(null)}
         />
       )}
       {/* Receipt Modal */}
@@ -439,10 +476,7 @@ export function PaymentsList({ workspaceId, leases, isPropertyManager = true, pl
           payment={partialPaymentView}
           workspaceId={workspaceId}
           onClose={() => setPartialPaymentView(null)}
-          onComplete={() => {
-            setPartialPaymentView(null);
-            fetchPayments();
-          }}
+          onComplete={() => setPartialPaymentView(null)}
         />
       )}
     </div>
@@ -503,22 +537,19 @@ function ProofViewerModal({ payment, onClose }: { payment: Payment; onClose: () 
   );
 }
 
-/* ─── Review Payment Modal (Approve / Reject) ─── */
 function ReviewPaymentModal({ payment, workspaceId, onClose, onComplete }: { 
   payment: Payment; 
   workspaceId: string;
   onClose: () => void;
   onComplete: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [action, setAction] = React.useState<'approve' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
 
-  const handleReview = async (status: 'PAID' | 'REJECTED') => {
-    if (status === 'REJECTED' && !rejectionReason.trim()) return;
-
-    setLoading(true);
-    try {
+  const reviewMutation = useMutation({
+    mutationFn: async (status: 'PAID' | 'REJECTED') => {
+      if (status === 'REJECTED' && !rejectionReason.trim()) throw new Error('Rejection reason required');
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments/${payment.id}/review`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -528,15 +559,22 @@ function ReviewPaymentModal({ payment, workspaceId, onClose, onComplete }: {
         }),
         credentials: 'include',
       });
-
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-payments', workspaceId] });
       onComplete();
-    } catch (e: any) {
+    },
+    onError: (e: any) => {
       console.error(e);
       alert(e.message || 'Failed to review payment');
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleReview = (status: 'PAID' | 'REJECTED') => {
+    reviewMutation.mutate(status);
   };
+  const loading = reviewMutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
@@ -769,6 +807,20 @@ function ReceiptModal({ payment, onClose }: { payment: Payment; onClose: () => v
                {payment.receiptId || `RCPT-${payment.id.split('-')[0].toUpperCase()}`}
              </p>
           </div>
+
+          {payment.transactions && payment.transactions.length > 0 && (
+            <div className="mt-8 border-t-2 border-dashed border-zinc-100 dark:border-zinc-800 pt-8">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4">Transaction History</p>
+              <div className="space-y-3">
+                {payment.transactions.map((t, idx) => (
+                  <div key={t.id || idx} className="flex justify-between items-center text-sm">
+                    <span className="font-bold text-zinc-900 dark:text-white">₦{t.amount.toLocaleString()}</span>
+                    <span className="text-zinc-500">{new Date(t.paidDate).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions (Hidden on Print) */}
@@ -891,8 +943,8 @@ function InvoiceModal({ payment, onClose }: { payment: Payment; onClose: () => v
 }
 
 function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string; leases: Lease[]; onComplete: () => void }) {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = React.useState({ leaseId: '', amount: '', dueDate: '', status: 'PENDING', note: '' });
-  const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const handleLeaseChange = (leaseId: string) => {
@@ -904,29 +956,36 @@ function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string;
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
+  const createMutation = useMutation({
+    mutationFn: async () => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include'
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-payments', workspaceId] });
       onComplete();
-    } catch (e: any) {
+    },
+    onError: (e: any) => {
       console.error(e);
       if (e.message && e.message.includes('Free plan limit reached')) {
         setError(e.message);
       } else {
         setError('Failed to record payment. Please try again.');
       }
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    createMutation.mutate();
   };
+  const loading = createMutation.isPending;
 
   return (
     <form onSubmit={handleSubmit} className="mb-12 p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-zinc-50/50 dark:bg-zinc-900/30 space-y-8 relative overflow-hidden">
@@ -1035,22 +1094,19 @@ function PaymentForm({ workspaceId, leases, onComplete }: { workspaceId: string;
   );
 }
 
-/* ─── Partial Payment Modal ─── */
 function PartialPaymentModal({ payment, workspaceId, onClose, onComplete }: { 
   payment: Payment; 
   workspaceId: string;
   onClose: () => void;
   onComplete: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [amount, setAmount] = React.useState('');
   const [date, setDate] = React.useState('');
   const [note, setNote] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
+  const partialMutation = useMutation({
+    mutationFn: async () => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments/${payment.id}/partial-pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1061,14 +1117,23 @@ function PartialPaymentModal({ payment, workspaceId, onClose, onComplete }: {
         }),
         credentials: 'include',
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-payments', workspaceId] });
       onComplete();
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       console.error(err);
       alert(err.message || 'Failed to record partial payment');
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    partialMutation.mutate();
   };
+  const loading = partialMutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
@@ -1091,14 +1156,35 @@ function PartialPaymentModal({ payment, workspaceId, onClose, onComplete }: {
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+          {payment.transactions && payment.transactions.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-widest mb-3">Payment History</h4>
+              <div className="space-y-3">
+                {payment.transactions.map((t, idx) => (
+                  <div key={t.id || idx} className="flex justify-between items-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+                    <div>
+                      <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">₦{t.amount.toLocaleString()}</p>
+                      <p className="text-xs text-zinc-500">{new Date(t.paidDate).toLocaleDateString()}</p>
+                    </div>
+                    {t.status === 'COMPLETED' ? (
+                      <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-md uppercase">Paid</span>
+                    ) : (
+                      <span className="text-[10px] font-black text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded-md uppercase">{t.status}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Amount Paid Now (₦)</label>
             <input 
               type="number" 
               step="0.01" 
               required 
-              max={payment.amount}
+              max={payment.amount - (payment.amountPaid || 0)}
               value={amount} 
               onChange={e => setAmount(e.target.value)} 
               className="w-full mt-1.5 px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-bold" 

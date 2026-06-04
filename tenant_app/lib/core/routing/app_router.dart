@@ -7,6 +7,8 @@ import '../../features/auth/presentation/auth_notifier.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/home/presentation/notifications_screen.dart';
 import '../../features/payments/presentation/payments_screen.dart';
+import '../../features/payments/presentation/payments_notifier.dart';
+import '../../features/payments/presentation/lockout_screen.dart';
 import '../../features/maintenance/presentation/maintenance_list_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 
@@ -16,6 +18,7 @@ class RouterNotifier extends ChangeNotifier {
 
   RouterNotifier(this._ref) {
     _ref.listen(authStateProvider, (_, __) => notifyListeners());
+    _ref.listen(paymentsProvider, (_, __) => notifyListeners());
   }
 }
 
@@ -24,7 +27,7 @@ final routerNotifierProvider = Provider<RouterNotifier>((ref) {
 });
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final notifier = ref.watch(routerNotifierProvider);
+  final notifier = ref.read(routerNotifierProvider);
 
   return GoRouter(
     initialLocation: '/login',
@@ -50,12 +53,37 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/';
       }
 
+      final payments = ref.read(paymentsProvider).valueOrNull;
+      bool isLockedOut = false;
+      if (payments != null) {
+        isLockedOut = payments.any((p) => 
+          (p.status == 'OVERDUE' || p.status == 'PARTIALLY_PAID') && 
+          p.dueDate.difference(DateTime.now()).inDays <= -30 &&
+          p.paymentPlanStatus != 'APPROVED'
+        );
+      }
+
+      final isLockoutScreen = state.matchedLocation == '/lockout';
+      final isPaymentsScreen = state.matchedLocation == '/payments';
+
+      if (isLockedOut) {
+        if (!isLockoutScreen && !isPaymentsScreen) {
+           return '/lockout';
+        }
+      } else if (isLockoutScreen) {
+        return '/';
+      }
+
       return null;
     },
     routes: [
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/lockout',
+        builder: (context, state) => const LockoutScreen(),
       ),
       GoRoute(
         path: '/change-password',

@@ -1,5 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const PublicLogBody = Type.Object({
+  message: Type.String(),
+  stack: Type.Optional(Type.String()),
+  context: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+  source: Type.Union([Type.Literal('web'), Type.Literal('mobile')]),
+  level: Type.Optional(Type.Union([Type.Literal('error'), Type.Literal('warn'), Type.Literal('info')]))
+});
 
 /**
  * Public Log Ingestion Routes.
@@ -7,15 +17,13 @@ import { prisma } from '../lib/database';
  * Allows the Web frontend and Mobile app to report errors to the database.
  */
 export default async function publicLogRoutes(fastify: FastifyInstance) {
-  fastify.post('/logs', async (request, reply) => {
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+
+  server.post<{ Body: Static<typeof PublicLogBody> }>('/logs', {
+    schema: { body: PublicLogBody }
+  }, async (request, reply) => {
     try {
-      const { message, stack, context, source, level } = request.body as {
-        message: string;
-        stack?: string;
-        context?: any;
-        source: 'web' | 'mobile';
-        level?: 'error' | 'warn' | 'info';
-      };
+      const { message, stack, context, source, level } = request.body;
 
       if (!message || !source) {
         return reply.status(400).send({ error: 'Message and source are required' });
@@ -39,7 +47,7 @@ export default async function publicLogRoutes(fastify: FastifyInstance) {
             ...(context || {}),
             ip: request.ip,
             userAgent: request.headers['user-agent'],
-          } as any,
+          } as import('@prisma/client').Prisma.InputJsonValue,
         },
       });
 

@@ -1,11 +1,24 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
 import { Prisma } from '@prisma/client';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const TenantParams = Type.Object({ tenantId: Type.String() });
+const MaintenanceBody = Type.Object({
+  propertyId: Type.Optional(Type.String()),
+  description: Type.Optional(Type.String()),
+  imageUrl: Type.Optional(Type.String())
+});
 
 export default async function publicRoutes(fastify: FastifyInstance) {
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+
   // Get tenant public profile (for the portal)
-  fastify.get('/tenants/:tenantId', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { tenantId } = request.params as { tenantId: string };
+  server.get<{ Params: Static<typeof TenantParams> }>('/tenants/:tenantId', {
+    schema: { params: TenantParams }
+  }, async (request, reply) => {
+    const { tenantId } = request.params;
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId, deletedAt: null },
@@ -35,53 +48,38 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Tenant not found or has been deactivated' });
     }
 
-    // For each lease, look up the landlord's bank info from WorkspaceMember
-    const leasesWithPaymentInfo = await Promise.all(
-      (tenant.leases || []).map(async (lease: any) => {
-        let paymentInfo = null;
-        if (lease.property?.owner?.id) {
-          const member = await prisma.workspaceMember.findUnique({
-            where: {
-              userId_workspaceId: {
-                userId: lease.property.owner.id,
-                workspaceId: tenant.workspaceId
-              }
-            },
-            select: {
-              payoutStrategy: true,
-              bankCode: true,
-              accountNumber: true,
-              accountName: true
-            }
-          });
-          if (member) {
-            paymentInfo = {
-              payoutStrategy: member.payoutStrategy,
-              bankCode: member.bankCode,
-              accountNumber: member.accountNumber,
-              accountName: member.accountName
-            };
-          }
-        }
-        return {
-          ...lease,
-          paymentInfo
-        };
-      })
-    );
+    // Security: Strip sensitive data from public response — no PII, no bank details
+    const sanitizedLeases = (tenant.leases || []).map((lease) => ({
+      id: lease.id,
+      status: lease.status,
+      startDate: lease.startDate,
+      endDate: lease.endDate,
+      property: lease.property ? {
+        id: lease.property.id,
+        name: lease.property.name,
+        address: lease.property.address,
+      } : null,
+      // Bank details intentionally excluded from public endpoint
+    }));
 
     return reply.send({ 
       tenant: {
-        ...tenant,
-        leases: leasesWithPaymentInfo
-      }
+        id: tenant.id,
+        name: tenant.name,
+        // email and phone intentionally excluded from public endpoint
+        workspace: tenant.workspace ? { name: tenant.workspace.name, id: tenant.workspace.id } : null,
+        leases: sanitizedLeases,
+        // maintenanceRequests intentionally excluded from public endpoint
+      } 
     });
   });
 
   // Submit a new maintenance request from the tenant portal
-  fastify.post('/tenants/:tenantId/maintenance', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { tenantId } = request.params as { tenantId: string };
-    const { propertyId, description, imageUrl } = request.body as { propertyId?: any; description?: any; imageUrl?: any };
+  server.post<{ Params: Static<typeof TenantParams>, Body: Static<typeof MaintenanceBody> }>('/tenants/:tenantId/maintenance', {
+    schema: { params: TenantParams, body: MaintenanceBody }
+  }, async (request, reply) => {
+    const { tenantId } = request.params;
+    const { propertyId, description, imageUrl } = request.body;
 
     if (!propertyId || !description) {
       return reply.status(400).send({ error: 'Property ID and description are required' });
@@ -131,8 +129,8 @@ export default async function publicRoutes(fastify: FastifyInstance) {
           status: 'PENDING'
         }
       });
-    }).catch((err: any) => {
-      if (err.message === 'LIMIT_MAINTENANCE') {
+    }).catch((err: unknown) => {
+      if ((err as Error).message === 'LIMIT_MAINTENANCE') {
         throw { statusCode: 402, message: 'Free plan limit reached: Maximum 3 active maintenance tickets allowed. Please upgrade your plan.' };
       }
       throw err;

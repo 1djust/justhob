@@ -16,6 +16,13 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   bool _isLoading = false;
   String? _error;
 
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _submit() async {
     if (_passwordController.text.length < 6) {
       setState(() => _error = 'Password must be at least 6 characters');

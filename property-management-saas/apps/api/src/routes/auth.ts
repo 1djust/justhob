@@ -2,10 +2,23 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
 import { supabaseAdmin } from '../lib/supabase';
 import { AppError, UnauthorizedError, ValidationError, NotFoundError } from '../lib/errors';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 
+const SyncBody = Type.Object({ name: Type.Optional(Type.String()) });
+const LoginBody = Type.Object({ email: Type.String(), password: Type.String() });
+const ChangePasswordBody = Type.Object({
+  newPassword: Type.String({
+    minLength: 8,
+    pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{}|;:,.<>?])[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{}|;:,.<>?]{8,}$'
+  })
+});
+const ResetPasswordBody = Type.Object({ email: Type.String() });
 export default async function authRoutes(fastify: FastifyInstance) {
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+
   // Sync Supabase user to Prisma (called after frontend login/register)
-  fastify.post('/sync', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.post<{ Body: Static<typeof SyncBody> }>('/sync', { schema: { body: SyncBody } }, async (request, reply) => {
     const token = request.headers.authorization?.replace('Bearer ', '');
     if (!token) {
       throw new UnauthorizedError('Authentication required. Please sign in.');
@@ -22,7 +35,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
 
       const supaUser = supaData.user;
-      const { name } = (request.body as Record<string, any>) || {};
+      const { name } = request.body || {};
 
       // Check if Prisma user already exists
       let user = await prisma.user.findUnique({ 
@@ -41,7 +54,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
 
         if (existingByEmail) {
-          await prisma.user.delete({ where: { id: existingByEmail.id } });
+          // Security: Do NOT delete existing users. This prevents account takeover
+          // via duplicate email registration.
+          throw new AppError(
+            'An account with this email already exists. Please contact support if you believe this is an error.',
+            409,
+            'DUPLICATE_EMAIL'
+          );
         }
 
         try {
@@ -93,12 +112,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
       }
 
+      const u = user as unknown as { 
+        workspaces?: Array<{ role: string; workspaceId: string }>;
+        role: string;
+      };
+
       const mustChange = supaUser?.user_metadata?.mustChangePassword === true;
       const userWithWorkspaces = {
         ...user,
-        role: (user as any).workspaces?.[0]?.role || 'USER',
-        globalRole: (user as any).role,
-        workspaceId: (user as any).workspaces?.[0]?.workspaceId || null,
+        role: u.workspaces?.[0]?.role || 'USER',
+        globalRole: u.role,
+        workspaceId: u.workspaces?.[0]?.workspaceId || null,
         mustChangePassword: mustChange
       };
 
@@ -106,7 +130,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   });
 
   // Get current user
-  fastify.get('/me', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/me', { schema: {} }, async (request, reply) => {
     const token = request.headers.authorization?.replace('Bearer ', '');
     if (!token) throw new UnauthorizedError();
  
@@ -133,11 +157,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
   });
 
   // Login (called by mobile app)
-  fastify.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { email, password } = request.body as { email?: any; password?: any };
-    if (!email || !password) {
-      throw new ValidationError('Email and password required');
-    }
+  server.post<{ Body: Static<typeof LoginBody> }>('/login', { schema: { body: LoginBody } }, async (request, reply) => {
+    const { email, password } = request.body;
 
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
       email,
@@ -192,14 +213,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
   });
 
   // Change password (for first-login forced password change)
-  fastify.post('/change-password', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.post<{ Body: Static<typeof ChangePasswordBody> }>('/change-password', { schema: { body: ChangePasswordBody } }, async (request, reply) => {
     const token = request.headers.authorization?.replace('Bearer ', '');
     if (!token) throw new UnauthorizedError();
 
-    const { newPassword } = request.body as { newPassword?: string };
-    if (!newPassword || newPassword.length < 6) {
-      throw new ValidationError('Password must be at least 6 characters');
-    }
+    const { newPassword } = request.body;
 
     // Verify the token and get the user
     const { data: supaData, error: supaError } = await supabaseAdmin.auth.getUser(token);
@@ -246,11 +264,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
   });
 
   // Trigger password reset email
-  fastify.post('/reset-password-request', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { email } = request.body as { email?: string };
-    if (!email) {
-      throw new ValidationError('Email is required');
-    }
+  server.post<{ Body: Static<typeof ResetPasswordBody> }>('/reset-password-request', { schema: { body: ResetPasswordBody } }, async (request, reply) => {
+    const { email } = request.body;
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
@@ -265,7 +280,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   });
 
   // Logout (no-op since Supabase handles sessions, but kept for compatibility)
-  fastify.post('/logout', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.post('/logout', { schema: {} }, async (request, reply) => {
     return reply.send({ success: true });
   });
 }

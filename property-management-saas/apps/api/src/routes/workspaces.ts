@@ -1,12 +1,24 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate } from '../lib/middleware';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const CreateWorkspaceBody = Type.Object({ name: Type.String() });
+const UpdateWorkspaceParams = Type.Object({ id: Type.String() });
+const UpdateWorkspaceBody = Type.Object({ 
+  bankCode: Type.Optional(Type.String()),
+  accountNumber: Type.Optional(Type.String()),
+  accountName: Type.Optional(Type.String())
+});
+const WorkspaceIdParams = Type.Object({ workspaceId: Type.String() });
 
 export default async function workspaceRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
 
   // Get all workspaces for the current user
-  fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/', async (request, reply) => {
     const userId = request.userId!;
     const workspaces = await prisma.workspaceMember.findMany({
       where: { userId },
@@ -16,12 +28,12 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
   });
 
   // Create a new workspace (Current user becomes PROPERTY_MANAGER)
-  fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.post<{ Body: Static<typeof CreateWorkspaceBody> }>('/', {
+    schema: { body: CreateWorkspaceBody }
+  }, async (request, reply) => {
     const userId = request.userId!;
-    const { name } = request.body as { name: string };
+    const { name } = request.body;
     
-    if (!name) return reply.status(400).send({ error: 'Workspace name is required' });
-
     // Ensure the default "Monthly" rent mapping doesn't conflict during workspace creation
     const workspace = await prisma.workspace.create({
       data: {
@@ -39,10 +51,12 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
   });
 
   // Update a workspace (e.g. Bank Payout Details)
-  fastify.patch('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.patch<{ Params: Static<typeof UpdateWorkspaceParams>, Body: Static<typeof UpdateWorkspaceBody> }>('/:id', {
+    schema: { params: UpdateWorkspaceParams, body: UpdateWorkspaceBody }
+  }, async (request, reply) => {
     const userId = request.userId!;
-    const { id } = request.params as { id: string };
-    const { bankCode, accountNumber, accountName } = request.body as { bankCode?: any; accountNumber?: any; accountName?: any };
+    const { id } = request.params;
+    const { bankCode, accountNumber, accountName } = request.body;
 
     const membership = await prisma.workspaceMember.findFirst({
       where: { workspaceId: id, userId, role: 'PROPERTY_MANAGER' }
@@ -62,69 +76,71 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
     return reply.send({ workspace });
   });
 
-  // Join a workspace (as TENANT)
-  fastify.post('/:workspaceId/join', async (request: FastifyRequest, reply: FastifyReply) => {
+  // Join a workspace (requires being pre-added by a manager)
+  // Security: Open join was removed — users must be invited by a workspace admin
+  server.post<{ Params: Static<typeof WorkspaceIdParams> }>('/:workspaceId/join', {
+    schema: { params: WorkspaceIdParams }
+  }, async (request, reply) => {
     const userId = request.userId!;
-    const { workspaceId } = request.params as { workspaceId: string };
+    const { workspaceId } = request.params;
 
     const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
     if (!workspace) return reply.status(404).send({ error: 'Workspace not found' });
 
+    // Security: Check if the user was pre-added as a member by a workspace admin
+    // (e.g., when a manager creates a tenant, a WorkspaceMember record is created)
     const existingMember = await prisma.workspaceMember.findUnique({
       where: { userId_workspaceId: { userId, workspaceId } }
     });
 
-    if (existingMember) {
-      return reply.status(400).send({ error: 'Already a member' });
+    if (!existingMember) {
+      return reply.status(403).send({ 
+        error: 'You have not been invited to this workspace. Please ask the workspace administrator to add you.' 
+      });
     }
 
-    const member = await prisma.workspaceMember.create({
-      data: {
-        userId,
-        workspaceId,
-        role: 'TENANT'
-      }
-    });
-
-    return reply.status(201).send({ member });
+    // User was already pre-added — just confirm
+    return reply.status(200).send({ member: existingMember });
   });
 
   // Get workspace stats
-  fastify.get('/:workspaceId/stats', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get<{ Params: Static<typeof WorkspaceIdParams> }>('/:workspaceId/stats', {
+    schema: { params: WorkspaceIdParams }
+  }, async (request, reply) => {
     const userId = request.userId!;
-    const { workspaceId } = request.params as { workspaceId: string };
+    const { workspaceId } = request.params;
 
     const member = await prisma.workspaceMember.findUnique({
       where: { userId_workspaceId: { userId, workspaceId } }
     });
     if (!member) return reply.status(403).send({ error: 'Forbidden' });
 
-    let propertyWhere: any = { workspaceId };
+    let propertyWhere: import('@prisma/client').Prisma.PropertyWhereInput = { workspaceId };
     if (member.role === 'LANDLORD') {
       propertyWhere.ownerId = userId;
     }
 
     const totalProperties = await prisma.property.count({ where: propertyWhere });
     
-    let tenantWhere: any = { workspaceId, deletedAt: null };
+    let tenantWhere: import('@prisma/client').Prisma.TenantWhereInput = { workspaceId, deletedAt: null };
     if (member.role === 'LANDLORD') {
       // Find tenants that have leases in this landlord's properties
       tenantWhere.leases = { some: { property: { ownerId: userId } } };
     }
     const totalTenants = await prisma.tenant.count({ where: tenantWhere });
     
-    let maintenanceWhere: any = { workspaceId, status: 'PENDING' };
+    let maintenanceWhere: import('@prisma/client').Prisma.MaintenanceRequestWhereInput = { workspaceId, status: 'PENDING' };
     if (member.role === 'LANDLORD') {
       maintenanceWhere.property = { ownerId: userId };
     }
     const pendingMaintenance = await prisma.maintenanceRequest.count({ where: maintenanceWhere });
 
-    let paymentWhere: any = {
+    let paymentWhere: import('@prisma/client').Prisma.PaymentWhereInput = {
       status: 'PAID',
       lease: { property: { workspaceId } }
     };
     if (member.role === 'LANDLORD') {
-      paymentWhere.lease.property.ownerId = userId;
+      paymentWhere.lease = { property: { workspaceId, ownerId: userId } };
     }
     
     const paidPayments = await prisma.payment.findMany({
@@ -132,15 +148,15 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
       select: { amount: true, paidDate: true }
     });
 
-    const rentCollected = paidPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+    const rentCollected = paidPayments.reduce((sum: number, p) => sum + p.amount, 0);
 
-    let underReviewWhere: any = { workspaceId, status: 'UNDER_REVIEW' };
+    let underReviewWhere: import('@prisma/client').Prisma.PaymentWhereInput = { workspaceId, status: 'UNDER_REVIEW' };
     if (member.role === 'LANDLORD') {
       underReviewWhere.lease = { property: { ownerId: userId } };
     }
     const underReviewPayments = await prisma.payment.count({ where: underReviewWhere });
 
-    let overdueWhere: any = {
+    let overdueWhere: import('@prisma/client').Prisma.PaymentWhereInput = {
       workspaceId,
       status: { in: ['OVERDUE', 'PARTIALLY_PAID'] }
     };
@@ -153,7 +169,7 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-    let expiringLeaseWhere: any = {
+    let expiringLeaseWhere: import('@prisma/client').Prisma.LeaseWhereInput = {
       status: 'ACTIVE',
       endDate: { gte: now, lte: thirtyDaysFromNow },
       tenant: { workspaceId }
@@ -171,7 +187,7 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
       revenueByMonth[month] = 0;
     }
 
-    paidPayments.forEach((p: any) => {
+    paidPayments.forEach((p) => {
       if (p.paidDate) {
         const month = new Date(p.paidDate).toLocaleString('default', { month: 'short' });
         if (revenueByMonth[month] !== undefined) {

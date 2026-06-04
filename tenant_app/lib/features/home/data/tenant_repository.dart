@@ -13,7 +13,18 @@ class TenantRepository {
 
   Future<Tenant> getTenantProfile() async {
     final response = await _apiClient.dio.get('/tenant/dashboard');
-    return Tenant.fromJson(response.data['tenant']);
+
+    // --- LAYER 2: DEFENSIVE DATA PARSING ---
+    // If the API returns unexpected/malformed data, fromJson will throw.
+    // We catch it here so the error surfaces cleanly as AsyncValue.error
+    // in the Riverpod state, instead of propagating as an unhandled exception
+    // that can crash the widget tree and produce a blank screen.
+    try {
+      return Tenant.fromJson(response.data['tenant']);
+    } catch (e, stack) {
+      debugPrint('[TenantRepository] Failed to parse tenant profile: $e\n$stack');
+      rethrow;
+    }
   }
 
   Future<List<MaintenanceRequest>> getMaintenanceRequests() async {
@@ -119,6 +130,19 @@ class TenantRepository {
       data: {
         'proofUrl': 'data:image/jpeg;base64,$base64Image',
         'note': note,
+      },
+    );
+    return Payment.fromJson(response.data['payment']);
+  }
+
+  Future<Payment> requestPaymentPlan({
+    required String paymentId,
+    required String proposal,
+  }) async {
+    final response = await _apiClient.dio.post(
+      '/tenant/payments/$paymentId/request-payment-plan',
+      data: {
+        'proposal': proposal,
       },
     );
     return Payment.fromJson(response.data['payment']);

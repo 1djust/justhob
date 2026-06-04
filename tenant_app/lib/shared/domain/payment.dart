@@ -19,6 +19,9 @@ class Payment with _$Payment {
     double? amountPaid,
     DateTime? promiseDate,
     DateTime? gracePeriodEnd,
+    @Default(false) bool paymentPlanRequested,
+    String? paymentPlanStatus,
+    DateTime? evictionDate,
   }) = _Payment;
 
   factory Payment.fromJson(Map<String, dynamic> json) => _$PaymentFromJson(json);

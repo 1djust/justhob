@@ -1,14 +1,21 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess } from '../lib/middleware';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 
 export default async function leaseRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', verifyWorkspaceAccess);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
+  server.addHook('preHandler', verifyWorkspaceAccess);
 
   // List all leases in a workspace
-  fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
+  server.get<{ Params: Static<typeof WorkspaceParams> }>('/', {
+    schema: { params: WorkspaceParams }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
     
     const leases = await prisma.lease.findMany({
       where: { 

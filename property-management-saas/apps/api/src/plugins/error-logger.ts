@@ -34,7 +34,7 @@ const errorLoggerPlugin: FastifyPluginCallback = (
           message: error.message || 'Unknown API Error',
           stack: error.stack,
           source: 'api',
-          context: context as any,
+          context: context as import('@prisma/client').Prisma.InputJsonValue,
         },
       });
 
@@ -60,7 +60,7 @@ const errorLoggerPlugin: FastifyPluginCallback = (
               method: request.method,
               responseTimeMs: Math.round(responseTime),
               statusCode: reply.statusCode,
-            } as any,
+            } as import('@prisma/client').Prisma.InputJsonValue,
           },
         });
       } catch (dbError) {

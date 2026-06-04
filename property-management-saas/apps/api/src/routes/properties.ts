@@ -1,19 +1,43 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
-import { Prisma } from '@prisma/client';
+import { Prisma, PropertyType } from '@prisma/client';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
+const PropertyIdParams = Type.Object({ workspaceId: Type.String(), id: Type.String() });
+
+const CreatePropertyBody = Type.Object({
+  name: Type.Optional(Type.String()),
+  address: Type.Optional(Type.String()),
+  ownerId: Type.Optional(Type.String()),
+  units: Type.Optional(Type.Array(Type.Object({
+    unitNumber: Type.String(),
+    type: Type.Enum(PropertyType)
+  })))
+});
+
+const UpdatePropertyBody = Type.Object({
+  name: Type.Optional(Type.String()),
+  address: Type.Optional(Type.String()),
+  ownerId: Type.Optional(Type.String())
+});
 
 export default async function propertiesRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', verifyWorkspaceAccess);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
+  server.addHook('preHandler', verifyWorkspaceAccess);
 
   // List Properties
-  fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
+  server.get<{ Params: Static<typeof WorkspaceParams> }>('/', {
+    schema: { params: WorkspaceParams }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
     const userRole = request.userRole!;
     const userId = request.userId!;
 
-    const whereClause: any = { workspaceId, deletedAt: null };
+    const whereClause: import('@prisma/client').Prisma.PropertyWhereInput = { workspaceId, deletedAt: null };
     if (userRole === 'LANDLORD') {
       whereClause.ownerId = userId;
     }
@@ -30,9 +54,12 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
   });
 
   // Create Property
-  fastify.post('/', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
-    const { name, address, ownerId, units } = request.body as { name?: any; address?: any; ownerId?: any; units?: any };
+  server.post<{ Params: Static<typeof WorkspaceParams>, Body: Static<typeof CreatePropertyBody> }>('/', {
+    preHandler: requireManager,
+    schema: { params: WorkspaceParams, body: CreatePropertyBody }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
+    const { name, address, ownerId, units } = request.body;
 
     if (!name || !address) {
       return reply.status(400).send({ error: 'Name and address are required' });
@@ -75,29 +102,30 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
           ownerId: ownerId || null,
           workspaceId,
           units: {
-            create: (units || []).map((u: any) => ({
+            create: (units || []).map((u) => ({
               unitNumber: u.unitNumber,
               type: u.type,
-              workspaceId
+              workspace: { connect: { id: workspaceId } }
             }))
           }
         },
         include: { units: true }
       });
-    }).catch((err: any) => {
-      if (err.message?.startsWith('LIMIT_PROPERTIES')) {
-        const limit = err.message.split(':')[1];
+    }).catch((err: unknown) => {
+      const errorMsg = (err as Error).message;
+      if (errorMsg?.startsWith('LIMIT_PROPERTIES')) {
+        const limit = errorMsg.split(':')[1];
         throw { statusCode: 402, message: `Plan limit reached: Maximum ${limit} property allowed. Please upgrade your plan.` };
       }
-      if (err.message?.startsWith('LIMIT_UNITS')) {
-        const limit = err.message.split(':')[1];
+      if (errorMsg?.startsWith('LIMIT_UNITS')) {
+        const limit = errorMsg.split(':')[1];
         throw { statusCode: 402, message: `Plan limit reached: Maximum ${limit} units allowed. Please upgrade your plan.` };
       }
       throw err;
     });
 
     // Emit real-time update to the workspace room
-    (fastify as any).io.to(`workspace:${workspaceId}`).emit('PROPERTY_CREATED', {
+    (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${workspaceId}`).emit('PROPERTY_CREATED', {
       propertyId: property.id,
       message: 'A new property has been created.'
     });
@@ -106,9 +134,12 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
   });
 
   // Update Property
-  fastify.put('/:id', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { name, address, ownerId } = request.body as { name?: any; address?: any; ownerId?: any };
+  server.put<{ Params: Static<typeof PropertyIdParams>, Body: Static<typeof UpdatePropertyBody> }>('/:id', {
+    preHandler: requireManager,
+    schema: { params: PropertyIdParams, body: UpdatePropertyBody }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
+    const { name, address, ownerId } = request.body;
 
     try {
       const property = await prisma.property.update({
@@ -126,8 +157,11 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
   });
 
   // Delete Property (Soft Delete)
-  fastify.delete('/:id', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+  server.delete<{ Params: Static<typeof PropertyIdParams> }>('/:id', {
+    preHandler: requireManager,
+    schema: { params: PropertyIdParams }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
 
     try {
       await prisma.property.update({
@@ -136,7 +170,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
       });
 
       // Emit real-time update to the workspace room
-      (fastify as any).io.to(`workspace:${workspaceId}`).emit('PROPERTY_DELETED', {
+      (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${workspaceId}`).emit('PROPERTY_DELETED', {
         propertyId: id,
         message: 'A property has been deleted.'
       });

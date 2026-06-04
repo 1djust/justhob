@@ -15,8 +15,8 @@ async function runQA() {
       'This is a test of the Pro Plan email notification system.'
     );
     console.log('✅ Mailer logic triggered successfully (Check console logs above for mock output).\n');
-  } catch (err: any) {
-    console.error('❌ Mailer test failed:', err.message);
+  } catch (err: unknown) {
+    console.error('❌ Mailer test failed:', (err as Error).message);
   }
 
   // 2. Test PDF Generation
@@ -37,8 +37,8 @@ async function runQA() {
     }, writeStream);
 
     console.log(`✅ PDF generation logic completed. file saved to: ${testOutputPath}\n`);
-  } catch (err: any) {
-    console.error('❌ PDF generation failed:', err.message);
+  } catch (err: unknown) {
+    console.error('❌ PDF generation failed:', (err as Error).message);
   }
 
   // 3. Test Tier Limit Logic (Simulation)

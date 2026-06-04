@@ -101,4 +101,17 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
       rethrow;
     }
   }
+
+  Future<void> requestPaymentPlan(String paymentId, String proposal) async {
+    try {
+      await _repository.requestPaymentPlan(
+        paymentId: paymentId,
+        proposal: proposal,
+      );
+      // Fetch latest payments to reflect the PENDING status
+      await fetchPayments();
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

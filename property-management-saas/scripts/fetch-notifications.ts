@@ -16,7 +16,7 @@ async function main() {
       take: 50
     });
     console.log('Success, found:', notifications.length);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching notifications:', error);
   }
 }

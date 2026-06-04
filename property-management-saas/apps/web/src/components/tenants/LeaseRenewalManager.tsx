@@ -3,40 +3,42 @@
 import * as React from 'react';
 import { FileText, CheckCircle2, AlertCircle, RefreshCw, X, Clock } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function LeaseRenewalManager({ workspaceId }: { workspaceId: string }) {
-  const [renewals, setRenewals] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchRenewals = React.useCallback(async () => {
-    try {
+  const { data: renewals = [], isLoading: loading } = useQuery<any[]>({
+    queryKey: ['renewals', workspaceId],
+    queryFn: async () => {
       const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/leases/renewals`, {
         credentials: 'include'
       });
-      setRenewals(data.renewals || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId]);
+      return data.renewals || [];
+    },
+    enabled: !!workspaceId
+  });
 
-  React.useEffect(() => {
-    if (workspaceId) fetchRenewals();
-  }, [workspaceId, fetchRenewals]);
-
-  const handleReview = async (renewalId: string, status: 'ACCEPTED' | 'REJECTED') => {
-    try {
+  const reviewMutation = useMutation({
+    mutationFn: async ({ renewalId, status }: { renewalId: string, status: 'ACCEPTED' | 'REJECTED' }) => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/leases/renewals/${renewalId}/review`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
         credentials: 'include'
       });
-      fetchRenewals();
-    } catch (e: any) {
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['renewals', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['tenants', workspaceId] });
+    },
+    onError: (e: any) => {
       alert(e.message || 'Failed to review renewal');
     }
+  });
+
+  const handleReview = (renewalId: string, status: 'ACCEPTED' | 'REJECTED') => {
+    reviewMutation.mutate({ renewalId, status });
   };
 
   if (loading) return <div className="animate-pulse h-32 bg-zinc-100 dark:bg-zinc-900 rounded-3xl" />;

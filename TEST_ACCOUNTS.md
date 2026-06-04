@@ -22,5 +22,8 @@ All test accounts have been synchronized with the following password for ease of
    - `npx tsx setup-mega-test.ts 30` (30-day lease expiry)
    - `npx tsx setup-mega-test.ts 7` (7-day pre-due payment alert)
    - `npx tsx setup-mega-test.ts 1` (1-day overdue payment alert)
+   - `npx tsx setup-mega-test.ts 14` (14-day overdue feature restriction)
+   - `npx tsx setup-mega-test.ts 21` (21-day overdue final warning)
+   - `npx tsx setup-mega-test.ts 31` (30+ day overdue complete lockout & eviction notice)
 2. **Trigger Jobs**: Log in as **Admin** on the web dashboard and click **"Run System Jobs Now"**.
 3. **Verify App**: Log in as the **Tenant** on the mobile app to see the real-time banners and notifications.

@@ -14,25 +14,26 @@ async function main() {
   // 1. Create a "Test Verification Log" if we want to confirm connectivity
   // We already ran this once, but it's safe to run again.
   console.log('Verifying database connectivity...');
-  await (prisma as any).errorLog.create({
+  await (prisma as unknown as { errorLog: { create: (args: unknown) => Promise<void> } }).errorLog.create({
     data: {
       level: 'info',
       message: 'Monitoring System Verification (TS Fix)',
       source: 'verification-script',
-      context: { status: 'active', node: process.version } as any
+      context: { status: 'active', node: process.version }
     }
   });
 
   // 2. Query the latest logs
-  const logs = await (prisma as any).errorLog.findMany({
+  const logs = await (prisma as unknown as { errorLog: { findMany: (args: unknown) => Promise<unknown[]> } }).errorLog.findMany({
     take: 5,
     orderBy: { createdAt: 'desc' },
   });
 
   console.log(`\nFound ${logs.length} logs in the database:`);
-  logs.forEach((log: any) => {
-    const timestamp = log.createdAt instanceof Date ? log.createdAt.toISOString() : log.createdAt;
-    console.log(`[${timestamp}] ${log.level.toUpperCase()}: ${log.message} (Source: ${log.source})`);
+  logs.forEach((log: unknown) => {
+    const typedLog = log as { createdAt: Date | string; level: string; message: string; source: string };
+    const timestamp = typedLog.createdAt instanceof Date ? typedLog.createdAt.toISOString() : typedLog.createdAt;
+    console.log(`[${timestamp}] ${typedLog.level.toUpperCase()}: ${typedLog.message} (Source: ${typedLog.source})`);
   });
 
   process.exit(0);

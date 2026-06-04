@@ -1,4 +1,5 @@
 import { prisma } from './apps/api/src/lib/database';
+import process from 'node:process';
 
 async function verify() {
   console.log('==========================================');
@@ -17,7 +18,7 @@ async function verify() {
       orderBy: { createdAt: 'desc' },
       take: 10
     });
-    const unread = mNotifs.filter((n: any) => !n.isRead);
+    const unread = mNotifs.filter((n: { isRead: boolean }) => !n.isRead);
     console.log(`🔔 Notification Bell Badge: ${unread.length} unread\n`);
 
     for (const n of mNotifs) {
@@ -42,7 +43,7 @@ async function verify() {
       orderBy: { createdAt: 'desc' },
       take: 10
     });
-    const unread = tNotifs.filter((n: any) => !n.isRead);
+    const unread = tNotifs.filter((n: { isRead: boolean }) => !n.isRead);
     console.log(`🔔 Notification Bell Badge: ${unread.length} unread\n`);
 
     for (const n of tNotifs) {
@@ -67,7 +68,7 @@ async function verify() {
       orderBy: { createdAt: 'desc' },
       take: 10
     });
-    const unread = ftNotifs.filter((n: any) => !n.isRead);
+    const unread = ftNotifs.filter((n: { isRead: boolean }) => !n.isRead);
     console.log(`🔔 Notification Bell Badge: ${unread.length} unread\n`);
 
     for (const n of ftNotifs) {

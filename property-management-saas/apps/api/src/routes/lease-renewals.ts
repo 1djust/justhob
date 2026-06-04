@@ -1,14 +1,30 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
+const RenewalOfferParams = Type.Object({ workspaceId: Type.String(), id: Type.String() });
+const RenewalOfferBody = Type.Object({
+  newRent: Type.Union([Type.String(), Type.Number()]),
+  newStartDate: Type.String(),
+  newEndDate: Type.String(),
+  terms: Type.Optional(Type.String())
+});
+const RespondOfferParams = Type.Object({ workspaceId: Type.String(), id: Type.String(), offerId: Type.String() });
+const RespondOfferBody = Type.Object({ accept: Type.Boolean() });
 
 export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', verifyWorkspaceAccess);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
+  server.addHook('preHandler', verifyWorkspaceAccess);
 
   // List all renewal offers for the workspace
-  fastify.get('/leases/renewals', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
+  server.get<{ Params: Static<typeof WorkspaceParams> }>('/leases/renewals', {
+    schema: { params: WorkspaceParams }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
 
     const offers = await prisma.leaseRenewalOffer.findMany({
       where: {
@@ -29,7 +45,7 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
     });
 
     // Map to the shape the frontend expects
-    const renewals = offers.map((o: any) => ({
+    const renewals = offers.map((o) => ({
       id: o.id,
       leaseId: o.leaseId,
       proposedRent: o.newRent,
@@ -47,9 +63,12 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
   });
 
   // Manager sends a renewal offer to a tenant
-  fastify.post('/leases/:id/renewal-offer', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { newRent, newStartDate, newEndDate, terms } = request.body as any;
+  server.post<{ Params: Static<typeof RenewalOfferParams>, Body: Static<typeof RenewalOfferBody> }>('/leases/:id/renewal-offer', {
+    preHandler: requireManager,
+    schema: { params: RenewalOfferParams, body: RenewalOfferBody }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
+    const { newRent, newStartDate, newEndDate, terms } = request.body;
 
     if (!newRent || !newStartDate || !newEndDate) {
       return reply.status(400).send({ error: 'New rent amount and dates are required' });
@@ -75,7 +94,7 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
     const offer = await prisma.leaseRenewalOffer.create({
       data: {
         leaseId: id,
-        newRent: parseFloat(newRent),
+        newRent: Number(newRent),
         newStartDate: new Date(newStartDate),
         newEndDate: new Date(newEndDate),
         terms
@@ -100,13 +119,13 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
        });
 
        // Emit to user room
-       (request.server as any).io.to(`user:${tenantUser.id}`).emit('NOTIFICATION_CREATED', notification);
+       (request.server as unknown as { io: import('socket.io').Server }).io.to(`user:${tenantUser.id}`).emit('NOTIFICATION_CREATED', notification);
     }
 
     // Emit real-time update to the workspace
     const room = `workspace:${workspaceId}`;
     console.log(`[LeaseRenewal] Emitting LEASE_UPDATED to room ${room}`);
-    (request.server as any).io.to(room).emit('LEASE_UPDATED', { leaseId: id });
+    (request.server as unknown as { io: import('socket.io').Server }).io.to(room).emit('LEASE_UPDATED', { leaseId: id });
 
     // Targeted emission to the tenant if they are online
     if (tenantUser) {
@@ -115,14 +134,14 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
       
       console.log(`[LeaseRenewal] Emitting LEASE_RENEWAL_OFFER to rooms: ${userRoom}, ${emailRoom}`);
       
-      (request.server as any).io.to(userRoom).emit('LEASE_RENEWAL_OFFER', { 
+      (request.server as unknown as { io: import('socket.io').Server }).io.to(userRoom).emit('LEASE_RENEWAL_OFFER', { 
         leaseId: id,
         offerId: offer.id,
         message: 'You have received a new lease renewal offer.'
       });
 
       if (lease.tenant.email) {
-        (request.server as any).io.to(emailRoom).emit('LEASE_RENEWAL_OFFER', { 
+        (request.server as unknown as { io: import('socket.io').Server }).io.to(emailRoom).emit('LEASE_RENEWAL_OFFER', { 
           leaseId: id,
           offerId: offer.id
         });
@@ -133,9 +152,11 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
   });
 
   // Tenant responds to a renewal offer
-  fastify.put('/leases/:id/renewal-offer/:offerId/respond', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id, offerId } = request.params as { workspaceId: string; id: string; offerId: string };
-    const { accept } = request.body as { accept: boolean };
+  server.put<{ Params: Static<typeof RespondOfferParams>, Body: Static<typeof RespondOfferBody> }>('/leases/:id/renewal-offer/:offerId/respond', {
+    schema: { params: RespondOfferParams, body: RespondOfferBody }
+  }, async (request, reply) => {
+    const { workspaceId, id, offerId } = request.params;
+    const { accept } = request.body;
 
     const offer = await prisma.leaseRenewalOffer.findUnique({
       where: { id: offerId },
@@ -197,7 +218,7 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
         });
       }
 
-      (fastify as any).io.to(`workspace:${workspaceId}`).emit('LEASE_RENEWED', {
+      (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${workspaceId}`).emit('LEASE_RENEWED', {
         leaseId: newLease.id,
         message: `Tenant ${offer.lease.tenant.name} accepted the lease renewal offer.`
       });
@@ -228,7 +249,7 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
         });
       }
 
-      (fastify as any).io.to(`workspace:${workspaceId}`).emit('LEASE_RENEWAL_REJECTED', {
+      (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${workspaceId}`).emit('LEASE_RENEWAL_REJECTED', {
         leaseId: offer.lease.id,
         message: `Tenant ${offer.lease.tenant.name} rejected the lease renewal offer.`
       });
@@ -238,8 +259,10 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
   });
 
   // Get all renewal offers for a lease
-  fastify.get('/leases/:id/renewal-offers', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+  server.get<{ Params: Static<typeof RenewalOfferParams> }>('/leases/:id/renewal-offers', {
+    schema: { params: RenewalOfferParams }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
 
     const lease = await prisma.lease.findUnique({
       where: { id },

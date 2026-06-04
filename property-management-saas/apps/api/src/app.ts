@@ -2,6 +2,9 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import errorLoggerPlugin from './plugins/error-logger';
 import publicLogRoutes from './routes/public-logs';
 
@@ -21,18 +24,33 @@ import leaseRoutes from './routes/leases';
 import exportRoutes from './routes/exports';
 import leaseRenewalRoutes from './routes/lease-renewals';
 import adminRoutes from './routes/admin';
+import uploadRoutes from './routes/upload';
 import socketPlugin from './plugins/socket';
 import { setupOverdueChecker } from './cron/overdue-checker';
 import { setupLeaseExpiryReminder } from './cron/lease-expiry-reminder';
+
+interface FastifyErrorWithMeta extends Error {
+  statusCode?: number;
+  status?: number;
+  code?: string;
+  details?: Record<string, unknown> | unknown;
+}
 
 export function buildApp() {
   const fastify = Fastify({ 
     logger: true,
     bodyLimit: 10 * 1024 * 1024 // 10MB for image uploads
-  });
+  }).withTypeProvider<TypeBoxTypeProvider>();
+
+  // Security: Restrict CORS to known frontend origins only
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://justhob.vercel.app',
+    process.env.FRONTEND_URL,
+  ].filter(Boolean) as string[];
 
   fastify.register(cors, {
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
   });
 
@@ -48,6 +66,17 @@ export function buildApp() {
     secret: cookieSecret || 'super-secret-cookie-key',
   });
 
+  // Security: HTTP security headers (CSP, X-Frame-Options, HSTS, etc.)
+  fastify.register(helmet, {
+    contentSecurityPolicy: false, // Disabled — API-only server, no HTML rendering
+  });
+
+  // Security: Rate limiting — prevents brute force and DDoS
+  fastify.register(rateLimit, {
+    max: 100,
+    timeWindow: '1 minute',
+  });
+
   // Production monitoring — custom zero-cost logger using Supabase
   fastify.register(errorLoggerPlugin);
 
@@ -55,13 +84,14 @@ export function buildApp() {
   fastify.register(socketPlugin);
 
   // Initialize background cron jobs
-  setupOverdueChecker(fastify);
-  setupLeaseExpiryReminder(fastify);
+  setupOverdueChecker(fastify as unknown as Parameters<typeof setupOverdueChecker>[0]);
+  setupLeaseExpiryReminder(fastify as unknown as Parameters<typeof setupLeaseExpiryReminder>[0]);
 
   // Global Error Handler
   fastify.setErrorHandler((error, request, reply) => {
+    const err = error as FastifyErrorWithMeta;
     // Determine status code
-    const statusCode = error.statusCode || (error as Error & { statusCode?: number; status?: number; code?: string; details?: any }).status || 500;
+    const statusCode = err.statusCode || err.status || 500;
     
     // Extract error details safely
     let errorMessage = error.message || 'Internal Server Error';
@@ -74,10 +104,10 @@ export function buildApp() {
       errorMessage = 'An unexpected database error occurred. Please try again later.';
     }
 
-    const errorCode = (error as Error & { statusCode?: number; status?: number; code?: string; details?: any }).code || (statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
+    const errorCode = err.code || (statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
     
     // Safely handle details (ensure it's not nested if already structured)
-    let errorDetails = (error as Error & { statusCode?: number; status?: number; code?: string; details?: any }).details || undefined;
+    let errorDetails = err.details || undefined;
     
     // Log the error
     if (statusCode === 400) {
@@ -108,13 +138,13 @@ export function buildApp() {
     });
   });
 
-  fastify.get('/health', async () => {
+  fastify.get('/health', { schema: {} }, async () => {
     return { status: 'ok' };
   });
 
   // Backward compatibility route for older mobile app clients (v0.1.3 and below).
   // These clients still look at onrender.com/downloads/version.json due to hardcoded logic.
-  fastify.get('/downloads/version.json', async () => {
+  fastify.get('/downloads/version.json', { schema: {} }, async () => {
     return {
       latestVersion: "0.1.4",
       latestBuildNumber: 5,
@@ -124,7 +154,15 @@ export function buildApp() {
     };
   });
 
-  fastify.register(authRoutes, { prefix: '/api/auth' });
+  // Security: Stricter rate limit for auth endpoints (brute force prevention)
+  fastify.register(async (scope) => {
+    scope.register(rateLimit, {
+      max: 10,
+      timeWindow: '1 minute',
+      keyGenerator: (request) => request.ip,
+    });
+    scope.register(authRoutes);
+  }, { prefix: '/api/auth' });
   fastify.register(workspaceRoutes, { prefix: '/api/workspaces' });
   fastify.register(propertiesRoutes, { prefix: '/api/workspaces/:workspaceId/properties' });
   fastify.register(tenantRoutes, { prefix: '/api/workspaces/:workspaceId/tenants' });
@@ -141,6 +179,7 @@ export function buildApp() {
   fastify.register(leaseRenewalRoutes, { prefix: '/api/workspaces/:workspaceId' });
   fastify.register(exportRoutes, { prefix: '/api/workspaces/:workspaceId/export' });
   fastify.register(adminRoutes, { prefix: '/api/admin' });
+  fastify.register(uploadRoutes, { prefix: '/api/uploads' });
 
   return fastify;
 }

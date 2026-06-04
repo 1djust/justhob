@@ -1,16 +1,26 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { authenticate, verifyWorkspaceAccess } from '../lib/middleware';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const ResolveBody = Type.Object({
+  accountNumber: Type.String(),
+  bankCode: Type.String()
+});
 
 export default async function bankVerificationRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', verifyWorkspaceAccess);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
+  server.addHook('preHandler', verifyWorkspaceAccess);
 
   /**
    * Resolves a 10-digit account number to a mock name.
    * Input: { accountNumber, bankCode }
    */
-  fastify.post('/resolve', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { accountNumber, bankCode } = request.body as { accountNumber: string; bankCode: string };
+  server.post<{ Body: Static<typeof ResolveBody> }>('/resolve', {
+    schema: { body: ResolveBody }
+  }, async (request, reply) => {
+    const { accountNumber, bankCode } = request.body;
 
     if (!accountNumber || !bankCode) {
       return reply.status(400).send({ error: 'Account number and bank code are required' });

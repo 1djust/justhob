@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Users, 
   Building2, 
@@ -32,48 +33,47 @@ interface AdminStats {
 }
 
 export function AdminDashboard() {
-  const [stats, setStats] = React.useState<AdminStats | null>(null);
-  const [managers, setManagers] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [cronLoading, setCronLoading] = React.useState(false);
   const [cronResults, setCronResults] = React.useState<any>(null);
 
-  React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsData, managersData] = await Promise.all([
-          apiFetch(`${API_BASE_URL}/api/admin/stats`),
-          apiFetch(`${API_BASE_URL}/api/admin/managers`)
-        ]);
-        setStats(statsData.stats);
-        setManagers(managersData.managers);
-      } catch (e) {
-        console.error('Failed to fetch admin data:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  const { data: adminData, isLoading: loading } = useQuery({
+    queryKey: ['admin-dashboard'],
+    queryFn: async () => {
+      const [statsData, managersData] = await Promise.all([
+        apiFetch(`${API_BASE_URL}/api/admin/stats`),
+        apiFetch(`${API_BASE_URL}/api/admin/managers`)
+      ]);
+      return { stats: statsData.stats as AdminStats, managers: managersData.managers as any[] };
+    }
+  });
+
+  const stats = adminData?.stats || null;
+  const managers = adminData?.managers || [];
 
   const filteredManagers = managers.filter(m => 
     m.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (m.name && m.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const triggerCrons = async () => {
-    setCronLoading(true);
-    setCronResults(null);
-    try {
+  const cronMutation = useMutation({
+    mutationFn: async () => {
+      setCronResults(null);
       const data = await apiFetch(`${API_BASE_URL}/api/admin/trigger-crons`, { method: 'POST' });
+      return data;
+    },
+    onSuccess: (data) => {
       setCronResults(data);
-    } catch (e: any) {
+    },
+    onError: (e: any) => {
       setCronResults({ success: false, message: e.message || 'Failed to trigger cron jobs' });
-    } finally {
-      setCronLoading(false);
     }
+  });
+
+  const triggerCrons = () => {
+    cronMutation.mutate();
   };
+  const cronLoading = cronMutation.isPending;
 
   if (loading) {
     return (

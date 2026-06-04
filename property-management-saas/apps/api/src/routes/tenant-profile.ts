@@ -1,13 +1,40 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
 // import { RemitaService } from '../services/remita';
 import { authenticate } from '../lib/middleware';
 import { Prisma } from '@prisma/client';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const DashboardQuery = Type.Object({ status: Type.Optional(Type.String()) });
+const MaintenanceBody = Type.Object({
+  propertyId: Type.Optional(Type.String()),
+  description: Type.Optional(Type.String()),
+  imageUrl: Type.Optional(Type.String())
+});
+const PaymentBody = Type.Object({
+  amount: Type.Optional(Type.Union([Type.String(), Type.Number()])),
+  leaseId: Type.Optional(Type.String()),
+  note: Type.Optional(Type.String())
+});
+const SubmitProofParams = Type.Object({ id: Type.String() });
+const SubmitProofBody = Type.Object({
+  proofUrl: Type.Optional(Type.String()),
+  note: Type.Optional(Type.String())
+});
+const RequestPaymentPlanBody = Type.Object({
+  proposal: Type.String()
+});
+const MaintenanceIdParams = Type.Object({ id: Type.String() });
+const MessageBody = Type.Object({ content: Type.Optional(Type.String()) });
+const OfferParams = Type.Object({ leaseId: Type.String(), offerId: Type.String() });
+const OfferBody = Type.Object({ accept: Type.Boolean() });
 
 export default async function tenantProfileRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
 
-  fastify.get('/dashboard', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/dashboard', { schema: {} }, async (request, reply) => {
     const userId = request.userId!;
     
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -57,7 +84,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
     // For each lease, look up the landlord's bank info from WorkspaceMember
     const leasesWithPaymentInfo = await Promise.all(
-      (tenant.leases || []).map(async (lease: any) => {
+      (tenant.leases || []).map(async (lease) => {
         let paymentInfo = null;
         if (lease.property?.owner?.id) {
           const member = await prisma.workspaceMember.findUnique({
@@ -99,7 +126,9 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   });
 
   // List maintenance requests for the authenticated tenant
-  fastify.get('/maintenance', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get<{ Querystring: Static<typeof DashboardQuery> }>('/maintenance', {
+    schema: { querystring: DashboardQuery }
+  }, async (request, reply) => {
     const userId = request.userId!;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return reply.status(401).send({ error: 'User not found' });
@@ -114,13 +143,13 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     });
     if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
 
-    const { status } = request.query as { status?: string };
+    const { status } = request.query;
 
     const requests = await prisma.maintenanceRequest.findMany({
       where: {
         tenantId: tenant.id,
         workspaceId: membership.workspaceId,
-        ...(status ? { status: status as any } : {})
+        ...(status ? { status: status as import('@prisma/client').MaintenanceStatus } : {})
       },
       include: {
         property: { select: { id: true, name: true, address: true } }
@@ -132,7 +161,9 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   });
 
   // Create a maintenance request for the authenticated tenant
-  fastify.post('/maintenance', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.post<{ Body: Static<typeof MaintenanceBody> }>('/maintenance', {
+    schema: { body: MaintenanceBody }
+  }, async (request, reply) => {
     const userId = request.userId!;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return reply.status(401).send({ error: 'User not found' });
@@ -147,7 +178,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     });
     if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
 
-    const { propertyId, description, imageUrl } = request.body as { propertyId?: any; description?: any; imageUrl?: any };
+    const { propertyId, description, imageUrl } = request.body;
 
     if (!propertyId || !description) {
       return reply.status(400).send({ error: 'Property ID and description are required' });
@@ -181,15 +212,15 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
           status: 'PENDING'
         }
       });
-    }).catch((err: any) => {
-      if (err.message === 'LIMIT_MAINTENANCE') {
+    }).catch((err: unknown) => {
+      if ((err as Error).message === 'LIMIT_MAINTENANCE') {
         throw { statusCode: 402, message: 'Free plan limit reached: Maximum 3 active maintenance tickets allowed. Please upgrade your plan.' };
       }
       throw err;
     });
 
     // Emit real-time update to the workspace room
-    (fastify as any).io.to(`workspace:${membership.workspaceId}`).emit('MAINTENANCE_CREATED', {
+    (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${membership.workspaceId}`).emit('MAINTENANCE_CREATED', {
       requestId: maintenanceRequest.id,
       propertyId,
       message: 'A new maintenance request has been submitted.'
@@ -201,7 +232,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       select: { userId: true }
     });
 
-    const notifications = managers.map((m: any) => ({
+    const notifications = managers.map((m) => ({
       userId: m.userId,
       title: 'New Maintenance Request',
       message: `A new maintenance request has been submitted.`,
@@ -216,7 +247,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   });
 
   // List payments for the authenticated tenant
-  fastify.get('/payments', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/payments', { schema: {} }, async (request, reply) => {
     const userId = request.userId!;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return reply.status(401).send({ error: 'User not found' });
@@ -251,7 +282,9 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   });
 
   // Create a payment for the authenticated tenant
-  fastify.post('/payments', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.post<{ Body: Static<typeof PaymentBody> }>('/payments', {
+    schema: { body: PaymentBody }
+  }, async (request, reply) => {
     const userId = request.userId!;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return reply.status(401).send({ error: 'User not found' });
@@ -266,7 +299,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     });
     if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
 
-    const { amount, leaseId, note } = request.body as { amount?: any; leaseId?: any; note?: any };
+    const { amount, leaseId, note } = request.body;
 
     if (!leaseId || !amount) {
       return reply.status(400).send({ error: 'Lease ID and amount are required' });
@@ -310,7 +343,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         data: {
           leaseId,
           workspaceId: membership.workspaceId,
-          amount: parseFloat(amount),
+          amount: Number(amount),
           dueDate: new Date(),
           status: 'PENDING',
           note,
@@ -350,17 +383,20 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
       return reply.status(201).send({ message: 'Payment record created (Gateway Bypass)', paymentId: payment.id });
 
-    } catch (e: any) {
-      request.log.error('[Payment Sync Error]', e.message);
-      return reply.status(500).send({ error: 'Failed to create payment record: ' + e.message });
+    } catch (e: unknown) {
+      const errorMsg = (e as Error).message;
+      request.log.error({ err: errorMsg }, '[Payment Sync Error]');
+      return reply.status(500).send({ error: 'Failed to create payment record: ' + errorMsg });
     }
   });
 
   // Submit proof of manual payment
-  fastify.post('/payments/:id/submit-proof', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.post<{ Params: Static<typeof SubmitProofParams>, Body: Static<typeof SubmitProofBody> }>('/payments/:id/submit-proof', {
+    schema: { params: SubmitProofParams, body: SubmitProofBody }
+  }, async (request, reply) => {
     const userId = request.userId!;
-    const { id } = request.params as { id: string };
-    const { proofUrl, note } = request.body as { proofUrl?: any; note?: any };
+    const { id } = request.params;
+    const { proofUrl, note } = request.body;
 
     if (!proofUrl) {
       return reply.status(400).send({ error: 'Proof image URL (or Base64 string) is required' });
@@ -402,7 +438,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         select: { userId: true }
       });
 
-      const notifications = managers.map((m: any) => ({
+      const notifications = managers.map((m) => ({
         userId: m.userId,
         title: 'Payment Proof Submitted',
         message: `Tenant has submitted proof of payment for ${payment.lease.property.name}.`,
@@ -414,22 +450,91 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       }
 
       // Emit real-time update to the workspace room
-      (fastify as any).io.to(`workspace:${membership.workspaceId}`).emit('PAYMENT_SUBMITTED', {
+      (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${membership.workspaceId}`).emit('PAYMENT_UPDATED', {
         paymentId: id,
+        status: 'UNDER_REVIEW',
         message: 'A tenant has submitted proof of payment.'
       });
 
       return reply.send({ success: true, payment: updatedPayment });
-    } catch (error: any) {
-      request.log.error('[SubmitProofError]', error);
-      return reply.status(500).send({ error: 'Internal Server Error: ' + error.message });
+    } catch (error: unknown) {
+      const errorMsg = (error as Error).message;
+      request.log.error({ err: errorMsg }, '[SubmitProofError]');
+      return reply.status(500).send({ error: 'Internal Server Error: ' + errorMsg });
+    }
+  });
+
+  // Request Payment Plan
+  server.post<{ Params: Static<typeof SubmitProofParams>, Body: Static<typeof RequestPaymentPlanBody> }>('/payments/:id/request-payment-plan', {
+    schema: { params: SubmitProofParams, body: RequestPaymentPlanBody }
+  }, async (request, reply) => {
+    const userId = request.userId!;
+    const { id } = request.params;
+    const { proposal } = request.body;
+
+    const membership = await prisma.workspaceMember.findFirst({
+      where: { userId, role: 'TENANT' }
+    });
+    if (!membership) return reply.status(403).send({ error: 'No tenant profile found' });
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return reply.status(401).send({ error: 'User not found' });
+
+    const tenant = await prisma.tenant.findFirst({
+      where: { workspaceId: membership.workspaceId, email: user.email, deletedAt: null }
+    });
+    if (!tenant) return reply.status(404).send({ error: 'Tenant profile not found' });
+
+    try {
+      const payment = await prisma.payment.findFirst({
+        where: { id, lease: { tenantId: tenant.id } },
+        include: { lease: { include: { property: { select: { workspaceId: true, name: true } } } } }
+      });
+
+      if (!payment) return reply.status(404).send({ error: 'Payment not found' });
+
+      const updatedPayment = await prisma.payment.update({
+        where: { id },
+        data: {
+          paymentPlanRequested: true,
+          paymentPlanStatus: 'PENDING',
+          balanceNote: proposal
+        }
+      });
+
+      // Notify property manager
+      const managers = await prisma.workspaceMember.findMany({
+        where: { workspaceId: membership.workspaceId, role: 'PROPERTY_MANAGER' },
+        include: { user: true }
+      });
+      for (const manager of managers) {
+        if (manager.userId) {
+          const notif = await prisma.notification.create({
+            data: {
+              userId: manager.userId,
+              title: 'Payment Plan Requested',
+              message: `Tenant ${tenant.name} requested a payment plan for ${payment.lease.property.name}.`,
+              type: 'PAYMENT_PLAN_REQUEST'
+            }
+          });
+          (fastify as any).io?.to(`user:${manager.userId}`).emit('NOTIFICATION_CREATED', notif);
+        }
+      }
+
+      return reply.send({ message: 'Payment plan requested', payment: updatedPayment });
+
+    } catch (e: unknown) {
+      const errorMsg = (e as Error).message;
+      return reply.status(500).send({ error: 'Failed to request payment plan: ' + errorMsg });
     }
   });
 
   // Get maintenance request conversation history for the authenticated tenant
-  fastify.get('/maintenance/:id/messages', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get<{ Params: Static<typeof MaintenanceIdParams> }>('/maintenance/:id/messages', {
+    schema: { params: MaintenanceIdParams }
+  }, async (request, reply) => {
     const userId = request.userId!;
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
 
     const membership = await prisma.workspaceMember.findFirst({
       where: { userId, role: 'TENANT' }
@@ -453,10 +558,12 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   });
 
   // Send a message in a maintenance request for the authenticated tenant
-  fastify.post('/maintenance/:id/messages', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.post<{ Params: Static<typeof MaintenanceIdParams>, Body: Static<typeof MessageBody> }>('/maintenance/:id/messages', {
+    schema: { params: MaintenanceIdParams, body: MessageBody }
+  }, async (request, reply) => {
     const userId = request.userId!;
-    const { id } = request.params as { id: string };
-    const { content } = request.body as { content?: any };
+    const { id } = request.params;
+    const { content } = request.body;
 
     if (!content) return reply.status(400).send({ error: 'Message content is required' });
 
@@ -481,10 +588,10 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     });
 
     // Broadcast to the maintenance room
-    (fastify as any).io.to(`maintenance:${id}`).emit('maintenance-message', message);
+    (fastify as unknown as { io: import('socket.io').Server }).io.to(`maintenance:${id}`).emit('maintenance-message', message);
     
     // Notify the workspace (managers) for unread badges
-    (fastify as any).io.to(`workspace:${membership.workspaceId}`).emit('maintenance-notification', {
+    (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${membership.workspaceId}`).emit('maintenance-notification', {
       requestId: id,
       message: content
     });
@@ -493,10 +600,12 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   });
 
   // Respond to lease renewal offer
-  fastify.put('/leases/:leaseId/renewal-offers/:offerId/respond', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.put<{ Params: Static<typeof OfferParams>, Body: Static<typeof OfferBody> }>('/leases/:leaseId/renewal-offers/:offerId/respond', {
+    schema: { params: OfferParams, body: OfferBody }
+  }, async (request, reply) => {
     const userId = request.userId!;
-    const { leaseId, offerId } = request.params as { leaseId: string; offerId: string };
-    const { accept } = request.body as { accept: boolean };
+    const { leaseId, offerId } = request.params;
+    const { accept } = request.body;
 
     const membership = await prisma.workspaceMember.findFirst({
       where: { userId, role: 'TENANT' }
@@ -564,7 +673,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
       const room = `workspace:${membership.workspaceId}`;
       console.log(`[TenantProfile] Emitting LEASE_RENEWED to ${room}`);
-      (fastify as any).io.to(room).emit('LEASE_RENEWED', {
+      (fastify as unknown as { io: import('socket.io').Server }).io.to(room).emit('LEASE_RENEWED', {
         leaseId: newLease.id,
         message: `Tenant ${offer.lease.tenant.name} accepted the lease renewal offer.`
       });
@@ -597,7 +706,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
       const room = `workspace:${membership.workspaceId}`;
       console.log(`[TenantProfile] Emitting LEASE_RENEWAL_REJECTED to ${room}`);
-      (fastify as any).io.to(room).emit('LEASE_RENEWAL_REJECTED', {
+      (fastify as unknown as { io: import('socket.io').Server }).io.to(room).emit('LEASE_RENEWAL_REJECTED', {
         leaseId: offer.lease.id,
         message: `Tenant ${offer.lease.tenant.name} rejected the lease renewal offer.`
       });

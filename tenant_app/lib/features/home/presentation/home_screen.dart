@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'home_notifier.dart';
 import 'notifications_notifier.dart';
+import '../../auth/presentation/auth_notifier.dart';
 import '../../payments/presentation/payments_notifier.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/domain/payment_info.dart';
+import '../../../shared/domain/lease_renewal_offer.dart';
 import '../../../core/utils/nigerian_banks.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/widgets/app_update_dialog.dart';
-import '../../../shared/domain/lease_renewal_offer.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -36,17 +37,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final homeState = ref.watch(homeStateProvider);
-    final paymentsState = ref.watch(paymentsProvider);
     final theme = Theme.of(context);
-    
-    final overduePayments = paymentsState.valueOrNull
-        ?.where((p) => p.status == 'OVERDUE' || p.status == 'PARTIALLY_PAID')
-        .toList() ?? [];
-        
-    final pendingRenewals = homeState.valueOrNull?.leases
-        ?.expand((l) => l.renewalOffers ?? [])
-        .whereType<LeaseRenewalOffer>()
-        .toList() ?? [];
+
+    // --- LAYER 3: BULLETPROOF NULL-SAFE DATA EXTRACTION ---
+    // Use ?. and ?? [] at every step so a null/missing list can never
+    // reach a .map() or .expand() call inside build() and cause a blank screen.
+    final paymentsList = ref.watch(paymentsProvider).valueOrNull ?? [];
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+
+    final overduePayments = paymentsList
+            .where((p) => 
+                p.status == 'OVERDUE' || 
+                p.status == 'PARTIALLY_PAID' || 
+                (p.status == 'PENDING' && p.dueDate.isBefore(today)))
+            .toList();
+
+    final upcomingPayments = paymentsList
+            .where((p) => 
+                p.status == 'PENDING' && 
+                !p.dueDate.isBefore(today) && 
+                p.dueDate.isBefore(today.add(const Duration(days: 14))))
+            .toList();
+
+    final pendingRenewals = homeState
+            .valueOrNull
+            ?.leases
+            ?.expand((l) => l.renewalOffers ?? <LeaseRenewalOffer>[])
+            .where((o) => o.status == 'PENDING')
+            .toList() ??
+        [];
+
+    final isRestricted = overduePayments.any((p) => p.dueDate.difference(DateTime.now()).inDays <= -14);
 
     return Scaffold(
       appBar: AppBar(
@@ -120,8 +141,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return RefreshIndicator(
             onRefresh: () async {
               await ref.read(homeStateProvider.notifier).refresh();
-              // Also refresh notifications count
               await ref.read(notificationsProvider.notifier).fetchNotifications();
+              ref.invalidate(paymentsProvider);
             },
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
@@ -145,20 +166,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
+                  // Lease Renewal Banner — only shown when offers exist and is null-safe
                   if (pendingRenewals.isNotEmpty) ...[
                     _LeaseRenewalBanner(offers: pendingRenewals),
                     const SizedBox(height: 24),
                   ],
 
+                  // Overdue Rent Banner — only shown when data exists and is null-safe
                   if (overduePayments.isNotEmpty) ...[
                     _OverdueBanner(payments: overduePayments),
                     const SizedBox(height: 24),
                   ],
-                  
+
+                  // Upcoming Payment Banner
+                  if (overduePayments.isEmpty && upcomingPayments.isNotEmpty) ...[
+                    _UpcomingPaymentBanner(payments: upcomingPayments),
+                    const SizedBox(height: 24),
+                  ],
+
                   // Active Lease Card
-                  if (lease != null)
-                    _LeaseCard(property: property, lease: lease),
+                  _LeaseCard(property: property, lease: lease),
                   
                   if (lease?.paymentInfo != null) ...[
                     const SizedBox(height: 24),
@@ -181,8 +209,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       _QuickAction(
                         icon: Icons.handyman_outlined,
                         label: 'Maintenance',
-                        color: Colors.orange.shade600,
-                        onTap: () => context.push('/maintenance'),
+                        color: isRestricted ? Colors.grey : Colors.orange.shade600,
+                        onTap: () {
+                          if (isRestricted) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Feature Restricted'),
+                                content: const Text('Please settle your overdue rent of 14+ days to access platform benefits like Maintenance.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          } else {
+                            context.push('/maintenance');
+                          }
+                        },
                       ),
                       const SizedBox(width: 16),
                       _QuickAction(
@@ -242,7 +288,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) {
+          final isAuthError = err.toString().contains('401');
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    isAuthError 
+                      ? 'Session Expired' 
+                      : 'Unable to Load Dashboard',
+                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isAuthError
+                      ? 'Your security token is no longer valid. Please log in again.'
+                      : 'Please check your connection and try again.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 32),
+                  if (isAuthError)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          ref.read(authStateProvider.notifier).logout();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => ref.refresh(homeStateProvider),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text('Retry', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -316,6 +426,7 @@ class _LeaseCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.circle, size: 8, color: Colors.greenAccent),
                     const SizedBox(width: 6),
@@ -357,7 +468,7 @@ class _LeaseCard extends StatelessWidget {
           
           // Expiry Date Section
           if (lease?.endDate != null) ...[
-            _ExpiryBadge(endDate: lease.endDate!),
+            _ExpiryBadge(endDate: lease!.endDate!),
             const SizedBox(height: 16),
           ],
 
@@ -367,7 +478,7 @@ class _LeaseCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Rent Amount', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                  Text('Yearly Rent', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
                   const SizedBox(height: 4),
                   Text(
                     NumberFormat.currency(symbol: '₦ ', decimalDigits: 0).format(lease?.yearlyRent ?? 0),
@@ -432,7 +543,7 @@ class _ExpiryBadge extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'RENT EXPIRES',
+                  'LEASE EXPIRES',
                   style: TextStyle(
                     color: Colors.grey.shade400,
                     fontSize: 9,
@@ -700,6 +811,7 @@ class _DashboardPaymentAccountCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   isDirect ? Icons.person_pin_rounded : Icons.business_center_rounded,
@@ -768,6 +880,11 @@ class _AccountRow extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _OverdueBanner
+// Displays a warning strip when the tenant has overdue or partially-paid rent.
+// Fully null-safe: only rendered when overduePayments.isNotEmpty is confirmed.
+// ─────────────────────────────────────────────────────────────────────────────
 class _OverdueBanner extends StatelessWidget {
   final List<dynamic> payments;
 
@@ -775,14 +892,8 @@ class _OverdueBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final payment = payments.isNotEmpty ? payments.first : null;
-    if (payment == null) return const SizedBox.shrink();
-    
-    final isPartial = payment.status == 'PARTIALLY_PAID';
-    final amount = isPartial 
-        ? ((payment.amount ?? 0) - (payment.amountPaid ?? 0)) 
-        : (payment.amount ?? 0);
-    
+    final formatter = NumberFormat.currency(symbol: '₦', decimalDigits: 0);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -790,43 +901,73 @@ class _OverdueBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.red.shade200),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red.shade600, size: 28),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red.shade600, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Rent Overdue',
+                style: TextStyle(
+                  color: Colors.red.shade700,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...payments.map((p) {
+            final balance = ((p.amount as num?)?.toDouble() ?? 0) -
+                ((p.amountPaid as num?)?.toDouble() ?? 0);
+            
+            final daysOverdue = DateTime.now().difference(p.dueDate).inDays;
+            final overdueText = daysOverdue > 0 ? 'Overdue by $daysOverdue days' : 'Amount due';
+            
+            return Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    p.status == 'PARTIALLY_PAID'
+                        ? 'Partially paid — balance due'
+                        : overdueText,
+                    style: TextStyle(color: Colors.red.shade600, fontSize: 13),
+                  ),
+                  Text(
+                    formatter.format(balance),
+                    style: TextStyle(
+                      color: Colors.red.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+          Divider(color: Colors.red.shade200, height: 1),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () => context.push('/payments'),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  isPartial ? 'Partial Payment Due' : 'Rent Overdue',
-                  style: TextStyle(
-                    color: Colors.red.shade900,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Please pay the outstanding balance of ₦${NumberFormat('#,##0').format(amount)} immediately.',
+                  'Pay Now',
                   style: TextStyle(
                     color: Colors.red.shade700,
-                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                 ),
+                const SizedBox(width: 4),
+                Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.red.shade700),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () => context.push('/payments'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-            ),
-            child: const Text('Pay Now'),
           ),
         ],
       ),
@@ -834,6 +975,105 @@ class _OverdueBanner extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _UpcomingPaymentBanner
+// Displays an info strip when the tenant has an upcoming pending payment due soon.
+class _UpcomingPaymentBanner extends StatelessWidget {
+  final List<dynamic> payments;
+
+  const _UpcomingPaymentBanner({required this.payments});
+
+  @override
+  Widget build(BuildContext context) {
+    final formatter = NumberFormat.currency(symbol: '₦', decimalDigits: 0);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded, color: Colors.amber.shade700, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Upcoming Payment',
+                style: TextStyle(
+                  color: Colors.amber.shade800,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...payments.map((p) {
+            final balance = ((p.amount as num?)?.toDouble() ?? 0) -
+                ((p.amountPaid as num?)?.toDouble() ?? 0);
+            
+            final daysUntilDue = p.dueDate.difference(DateTime.now()).inDays;
+            final dueText = daysUntilDue <= 0 
+                ? 'Due today' 
+                : 'Due in $daysUntilDue ${daysUntilDue == 1 ? "day" : "days"}';
+                
+            return Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    dueText,
+                    style: TextStyle(color: Colors.amber.shade900, fontSize: 13),
+                  ),
+                  Text(
+                    formatter.format(balance),
+                    style: TextStyle(
+                      color: Colors.amber.shade900,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+          Divider(color: Colors.amber.shade200, height: 1),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () => context.push('/payments'),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Pay Now',
+                  style: TextStyle(
+                    color: Colors.amber.shade900,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.amber.shade900),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _LeaseRenewalBanner
+// Displays a highlighted card when the tenant has a pending renewal offer.
+// Fully null-safe: only rendered when pendingRenewals.isNotEmpty is confirmed.
+// ─────────────────────────────────────────────────────────────────────────────
 class _LeaseRenewalBanner extends ConsumerWidget {
   final List<LeaseRenewalOffer> offers;
 
@@ -841,205 +1081,170 @@ class _LeaseRenewalBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Default to the first pending offer
-    final offer = offers.first;
-    final newRent = offer.newRent;
     final formatter = NumberFormat.currency(symbol: '₦', decimalDigits: 0);
-    
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.blue.shade800,
-            Colors.blue.shade600,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+    final offer = offers.first;
+
+    return GestureDetector(
+      onTap: () => _showRenewalSheet(context, offer, ref),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade600, Colors.blue.shade800],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            // Navigate to a dedicated renewals screen or show dialog
-            // For now, let's open a bottom sheet
-            _showRenewalBottomSheet(context, offer, ref);
-          },
           borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.description_outlined,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Lease Renewal Offer',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'New rent: ${formatter.format(newRent)} / year',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              ],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blue.shade200,
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-          ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.description_outlined, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Lease Renewal Offer',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'New rent: ${formatter.format(offer.newRent)} / year — Tap to review',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white),
+          ],
         ),
       ),
     );
   }
 
-  void _showRenewalBottomSheet(BuildContext context, LeaseRenewalOffer offer, WidgetRef ref) {
+  void _showRenewalSheet(BuildContext context, LeaseRenewalOffer offer, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _RenewalOfferSheet(offer: offer),
+      builder: (_) => _RenewalOfferSheet(offer: offer, ref: ref),
     );
   }
 }
 
-class _RenewalOfferSheet extends ConsumerStatefulWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// _RenewalOfferSheet — bottom sheet to accept or reject a renewal offer.
+// ─────────────────────────────────────────────────────────────────────────────
+class _RenewalOfferSheet extends StatefulWidget {
   final LeaseRenewalOffer offer;
+  final WidgetRef ref;
 
-  const _RenewalOfferSheet({required this.offer});
+  const _RenewalOfferSheet({required this.offer, required this.ref});
 
   @override
-  ConsumerState<_RenewalOfferSheet> createState() => _RenewalOfferSheetState();
+  State<_RenewalOfferSheet> createState() => _RenewalOfferSheetState();
 }
 
-class _RenewalOfferSheetState extends ConsumerState<_RenewalOfferSheet> {
+class _RenewalOfferSheetState extends State<_RenewalOfferSheet> {
   bool _isLoading = false;
 
   Future<void> _respond(bool accept) async {
     setState(() => _isLoading = true);
     try {
-      await ref.read(homeStateProvider.notifier).respondToRenewalOffer(
-        widget.offer.leaseId,
-        widget.offer.id,
-        accept,
-      );
+      await widget.ref.read(homeStateProvider.notifier).respondToRenewalOffer(
+            widget.offer.leaseId,
+            widget.offer.id,
+            accept,
+          );
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(accept ? 'Renewal offer accepted' : 'Renewal offer rejected'),
-            backgroundColor: accept ? Colors.green : Colors.red,
+            content: Text(accept ? 'Renewal offer accepted!' : 'Renewal offer declined.'),
+            backgroundColor: accept ? Colors.green : Colors.grey.shade700,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final formatter = NumberFormat.currency(symbol: '₦', decimalDigits: 0);
     final dateFormat = DateFormat('MMM d, yyyy');
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
       child: SafeArea(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Center(
               child: Container(
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 24),
+                margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             Text(
               'Lease Renewal Offer',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
-            _buildDetailRow('New Rent', '${formatter.format(widget.offer.newRent)} / year', theme),
-            const SizedBox(height: 12),
-            _buildDetailRow('Start Date', dateFormat.format(widget.offer.newStartDate), theme),
-            const SizedBox(height: 12),
-            _buildDetailRow('End Date', dateFormat.format(widget.offer.newEndDate), theme),
-            if (widget.offer.terms != null && widget.offer.terms!.isNotEmpty) ...[
-              const SizedBox(height: 12),
+            const SizedBox(height: 20),
+            _row('New Rent', '${formatter.format(widget.offer.newRent)} / year'),
+            const SizedBox(height: 10),
+            _row('Start Date', dateFormat.format(widget.offer.newStartDate)),
+            const SizedBox(height: 10),
+            _row('End Date', dateFormat.format(widget.offer.newEndDate)),
+            if (widget.offer.terms?.isNotEmpty ?? false) ...[
+              const SizedBox(height: 16),
               const Divider(),
-              const SizedBox(height: 12),
-              Text(
-                'Terms',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              const SizedBox(height: 8),
+              Text('Terms', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(
-                widget.offer.terms!,
-                style: theme.textTheme.bodyMedium,
-              ),
+              Text(widget.offer.terms!),
             ],
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             if (_isLoading)
               const Center(child: CircularProgressIndicator())
             else
@@ -1051,12 +1256,10 @@ class _RenewalOfferSheetState extends ConsumerState<_RenewalOfferSheet> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                         side: const BorderSide(color: Colors.red),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Reject', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text('Decline', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -1064,12 +1267,10 @@ class _RenewalOfferSheetState extends ConsumerState<_RenewalOfferSheet> {
                     child: ElevatedButton(
                       onPressed: () => _respond(true),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade600,
+                        backgroundColor: Colors.blue.shade700,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: const Text('Accept', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
@@ -1082,22 +1283,12 @@ class _RenewalOfferSheetState extends ConsumerState<_RenewalOfferSheet> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, ThemeData theme) {
+  Widget _row(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: Colors.grey.shade600,
-          ),
-        ),
-        Text(
-          value,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey.shade600)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
       ],
     );
   }

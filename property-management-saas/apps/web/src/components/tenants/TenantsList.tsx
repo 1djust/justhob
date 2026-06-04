@@ -19,6 +19,7 @@ import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { ExportButton } from '@/components/shared/ExportButton';
 import { LeaseRenewalManager } from '@/components/tenants/LeaseRenewalManager';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Lease {
   id: string;
@@ -52,33 +53,34 @@ interface TenantProps {
 }
 
 export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: TenantProps) {
+  const queryClient = useQueryClient();
   const { socket, isConnected } = useRealtime();
-  const [tenants, setTenants] = React.useState<Tenant[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [showForm, setShowForm] = React.useState(false);
   const [assigningTenantId, setAssigningTenantId] = React.useState<string | null>(null);
   const [renewalLeaseId, setRenewalLeaseId] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState<'all' | 'renewals'>('all');
+  const [page, setPage] = React.useState(1);
 
-  const fetchTenants = async () => {
-    try {
-      const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
+  const { data: tenantsData, isLoading: loading } = useQuery({
+    queryKey: ['tenants', workspaceId, page],
+    queryFn: async () => {
+      const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants?page=${page}&limit=20`, {
         credentials: 'include'
       });
-      setTenants(data.tenants || []);
-      const allLeases = (data.tenants || []).flatMap((t: Tenant) => t.leases || []);
-      onLeasesLoaded?.(allLeases);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data;
+    },
+    enabled: !!workspaceId
+  });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const tenants: Tenant[] = tenantsData?.tenants || [];
+  const totalPages = tenantsData?.pagination?.totalPages || 1;
+
   React.useEffect(() => {
-    if (workspaceId) fetchTenants();
-  }, [workspaceId]);
+    if (tenants.length > 0 && onLeasesLoaded) {
+      const allLeases = tenants.flatMap((t: Tenant) => t.leases || []);
+      onLeasesLoaded(allLeases);
+    }
+  }, [tenants, onLeasesLoaded]);
 
   // Real-time updates
   React.useEffect(() => {
@@ -86,7 +88,7 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
 
     const handleUpdate = () => {
       console.log('[TenantsList] Real-time update received, refreshing...');
-      fetchTenants();
+      queryClient.invalidateQueries({ queryKey: ['tenants', workspaceId] });
     };
 
     socket.on('LEASE_UPDATED', handleUpdate);
@@ -98,36 +100,47 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
       socket.off('LEASE_RENEWED', handleUpdate);
       socket.off('LEASE_RENEWAL_REJECTED', handleUpdate);
     };
-  }, [socket, isConnected]);
+  }, [socket, isConnected, workspaceId, queryClient]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this tenant? This will effectively archive their profile.')) return;
-    try {
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
-      fetchTenants();
-    } catch (e) {
-      console.error(e);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants', workspaceId] });
     }
-  };
+  });
 
-  const handleEndTenancy = async (id: string) => {
-    const reason = prompt("Enter reason for ending tenancy (VOLUNTARY, EVICTION, LEASE_EXPIRED, OTHER):", "VOLUNTARY");
-    if (!reason) return;
-    try {
+  const endTenancyMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: string, reason: string }) => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants/${id}/end-tenancy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reason.toUpperCase(), note: 'Ended from dashboard' }),
         credentials: 'include'
       });
+    },
+    onSuccess: () => {
       alert('Tenancy ended successfully');
-      fetchTenants();
-    } catch (e: any) {
+      queryClient.invalidateQueries({ queryKey: ['tenants', workspaceId] });
+    },
+    onError: (e: any) => {
       alert(e.message || 'Failed to end tenancy');
     }
+  });
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to remove this tenant? This will effectively archive their profile.')) return;
+    deleteMutation.mutate(id);
+  };
+
+  const handleEndTenancy = async (id: string) => {
+    const reason = prompt("Enter reason for ending tenancy (VOLUNTARY, EVICTION, LEASE_EXPIRED, OTHER):", "VOLUNTARY");
+    if (!reason) return;
+    endTenancyMutation.mutate({ id, reason });
   };
 
   if (loading) {
@@ -188,7 +201,7 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
         <>
           {showForm && (
         <div className="animate-in zoom-in-95 fade-in duration-300">
-          <TenantForm workspaceId={workspaceId} onComplete={() => { setShowForm(false); fetchTenants(); }} />
+          <TenantForm workspaceId={workspaceId} onComplete={() => setShowForm(false)} />
         </div>
       )}
 
@@ -273,7 +286,7 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
                     workspaceId={workspaceId}
                     tenantId={t.id}
                     properties={properties}
-                    onComplete={() => { setAssigningTenantId(null); fetchTenants(); }}
+                    onComplete={() => setAssigningTenantId(null)}
                   />
                 </div>
               )}
@@ -347,7 +360,7 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
                             workspaceId={workspaceId}
                             leaseId={l.id}
                             currentRent={l.yearlyRent || 0}
-                            onComplete={() => { setRenewalLeaseId(null); fetchTenants(); }}
+                            onComplete={() => setRenewalLeaseId(null)}
                             onCancel={() => setRenewalLeaseId(null)}
                           />
                         </div>
@@ -363,6 +376,31 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
           ))}
         </div>
       )}
+      
+      {/* Pagination Controls */}
+      {activeTab === 'all' && totalPages > 1 && tenants.length > 0 && (
+        <div className="flex items-center justify-between px-6 py-4 mt-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/10 rounded-2xl">
+          <p className="text-xs text-zinc-500 font-medium">
+            Page {page} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 text-xs font-bold rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 text-xs font-bold rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
         </>
       )}
     </div>
@@ -370,35 +408,42 @@ export function TenantsList({ workspaceId, properties, onLeasesLoaded, plan }: T
 }
 
 function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComplete: () => void }) {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = React.useState({ name: '', email: '', phone: '' });
-  const [loading, setLoading] = React.useState(false);
   const [credentials, setCredentials] = React.useState<{ email: string; tempPassword: string; inviteLink?: string } | null>(null);
   const [copied, setCopied] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
+  const createMutation = useMutation({
+    mutationFn: async () => {
       const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include'
       });
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['tenants', workspaceId] });
       if (data.credentials) {
         setCredentials(data.credentials);
       } else {
         onComplete();
       }
-    } catch (e: any) {
+    },
+    onError: (e: any) => {
       console.error(e);
       setError(e.message || 'Failed to create tenant. Please try again.');
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    createMutation.mutate();
   };
+  const loading = createMutation.isPending;
 
   const handleCopy = () => {
     if (!credentials) return;
@@ -546,29 +591,35 @@ function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComple
 }
 
 function LeaseForm({ workspaceId, tenantId, properties, onComplete }: { workspaceId: string; tenantId: string; properties: Property[]; onComplete: () => void }) {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = React.useState({ propertyId: '', unitId: '', startDate: '', endDate: '', yearlyRent: '' });
-  const [loading, setLoading] = React.useState(false);
 
   const selectedProperty = properties.find(p => p.id === formData.propertyId);
   const availableUnits = selectedProperty?.units?.filter((u) => u.status === 'VACANT') || [];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
+  const createLeaseMutation = useMutation({
+    mutationFn: async () => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants/${tenantId}/leases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include'
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants', workspaceId] });
       onComplete();
-    } catch (e) {
+    },
+    onError: (e) => {
       console.error(e);
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createLeaseMutation.mutate();
   };
+  const loading = createLeaseMutation.isPending;
 
   return (
     <form onSubmit={handleSubmit} className="p-6 border border-zinc-200 dark:border-zinc-800 rounded-[1.5rem] bg-zinc-50 dark:bg-zinc-900/30 space-y-6 relative overflow-hidden shadow-inner">
@@ -660,33 +711,39 @@ function RenewalOfferForm({ workspaceId, leaseId, currentRent, onComplete, onCan
   onComplete: () => void;
   onCancel: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = React.useState({
     newRent: String(currentRent),
     newStartDate: '',
     newEndDate: '',
     terms: ''
   });
-  const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
+  const renewalMutation = useMutation({
+    mutationFn: async () => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/leases/${leaseId}/renewal-offer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include'
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants', workspaceId] });
       onComplete();
-    } catch (e: any) {
+    },
+    onError: (e: any) => {
       setError(e.message || 'Failed to send renewal offer');
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    renewalMutation.mutate();
   };
+  const loading = renewalMutation.isPending;
 
   return (
     <form onSubmit={handleSubmit} className="p-5 border border-amber-200 dark:border-amber-800 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 space-y-4">

@@ -25,6 +25,7 @@ import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 /**
  * Utility function to merge tailwind classes
@@ -58,43 +59,42 @@ interface Notification {
 export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail, plan, onLogout, workspaceId, isSuperAdmin }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
-  const [notifications, setNotifications] = React.useState<Notification[]>([]);
-  const [stats, setStats] = React.useState<any>(null);
   const [showNotifications, setShowNotifications] = React.useState(false);
+  const [selectedNotification, setSelectedNotification] = React.useState<Notification | null>(null);
   const notifRef = React.useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const data = await apiFetch(`${API_BASE_URL}/api/notifications`, { silent: true } as any);
+      return (data.notifications || []) as Notification[];
+    },
+    refetchOnWindowFocus: true,
+  });
+  const notifications = notificationsData || [];
+
+  const { data: statsData } = useQuery({
+    queryKey: ['workspace-stats', workspaceId],
+    queryFn: async () => {
+      const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/stats`, { silent: true } as any);
+      return data.stats;
+    },
+    enabled: !!workspaceId,
+    refetchOnWindowFocus: true,
+  });
+  const stats = statsData || null;
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const fetchNotifications = React.useCallback(async () => {
-    try {
-      const data = await apiFetch(`${API_BASE_URL}/api/notifications`, { silent: true } as any);
-      setNotifications(data.notifications || []);
-    } catch (e) {
-      // Silent fail
-    }
-  }, []);
-
-  const fetchStats = React.useCallback(async () => {
-    if (!workspaceId) return;
-    try {
-      const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/stats`, { silent: true } as any);
-      setStats(data.stats);
-    } catch (e) {
-      // Silent fail
-    }
-  }, [workspaceId]);
 
   const { socket } = useRealtime();
 
   React.useEffect(() => {
-    fetchNotifications();
-    fetchStats();
-    
     if (socket) {
       const handleRealtimeNotif = () => {
         console.log('[Realtime] New notification/event received');
-        fetchNotifications();
-        fetchStats();
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['workspace-stats', workspaceId] });
       };
 
       socket.on('PAYMENT_SUBMITTED', handleRealtimeNotif);
@@ -104,6 +104,8 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
       socket.on('PROPERTY_DELETED', handleRealtimeNotif);
       socket.on('TENANT_CREATED', handleRealtimeNotif);
       socket.on('TENANT_DELETED', handleRealtimeNotif);
+      socket.on('NOTIFICATION_CREATED', handleRealtimeNotif);
+      socket.on('TENANT_OVERDUE', handleRealtimeNotif);
 
       return () => {
         socket.off('PAYMENT_SUBMITTED', handleRealtimeNotif);
@@ -113,9 +115,11 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
         socket.off('PROPERTY_DELETED', handleRealtimeNotif);
         socket.off('TENANT_CREATED', handleRealtimeNotif);
         socket.off('TENANT_DELETED', handleRealtimeNotif);
+        socket.off('NOTIFICATION_CREATED', handleRealtimeNotif);
+        socket.off('TENANT_OVERDUE', handleRealtimeNotif);
       };
     }
-  }, [fetchNotifications, fetchStats, socket]);
+  }, [socket, queryClient, workspaceId]);
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
@@ -128,23 +132,48 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const markAsRead = async (id: string) => {
-    try {
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
       await apiFetch(`${API_BASE_URL}/api/notifications/${id}/read`, { method: 'PATCH' });
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    } catch (e) {
-      // Silent fail
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['notifications'] });
+      const previous = queryClient.getQueryData<Notification[]>(['notifications']);
+      queryClient.setQueryData<Notification[]>(['notifications'], old => 
+        old?.map(n => n.id === id ? { ...n, isRead: true } : n)
+      );
+      return { previous };
+    },
+    onError: (err, id, context) => {
+      queryClient.setQueryData(['notifications'], context?.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     }
-  };
+  });
 
-  const markAllRead = async () => {
-    try {
+  const markAllReadMutation = useMutation({
+    mutationFn: async () => {
       await apiFetch(`${API_BASE_URL}/api/notifications/read-all`, { method: 'PATCH' });
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    } catch (e) {
-      // Silent fail
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['notifications'] });
+      const previous = queryClient.getQueryData<Notification[]>(['notifications']);
+      queryClient.setQueryData<Notification[]>(['notifications'], old => 
+        old?.map(n => ({ ...n, isRead: true }))
+      );
+      return { previous };
+    },
+    onError: (err, variables, context) => {
+      queryClient.setQueryData(['notifications'], context?.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     }
-  };
+  });
+
+  const markAsRead = (id: string) => markAsReadMutation.mutate(id);
+  const markAllRead = () => markAllReadMutation.mutate();
 
   const getNotifIcon = (type: string) => {
     switch (type) {
@@ -152,6 +181,8 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
       case 'PAYMENT_APPROVED': return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
       case 'PAYMENT_REJECTED': return <AlertCircle className="w-4 h-4 text-rose-500" />;
       case 'MAINTENANCE_CREATED': return <Wrench className="w-4 h-4 text-amber-500" />;
+      case 'TENANT_LEASE_EXPIRING': return <AlertCircle className="w-4 h-4 text-amber-500" />;
+      case 'PAYMENT_OVERDUE': return <ShieldAlert className="w-4 h-4 text-rose-500" />;
       default: return <Bell className="w-4 h-4 text-zinc-400" />;
     }
   };
@@ -366,6 +397,9 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
                           } else if (n.type === 'PAYMENT_APPROVED' || n.type === 'PAYMENT_REJECTED') {
                             onViewChange('payments');
                             setShowNotifications(false);
+                          } else {
+                            setSelectedNotification(n);
+                            setShowNotifications(false);
                           }
                         }}
                         className={cn(
@@ -438,6 +472,58 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
           </div>
         </div>
       </aside>
+
+      {/* Notification Details Modal */}
+      {selectedNotification && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setSelectedNotification(null)}
+          />
+          <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shadow-sm">
+                  {getNotifIcon(selectedNotification.type)}
+                </div>
+                <div>
+                  <h3 className="font-bold text-zinc-900 dark:text-white text-lg leading-tight">Notification</h3>
+                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-widest mt-0.5">
+                    {new Date(selectedNotification.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedNotification(null)}
+                className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <X className="w-5 h-5 text-zinc-500" />
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div className="p-6">
+              <h4 className="text-xl font-bold text-zinc-900 dark:text-white mb-3">
+                {selectedNotification.title}
+              </h4>
+              <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-sm sm:text-base whitespace-pre-wrap">
+                {selectedNotification.message}
+              </p>
+            </div>
+            
+            {/* Footer */}
+            <div className="p-6 bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
+              <button
+                onClick={() => setSelectedNotification(null)}
+                className="px-6 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm shadow-sm hover:scale-105 active:scale-95 transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {

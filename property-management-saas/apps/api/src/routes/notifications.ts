@@ -1,12 +1,17 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate } from '../lib/middleware';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const NotificationParams = Type.Object({ id: Type.String() });
 
 export default async function notificationRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
 
   // Get notifications for the user
-  fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/', { schema: {} }, async (request, reply) => {
     try {
       const userId = request.userId!;
 
@@ -17,14 +22,14 @@ export default async function notificationRoutes(fastify: FastifyInstance) {
       });
 
       return reply.send({ notifications });
-    } catch (error: any) {
-      request.log.error('[GetNotificationsError]', error);
-      return reply.status(500).send({ error: 'Failed to fetch notifications: ' + error.message });
+    } catch (error: unknown) {
+      request.log.error({ err: error }, '[GetNotificationsError]');
+      return reply.status(500).send({ error: 'Failed to fetch notifications: ' + (error as Error).message });
     }
   });
 
   // Mark all as read
-  fastify.patch('/read-all', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.patch('/read-all', { schema: {} }, async (request, reply) => {
     const userId = request.userId!;
 
     await prisma.notification.updateMany({
@@ -36,9 +41,11 @@ export default async function notificationRoutes(fastify: FastifyInstance) {
   });
 
   // Mark single as read
-  fastify.patch('/:id/read', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.patch<{ Params: Static<typeof NotificationParams> }>('/:id/read', {
+    schema: { params: NotificationParams }
+  }, async (request, reply) => {
     const userId = request.userId!;
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
 
     const notification = await prisma.notification.findUnique({ where: { id } });
     if (!notification) return reply.status(404).send({ error: 'Notification not found' });

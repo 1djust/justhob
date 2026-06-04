@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Message {
   id: string;
@@ -30,28 +31,21 @@ interface MaintenanceChatProps {
 }
 
 export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = true }: MaintenanceChatProps) {
-  const [messages, setMessages] = React.useState<Message[]>([]);
+  const queryClient = useQueryClient();
   const [newMessage, setNewMessage] = React.useState('');
-  const [loading, setLoading] = React.useState(true);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { socket } = useRealtime();
 
-  const fetchHistory = React.useCallback(async () => {
-    try {
+  const { data: messages = [], isLoading: loading } = useQuery<Message[]>({
+    queryKey: ['maintenance-messages', workspaceId, requestId],
+    queryFn: async () => {
       const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance/${requestId}/messages`, {
         credentials: 'include'
       });
-      setMessages(data.messages || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId, requestId]);
-
-  React.useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+      return data.messages || [];
+    },
+    enabled: !!workspaceId && !!requestId
+  });
 
   React.useEffect(() => {
     if (!socket) return;
@@ -60,7 +54,7 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
     socket.emit('join-maintenance', { workspaceId, requestId });
 
     const handleNewMessage = (message: Message) => {
-      setMessages(prev => [...prev, message]);
+      queryClient.setQueryData(['maintenance-messages', workspaceId, requestId], (old: Message[] = []) => [...old, message]);
     };
 
     socket.on('maintenance-message', handleNewMessage);
@@ -69,7 +63,7 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
       socket.off('maintenance-message', handleNewMessage);
       socket.emit('leave-maintenance', requestId);
     };
-  }, [socket, workspaceId, requestId]);
+  }, [socket, workspaceId, requestId, queryClient]);
 
   React.useEffect(() => {
     if (scrollRef.current) {
@@ -77,25 +71,27 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
     }
   }, [messages]);
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!newMessage.trim()) return;
-
-    const content = newMessage;
-    setNewMessage('');
-
-    try {
+  const sendMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance/${requestId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
         credentials: 'include'
       });
-      // The message will come back through the socket
-    } catch (e) {
+    },
+    onError: (e: any) => {
       console.error(e);
-      // Revert optimization if error (optional)
     }
+  });
+
+  const handleSendMessage = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newMessage.trim()) return;
+
+    const content = newMessage;
+    setNewMessage('');
+    sendMessageMutation.mutate(content);
   };
 
   if (loading) {

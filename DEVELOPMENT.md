@@ -32,16 +32,24 @@ This starts the **Turbo dev server**, which handles:
 ## 2. Tenant Mobile App (Flutter)
 The mobile application is located in the `tenant_app/` directory.
 
-### Running the App Locally
-The app is configured to run as a **Linux desktop application** for fast local development and testing in WSL.
+### Running the App on Emulator
 
 ```bash
-cd justhub/tenant_app
+cd ~/projects/justhub/tenant_app
 ./run.sh
 ```
 **What the script does:**
-- Unlocks the system keyring (required for Flutter secure storage on Linux).
-- Runs `flutter run -d linux`.
+- Runs `flutter run` which will automatically detect and attach to your running Android emulator.
+
+#### Simulating Fingerprint Authentication
+When testing biometric login on the Android Emulator, the emulator acts as a fresh device with no fingerprints enrolled.
+1. **Enroll a Fingerprint**: Inside the Emulator's Androi
+d Settings app, go to Security -> Screen Lock (set a PIN) -> Fingerprint.
+2. **Simulate Touch**: When prompted to touch the sensor by the OS or the Flutter app, use the emulator's Extended Controls (`...` menu) -> Fingerprint -> "Touch Sensor".
+3. **Command Line Bypass**: Alternatively, you can instantly simulate a successful fingerprint touch from your terminal by running:
+   ```bash
+   adb -e emu finger touch 1
+   ```
 
 ### Running on a Physical Android Device (USB)
 

@@ -31,8 +31,8 @@ class LifecycleService extends WidgetsBindingObserver {
     final isLoggedIn = authState.hasValue && authState.value != null;
 
     if (state == AppLifecycleState.paused && isLoggedIn) {
-      debugPrint('[LifecycleService] App backgrounded. Logging out user for security.');
-      _ref.read(authStateProvider.notifier).logout();
+      debugPrint('[LifecycleService] App backgrounded. (Logout disabled to allow image picker & multitasking).');
+      // _ref.read(authStateProvider.notifier).logout();
     }
   }
 }

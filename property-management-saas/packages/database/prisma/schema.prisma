@@ -128,31 +128,49 @@ model Lease {
 }
 
 model Payment {
-  id              String         @id @default(uuid())
-  leaseId         String
-  amount          Float
-  dueDate         DateTime
-  paidDate        DateTime?
-  status          PaymentStatus  @default(PENDING)
-  note            String?
-  rrr             String?        @unique
-  transactionId   String?        @unique
-  paymentUrl      String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  proofUrl        String?
-  receiptId       String?        @unique
-  rejectionReason String?
-  workspaceId     String?
-  amountPaid      Float?
-  balanceNote     String?
-  balancePromise  DateTime?
-  gracePeriodEnd  DateTime?
-  lease           Lease          @relation(fields: [leaseId], references: [id], onDelete: Cascade)
-  workspace       Workspace?     @relation(fields: [workspaceId], references: [id])
-  reminders       RentReminder[]
+  id                 String         @id @default(uuid())
+  leaseId            String
+  amount             Float
+  dueDate            DateTime
+  paidDate           DateTime?
+  status             PaymentStatus  @default(PENDING)
+  note               String?
+  rrr                String?        @unique
+  transactionId      String?        @unique
+  paymentUrl         String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  proofUrl           String?
+  receiptId          String?        @unique
+  rejectionReason    String?
+  workspaceId        String?
+  amountPaid         Float?
+  balanceNote        String?
+  balancePromise     DateTime?
+  paymentPlanRequested Boolean @default(false)
+  paymentPlanStatus  String?
+  evictionDate       DateTime?
+  gracePeriodEnd     DateTime?
+  evictionNoticeSent Boolean        @default(false)
+  lease              Lease          @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  workspace          Workspace?     @relation(fields: [workspaceId], references: [id])
+  reminders          RentReminder[]
+  transactions       PaymentTransaction[]
 
   @@unique([id, workspaceId], name: "payment_workspace_id")
+}
+
+model PaymentTransaction {
+  id            String   @id @default(uuid())
+  paymentId     String
+  amount        Float
+  status        String   @default("COMPLETED")
+  note          String?
+  receiptId     String?  @unique
+  proofUrl      String?
+  paidDate      DateTime @default(now())
+  createdAt     DateTime @default(now())
+  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 }
 
 model MaintenanceRequest {
@@ -285,4 +303,13 @@ enum MaintenanceStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
+}
+
+model WebhookEvent {
+  id        String   @id @default(uuid())
+  source    String
+  eventId   String   @unique
+  payload   Json
+  status    String   @default("PROCESSED")
+  createdAt DateTime @default(now())
 }

@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flutter: Debug (Emulator)",
+            "request": "launch",
+            "type": "dart",
+            "cwd": "tenant_app",
+            "program": "lib/main.dart",
+            "args": [
+                "--host-vmservice-port",
+                "8181"
+            ]
+        },
+        {
+            "name": "Flutter: Profile Mode",
+            "request": "launch",
+            "type": "dart",
+            "cwd": "tenant_app",
+            "program": "lib/main.dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "Flutter: Release Mode",
+            "request": "launch",
+            "type": "dart",
+            "cwd": "tenant_app",
+            "program": "lib/main.dart",
+            "flutterMode": "release"
+        }
+    ]
+}

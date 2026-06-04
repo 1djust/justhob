@@ -5,44 +5,34 @@ import { AlertCircle, Clock, Wallet } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export function OverdueTenantsWidget({ workspaceId }: { workspaceId: string }) {
-  const [payments, setPayments] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const queryClient = useQueryClient();
   const { socket } = useRealtime();
 
-  const fetchOverdue = React.useCallback(() => {
-    if (!workspaceId) return;
-    apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments?status=OVERDUE`, {
-      credentials: 'include'
-    })
-      .then(data => {
-        // Fetch partially paid as well
-        apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments?status=PARTIALLY_PAID`, {
-          credentials: 'include'
-        }).then(partialData => {
-           setPayments([...data.payments, ...partialData.payments].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()));
-           setLoading(false);
-        });
-      })
-      .catch((e) => {
-        console.error(e);
-        setLoading(false);
-      });
-  }, [workspaceId]);
+  const { data: payments = [], isLoading: loading } = useQuery<any[]>({
+    queryKey: ['overdue-payments', workspaceId],
+    queryFn: async () => {
+      const [overdue, partial] = await Promise.all([
+        apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments?status=OVERDUE`, { credentials: 'include' }),
+        apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments?status=PARTIALLY_PAID`, { credentials: 'include' })
+      ]);
+      return [...overdue.payments, ...partial.payments].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    },
+    enabled: !!workspaceId,
+    refetchOnWindowFocus: true
+  });
 
   React.useEffect(() => {
-    fetchOverdue();
-  }, [fetchOverdue]);
-
-  React.useEffect(() => {
-    if (socket) {
-      socket.on('PAYMENT_UPDATED', fetchOverdue);
+    if (socket && workspaceId) {
+      const handleUpdate = () => queryClient.invalidateQueries({ queryKey: ['overdue-payments', workspaceId] });
+      socket.on('PAYMENT_UPDATED', handleUpdate);
       return () => {
-        socket.off('PAYMENT_UPDATED', fetchOverdue);
+        socket.off('PAYMENT_UPDATED', handleUpdate);
       };
     }
-  }, [socket, fetchOverdue]);
+  }, [socket, workspaceId, queryClient]);
 
   if (loading) return <div className="animate-pulse h-64 bg-zinc-100 dark:bg-zinc-900 rounded-3xl" />;
   if (payments.length === 0) return null;

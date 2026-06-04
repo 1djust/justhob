@@ -46,6 +46,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     } else {
       // Disable it
       await bio.disableBiometric();
+      if (!mounted) return;
       setState(() {
         _biometricEnabled = false;
       });

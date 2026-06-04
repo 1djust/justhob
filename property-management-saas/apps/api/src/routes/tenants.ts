@@ -1,36 +1,94 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
 import { supabaseAdmin } from '../lib/supabase';
 import { Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
+const WorkspaceQuery = Type.Object({
+  page: Type.Optional(Type.String()),
+  limit: Type.Optional(Type.String())
+});
+const TenantIdParams = Type.Object({ workspaceId: Type.String(), id: Type.String() });
+const CreateTenantBody = Type.Object({
+  name: Type.Optional(Type.String()),
+  email: Type.Optional(Type.String()),
+  phone: Type.Optional(Type.String()),
+  password: Type.Optional(Type.String())
+});
+const UpdateTenantBody = Type.Object({
+  name: Type.Optional(Type.String()),
+  email: Type.Optional(Type.String()),
+  phone: Type.Optional(Type.String())
+});
+const CreateLeaseBody = Type.Object({
+  propertyId: Type.Optional(Type.String()),
+  unitId: Type.Optional(Type.String()),
+  startDate: Type.Optional(Type.String()),
+  endDate: Type.Optional(Type.String()),
+  yearlyRent: Type.Optional(Type.Union([Type.String(), Type.Number()]))
+});
+const EndTenancyBody = Type.Object({
+  leaseId: Type.String(),
+  reason: Type.Optional(Type.String())
+});
 
 export default async function tenantRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', verifyWorkspaceAccess);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
+  server.addHook('preHandler', verifyWorkspaceAccess);
 
   // List tenants with active lease info
-  fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
-    const tenants = await prisma.tenant.findMany({
-      where: { workspaceId, deletedAt: null },
-      include: {
-        leases: {
-          include: { 
-            property: { select: { id: true, name: true } },
-            unit: { select: { id: true, unitNumber: true, type: true } }
-          },
-          orderBy: { createdAt: 'desc' }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
+  server.get<{ Params: Static<typeof WorkspaceParams>, Querystring: Static<typeof WorkspaceQuery> }>('/', {
+    schema: { params: WorkspaceParams, querystring: WorkspaceQuery }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
+    const { page = '1', limit = '20' } = request.query || {};
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const whereClause = { workspaceId, deletedAt: null };
+
+    const [tenants, total] = await prisma.$transaction([
+      prisma.tenant.findMany({
+        where: whereClause,
+        include: {
+          leases: {
+            include: { 
+              property: { select: { id: true, name: true } },
+              unit: { select: { id: true, unitNumber: true, type: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum
+      }),
+      prisma.tenant.count({ where: whereClause })
+    ]);
+
+    return reply.send({ 
+      tenants,
+      pagination: {
+        total,
+        page: pageNum,
+        pageSize: limitNum,
+        totalPages: Math.ceil(total / limitNum)
+      }
     });
-    return reply.send({ tenants });
   });
 
   // Get single tenant profile
-  fastify.get('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+  server.get<{ Params: Static<typeof TenantIdParams> }>('/:id', {
+    schema: { params: TenantIdParams }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
     const tenant = await prisma.tenant.findFirst({
       where: { id, workspaceId, deletedAt: null },
       include: {
@@ -48,9 +106,12 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
   });
 
   // Create tenant
-  fastify.post('/', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
-    const { name, email, phone, password } = request.body as { name?: any; email?: any; phone?: any; password?: any };
+  server.post<{ Params: Static<typeof WorkspaceParams>, Body: Static<typeof CreateTenantBody> }>('/', {
+    preHandler: requireManager,
+    schema: { params: WorkspaceParams, body: CreateTenantBody }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
+    const { name, email, phone, password } = request.body;
     if (!name) return reply.status(400).send({ error: 'Tenant name is required' });
 
     // Subscription Limits and Tenant Creation in Transaction to prevent race conditions
@@ -83,7 +144,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           options: { data: { name, role: 'TENANT', mustChangePassword: true }, redirectTo: 'https://justhob.vercel.app/login' }
         });
 
-        const linkDataAny = linkData as any;
+        const linkDataAny = linkData as unknown as { user: { id: string }, properties?: { action_link?: string } };
         if (linkError || !linkDataAny || !linkDataAny.properties?.action_link) {
           const authError = linkError || new Error('Failed to generate invite link');
           if (authError.message.includes('already') && authError.message.includes('registered')) {
@@ -141,33 +202,37 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           });
 
       return { tenant, tempPassword, inviteLink };
-    }).catch((err: any) => {
-      if (err.message?.startsWith('LIMIT_REACHED')) {
-        const limit = err.message.split(':')[1];
+    }).catch((err: unknown) => {
+      const errorMsg = (err as Error).message;
+      if (errorMsg?.startsWith('LIMIT_REACHED')) {
+        const limit = errorMsg.split(':')[1];
         throw { statusCode: 402, message: `Plan limit reached: Maximum ${limit} tenants allowed. Please upgrade your plan.` };
       }
-      if (err.message?.startsWith('AUTH_ERR:')) {
-        throw { statusCode: 400, message: err.message.split(':')[1] };
+      if (errorMsg?.startsWith('AUTH_ERR:')) {
+        throw { statusCode: 400, message: errorMsg.split(':')[1] };
       }
       throw err;
     });
 
     // Emit real-time update to the workspace room
-    (fastify as any).io.to(`workspace:${workspaceId}`).emit('TENANT_CREATED', {
-      tenantId: (result as any).tenant.id,
+    (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${workspaceId}`).emit('TENANT_CREATED', {
+      tenantId: (result as { tenant: { id: string } }).tenant.id,
       message: 'A new tenant has been created.'
     });
 
     return reply.status(201).send({ 
-      tenant: (result as any).tenant,
-      credentials: email ? { email, tempPassword: (result as any).tempPassword, inviteLink: (result as any).inviteLink } : null
+      tenant: (result as { tenant: unknown }).tenant,
+      credentials: email ? { email, tempPassword: (result as { tempPassword?: string }).tempPassword, inviteLink: (result as { inviteLink?: string }).inviteLink } : null
     });
   });
 
   // Update tenant
-  fastify.put('/:id', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { name, email, phone } = request.body as { name?: any; email?: any; phone?: any };
+  server.put<{ Params: Static<typeof TenantIdParams>, Body: Static<typeof UpdateTenantBody> }>('/:id', {
+    preHandler: requireManager,
+    schema: { params: TenantIdParams, body: UpdateTenantBody }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
+    const { name, email, phone } = request.body;
 
     try {
       const tenant = await prisma.tenant.update({
@@ -181,8 +246,11 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
   });
 
   // Delete tenant (full cleanup including Supabase Auth)
-  fastify.delete('/:id', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+  server.delete<{ Params: Static<typeof TenantIdParams> }>('/:id', {
+    preHandler: requireManager,
+    schema: { params: TenantIdParams }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
     try {
       // Find the tenant first to get their details
       const tenant = await prisma.tenant.findUnique({
@@ -208,7 +276,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       await prisma.tenant.delete({ where: { tenant_workspace_id: { id, workspaceId } } });
       
       // Emit real-time update to the workspace room
-      (fastify as any).io.to(`workspace:${workspaceId}`).emit('TENANT_DELETED', {
+      (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${workspaceId}`).emit('TENANT_DELETED', {
         tenantId: id,
         message: 'A tenant has been deleted.'
       });
@@ -220,9 +288,12 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
   });
 
   // Assign tenant to property (create lease)
-  fastify.post('/:id/leases', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { propertyId, unitId, startDate, endDate, yearlyRent } = request.body as { propertyId?: any; unitId?: any; startDate?: any; endDate?: any; yearlyRent?: any };
+  server.post<{ Params: Static<typeof TenantIdParams>, Body: Static<typeof CreateLeaseBody> }>('/:id/leases', {
+    preHandler: requireManager,
+    schema: { params: TenantIdParams, body: CreateLeaseBody }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
+    const { propertyId, unitId, startDate, endDate, yearlyRent } = request.body;
 
     if (!propertyId || !startDate) {
       return reply.status(400).send({ error: 'Property ID and start date are required' });
@@ -249,7 +320,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         unitId: unitId || null,
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
-        yearlyRent: yearlyRent ? parseFloat(yearlyRent) : 0
+        yearlyRent: yearlyRent ? Number(yearlyRent) : 0
       },
       include: { 
         property: { select: { id: true, name: true } },
@@ -269,9 +340,12 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
   });
 
   // End tenancy - Only allowed after 3-month grace period, expired, or voluntary
-  fastify.post('/:id/end-tenancy', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { leaseId, reason } = request.body as { leaseId: string; reason?: string };
+  server.post<{ Params: Static<typeof TenantIdParams>, Body: Static<typeof EndTenancyBody> }>('/:id/end-tenancy', {
+    preHandler: requireManager,
+    schema: { params: TenantIdParams, body: EndTenancyBody }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
+    const { leaseId, reason } = request.body;
 
     if (!leaseId) {
       return reply.status(400).send({ error: 'Lease ID is required' });
@@ -291,7 +365,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
     }
 
     const now = new Date();
-    const hasOverdueGraceEnded = lease.payments.some((p: any) => p.gracePeriodEnd && p.gracePeriodEnd <= now);
+    const hasOverdueGraceEnded = lease.payments.some((p) => p.gracePeriodEnd && p.gracePeriodEnd <= now);
     
     if (!hasOverdueGraceEnded && lease.status !== 'EXPIRED' && reason !== 'VOLUNTARY_LEAVE') {
        return reply.status(403).send({ error: 'Cannot end tenancy: 3-month grace period has not ended.' });
@@ -321,7 +395,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
        });
     }
 
-    (fastify as any).io.to(`workspace:${workspaceId}`).emit('TENANT_DELETED', {
+    (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${workspaceId}`).emit('TENANT_DELETED', {
       tenantId: id,
       message: 'A tenancy has been ended.'
     });

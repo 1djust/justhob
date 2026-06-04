@@ -11,6 +11,7 @@ import '../../../shared/domain/property.dart';
 import '../presentation/payments_notifier.dart';
 import '../../../core/services/receipt_service.dart';
 import '../../../core/utils/nigerian_banks.dart';
+import '../../../core/utils/error_message.dart';
 
 class PaymentsScreen extends ConsumerWidget {
   const PaymentsScreen({super.key});
@@ -86,7 +87,10 @@ class PaymentsScreen extends ConsumerWidget {
               Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
               const SizedBox(height: 16),
               const Text('Failed to load payments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              Text('$err', style: TextStyle(color: Colors.grey.shade600), textAlign: TextAlign.center),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                child: Text(getFriendlyErrorMessage(err), style: TextStyle(color: Colors.grey.shade600), textAlign: TextAlign.center),
+              ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () => ref.read(paymentsProvider.notifier).fetchPayments(),
@@ -201,7 +205,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-    if (image != null) {
+    if (image != null && mounted) {
       setState(() => _pickedImage = image);
     }
   }
@@ -209,7 +213,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
   Future<void> _takePhoto() async {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
-    if (image != null) {
+    if (image != null && mounted) {
       setState(() => _pickedImage = image);
     }
   }
@@ -549,6 +553,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
     final bytes = await image.readAsBytes();
     final base64Str = base64Encode(bytes);
     
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       await ref.read(paymentsProvider.notifier).submitProof(widget.payment.id, base64Str);

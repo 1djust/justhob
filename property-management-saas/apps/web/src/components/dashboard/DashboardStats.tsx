@@ -15,6 +15,7 @@ import {
 import { RevenueChart } from './RevenueChart';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface DashboardStatsProps {
   workspaceId: string;
@@ -34,37 +35,35 @@ interface StatsData {
 }
 
 export function DashboardStats({ workspaceId, plan }: DashboardStatsProps) {
-  const [stats, setStats] = React.useState<StatsData | null>(null);
-  const [loading, setLoading] = React.useState(true);
+  const queryClient = useQueryClient();
   const { socket, joinWorkspace } = useRealtime();
 
   const isPro = plan === 'PRO' || plan === 'ENTERPRISE';
 
-  const fetchStats = React.useCallback(() => {
-    if (!workspaceId) return;
-    apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/stats`, {
-      credentials: 'include'
-    })
-      .then(data => {
-        setStats(data);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [workspaceId]);
+  const { data: stats, isLoading: loading } = useQuery<StatsData>({
+    queryKey: ['dashboard-stats', workspaceId],
+    queryFn: async () => {
+      const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/stats`, {
+        credentials: 'include'
+      });
+      return data as StatsData;
+    },
+    enabled: !!workspaceId,
+    refetchOnWindowFocus: true
+  });
 
   React.useEffect(() => {
-    fetchStats();
     if (workspaceId) {
       joinWorkspace(workspaceId);
     }
-  }, [workspaceId, fetchStats, joinWorkspace]);
+  }, [workspaceId, joinWorkspace]);
 
   // Real-time listener
   React.useEffect(() => {
-    if (socket) {
+    if (socket && workspaceId) {
       const handleUpdate = () => {
         console.log('[Realtime] Stats update triggered');
-        fetchStats();
+        queryClient.invalidateQueries({ queryKey: ['dashboard-stats', workspaceId] });
       };
 
       socket.on('PAYMENT_UPDATED', handleUpdate);
@@ -91,7 +90,7 @@ export function DashboardStats({ workspaceId, plan }: DashboardStatsProps) {
         socket.off('LEASE_RENEWAL_REJECTED', handleUpdate);
       };
     }
-  }, [socket, fetchStats]);
+  }, [socket, workspaceId, queryClient]);
 
   if (loading) {
     return (

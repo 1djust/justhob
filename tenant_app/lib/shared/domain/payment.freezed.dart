@@ -33,6 +33,9 @@ mixin _$Payment {
   double? get amountPaid => throw _privateConstructorUsedError;
   DateTime? get promiseDate => throw _privateConstructorUsedError;
   DateTime? get gracePeriodEnd => throw _privateConstructorUsedError;
+  bool get paymentPlanRequested => throw _privateConstructorUsedError;
+  String? get paymentPlanStatus => throw _privateConstructorUsedError;
+  DateTime? get evictionDate => throw _privateConstructorUsedError;
 
   /// Serializes this Payment to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -61,7 +64,10 @@ abstract class $PaymentCopyWith<$Res> {
       String? receiptId,
       double? amountPaid,
       DateTime? promiseDate,
-      DateTime? gracePeriodEnd});
+      DateTime? gracePeriodEnd,
+      bool paymentPlanRequested,
+      String? paymentPlanStatus,
+      DateTime? evictionDate});
 }
 
 /// @nodoc
@@ -92,6 +98,9 @@ class _$PaymentCopyWithImpl<$Res, $Val extends Payment>
     Object? amountPaid = freezed,
     Object? promiseDate = freezed,
     Object? gracePeriodEnd = freezed,
+    Object? paymentPlanRequested = null,
+    Object? paymentPlanStatus = freezed,
+    Object? evictionDate = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -146,6 +155,18 @@ class _$PaymentCopyWithImpl<$Res, $Val extends Payment>
           ? _value.gracePeriodEnd
           : gracePeriodEnd // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      paymentPlanRequested: null == paymentPlanRequested
+          ? _value.paymentPlanRequested
+          : paymentPlanRequested // ignore: cast_nullable_to_non_nullable
+              as bool,
+      paymentPlanStatus: freezed == paymentPlanStatus
+          ? _value.paymentPlanStatus
+          : paymentPlanStatus // ignore: cast_nullable_to_non_nullable
+              as String?,
+      evictionDate: freezed == evictionDate
+          ? _value.evictionDate
+          : evictionDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
     ) as $Val);
   }
 }
@@ -170,7 +191,10 @@ abstract class _$$PaymentImplCopyWith<$Res> implements $PaymentCopyWith<$Res> {
       String? receiptId,
       double? amountPaid,
       DateTime? promiseDate,
-      DateTime? gracePeriodEnd});
+      DateTime? gracePeriodEnd,
+      bool paymentPlanRequested,
+      String? paymentPlanStatus,
+      DateTime? evictionDate});
 }
 
 /// @nodoc
@@ -199,6 +223,9 @@ class __$$PaymentImplCopyWithImpl<$Res>
     Object? amountPaid = freezed,
     Object? promiseDate = freezed,
     Object? gracePeriodEnd = freezed,
+    Object? paymentPlanRequested = null,
+    Object? paymentPlanStatus = freezed,
+    Object? evictionDate = freezed,
   }) {
     return _then(_$PaymentImpl(
       id: null == id
@@ -253,6 +280,18 @@ class __$$PaymentImplCopyWithImpl<$Res>
           ? _value.gracePeriodEnd
           : gracePeriodEnd // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      paymentPlanRequested: null == paymentPlanRequested
+          ? _value.paymentPlanRequested
+          : paymentPlanRequested // ignore: cast_nullable_to_non_nullable
+              as bool,
+      paymentPlanStatus: freezed == paymentPlanStatus
+          ? _value.paymentPlanStatus
+          : paymentPlanStatus // ignore: cast_nullable_to_non_nullable
+              as String?,
+      evictionDate: freezed == evictionDate
+          ? _value.evictionDate
+          : evictionDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
     ));
   }
 }
@@ -273,7 +312,10 @@ class _$PaymentImpl implements _Payment {
       this.receiptId,
       this.amountPaid,
       this.promiseDate,
-      this.gracePeriodEnd});
+      this.gracePeriodEnd,
+      this.paymentPlanRequested = false,
+      this.paymentPlanStatus,
+      this.evictionDate});
 
   factory _$PaymentImpl.fromJson(Map<String, dynamic> json) =>
       _$$PaymentImplFromJson(json);
@@ -304,10 +346,17 @@ class _$PaymentImpl implements _Payment {
   final DateTime? promiseDate;
   @override
   final DateTime? gracePeriodEnd;
+  @override
+  @JsonKey()
+  final bool paymentPlanRequested;
+  @override
+  final String? paymentPlanStatus;
+  @override
+  final DateTime? evictionDate;
 
   @override
   String toString() {
-    return 'Payment(id: $id, amount: $amount, dueDate: $dueDate, paidDate: $paidDate, leaseId: $leaseId, status: $status, note: $note, proofUrl: $proofUrl, rejectionReason: $rejectionReason, receiptId: $receiptId, amountPaid: $amountPaid, promiseDate: $promiseDate, gracePeriodEnd: $gracePeriodEnd)';
+    return 'Payment(id: $id, amount: $amount, dueDate: $dueDate, paidDate: $paidDate, leaseId: $leaseId, status: $status, note: $note, proofUrl: $proofUrl, rejectionReason: $rejectionReason, receiptId: $receiptId, amountPaid: $amountPaid, promiseDate: $promiseDate, gracePeriodEnd: $gracePeriodEnd, paymentPlanRequested: $paymentPlanRequested, paymentPlanStatus: $paymentPlanStatus, evictionDate: $evictionDate)';
   }
 
   @override
@@ -334,7 +383,13 @@ class _$PaymentImpl implements _Payment {
             (identical(other.promiseDate, promiseDate) ||
                 other.promiseDate == promiseDate) &&
             (identical(other.gracePeriodEnd, gracePeriodEnd) ||
-                other.gracePeriodEnd == gracePeriodEnd));
+                other.gracePeriodEnd == gracePeriodEnd) &&
+            (identical(other.paymentPlanRequested, paymentPlanRequested) ||
+                other.paymentPlanRequested == paymentPlanRequested) &&
+            (identical(other.paymentPlanStatus, paymentPlanStatus) ||
+                other.paymentPlanStatus == paymentPlanStatus) &&
+            (identical(other.evictionDate, evictionDate) ||
+                other.evictionDate == evictionDate));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -353,7 +408,10 @@ class _$PaymentImpl implements _Payment {
       receiptId,
       amountPaid,
       promiseDate,
-      gracePeriodEnd);
+      gracePeriodEnd,
+      paymentPlanRequested,
+      paymentPlanStatus,
+      evictionDate);
 
   /// Create a copy of Payment
   /// with the given fields replaced by the non-null parameter values.
@@ -385,7 +443,10 @@ abstract class _Payment implements Payment {
       final String? receiptId,
       final double? amountPaid,
       final DateTime? promiseDate,
-      final DateTime? gracePeriodEnd}) = _$PaymentImpl;
+      final DateTime? gracePeriodEnd,
+      final bool paymentPlanRequested,
+      final String? paymentPlanStatus,
+      final DateTime? evictionDate}) = _$PaymentImpl;
 
   factory _Payment.fromJson(Map<String, dynamic> json) = _$PaymentImpl.fromJson;
 
@@ -415,6 +476,12 @@ abstract class _Payment implements Payment {
   DateTime? get promiseDate;
   @override
   DateTime? get gracePeriodEnd;
+  @override
+  bool get paymentPlanRequested;
+  @override
+  String? get paymentPlanStatus;
+  @override
+  DateTime? get evictionDate;
 
   /// Create a copy of Payment
   /// with the given fields replaced by the non-null parameter values.

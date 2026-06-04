@@ -18,6 +18,7 @@ import {
   Landmark
 } from 'lucide-react';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const NIGERIAN_BANKS = [
   { code: '044', name: 'Access Bank' },
@@ -54,43 +55,43 @@ interface Owner {
 }
 
 export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
-  const [owners, setOwners] = React.useState<Owner[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = React.useState(false);
   const payoutStrategyLabels: Record<string, string> = {
     'DIRECT_TO_LANDLORD': 'Landlord Receives Directly',
     'MANAGER_COLLECTS': 'Manager Collects First'
   };
 
-  const fetchOwners = async () => {
-    try {
+  const { data: owners = [], isLoading: loading } = useQuery<Owner[]>({
+    queryKey: ['owners', workspaceId],
+    queryFn: async () => {
       const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, {
         credentials: 'include'
       });
-      setOwners(data.owners || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data.owners || [];
+    },
+    enabled: !!workspaceId
+  });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  React.useEffect(() => {
-    if (workspaceId) fetchOwners();
-  }, [workspaceId]);
-
-  const handleRemove = async (ownerId: string) => {
-    if (!confirm('Remove this owner? Their properties will become unassigned.')) return;
-    try {
+  const removeOwnerMutation = useMutation({
+    mutationFn: async (ownerId: string) => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners/${ownerId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
-      fetchOwners();
-    } catch (e) {
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['owners', workspaceId] });
+    },
+    onError: (e: any) => {
       console.error(e);
+      alert('Failed to remove owner.');
     }
+  });
+
+  const handleRemove = (ownerId: string) => {
+    if (!confirm('Remove this owner? Their properties will become unassigned.')) return;
+    removeOwnerMutation.mutate(ownerId);
   };
 
   if (loading) {
@@ -119,7 +120,7 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
 
       {showForm && (
         <div className="animate-in zoom-in-95 fade-in duration-300">
-          <AddOwnerForm workspaceId={workspaceId} onComplete={() => { setShowForm(false); fetchOwners(); }} />
+          <AddOwnerForm workspaceId={workspaceId} onComplete={() => setShowForm(false)} />
         </div>
       )}
 
@@ -206,6 +207,7 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
 }
 
 function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComplete: () => void }) {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = React.useState({ 
     name: '', 
     email: '', 
@@ -215,32 +217,38 @@ function AddOwnerForm({ workspaceId, onComplete }: { workspaceId: string; onComp
     accountNumber: '',
     accountName: ''
   });
-  const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [successLink, setSuccessLink] = React.useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
+  const addOwnerMutation = useMutation({
+    mutationFn: async () => {
       const res = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/owners`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include'
       });
+      return res;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['owners', workspaceId] });
       if (res.inviteLink) {
         setSuccessLink(res.inviteLink);
       } else {
         onComplete();
       }
-    } catch (e: any) {
+    },
+    onError: (e: any) => {
       setError(e.message || 'Failed to add owner');
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    addOwnerMutation.mutate();
   };
+  const loading = addOwnerMutation.isPending;
 
   if (successLink) {
     return (

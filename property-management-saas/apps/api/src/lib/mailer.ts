@@ -18,7 +18,7 @@ const createTransporter = () => {
 
   // Fallback for development: log to console
   return {
-    sendMail: async (options: any) => {
+    sendMail: async (options: { to: string; subject: string; text?: string; html?: string }) => {
       console.log('--- EMAIL NOTIFICATION (MOCK) ---');
       console.log(`To: ${options.to}`);
       console.log(`Subject: ${options.subject}`);
@@ -26,7 +26,7 @@ const createTransporter = () => {
       console.log('---------------------------------');
       return { messageId: 'mock-id' };
     },
-  } as any;
+  } as unknown as nodemailer.Transporter;
 };
 
 const transporter = createTransporter();

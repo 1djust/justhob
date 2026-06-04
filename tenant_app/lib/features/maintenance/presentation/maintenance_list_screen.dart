@@ -4,6 +4,7 @@ import 'maintenance_notifier.dart';
 import 'package:intl/intl.dart';
 import 'create_maintenance_screen.dart';
 import 'maintenance_chat_screen.dart';
+import '../../../core/utils/error_message.dart';
 
 class MaintenanceListScreen extends ConsumerWidget {
   const MaintenanceListScreen({super.key});
@@ -33,7 +34,26 @@ class MaintenanceListScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+              const SizedBox(height: 16),
+              const Text('Failed to load maintenance requests', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                child: Text(getFriendlyErrorMessage(err), style: TextStyle(color: Colors.grey.shade600), textAlign: TextAlign.center),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => ref.read(maintenanceProvider.notifier).fetchRequests(),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.push(

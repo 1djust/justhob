@@ -48,7 +48,7 @@ async function setupTiers() {
     const workspace = await prisma.workspace.create({
       data: {
         name: `${userData.name}'s Workspace`,
-        plan: userData.plan as any,
+        plan: userData.plan as import('@prisma/client').SubscriptionPlan,
         members: {
           create: {
             userId: userId,

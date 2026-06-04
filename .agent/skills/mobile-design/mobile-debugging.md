@@ -67,6 +67,14 @@ Web Debugging:      Mobile Debugging:
 - **Cause:** Undefined is not an object, import error.
 - **Fix:** Read the stack trace on screen. It's usually clear.
 
+**Scenario C: Blank/White Screen (Flutter UI Exception)**
+- **Cause:** An unhandled null reference exception or layout error occurred *directly inside* a widget's `build()` method (e.g., trying to map over a null list like `data?.leases?.expand(...)`, or parsing malformed JSON asynchronously during render).
+- **Behavior:** The framework completely aborts rendering that specific widget tree and falls back to a blank `ErrorWidget` in release mode (or red screen in debug).
+- **Fix:** 
+  1. Identify which provider or state variable is throwing the null error.
+  2. Aggressively strip out or comment the suspected UI blocks (like list iterators) to isolate the crash and allow the main layout (e.g. `SingleChildScrollView`) to render.
+  3. Ensure robust null checks `?? []` and safe access `?.` before mapping over lists inside `build()`.
+
 **Scenario B: Crash to Home Screen (Native Crash)**
 - **Cause:** Native module failure, memory OOM, permission usage without declaration.
 - **Tools:**

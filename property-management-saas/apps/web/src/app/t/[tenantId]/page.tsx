@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { API_BASE_URL } from '@/lib/api';
 
@@ -64,38 +65,30 @@ function getExpiryColor(endDate: string | null): { color: string; bgColor: strin
 export default function TenantPortalPage() {
   const params = useParams();
   const tenantId = params.tenantId as string;
+  const queryClient = useQueryClient();
 
-  const [tenant, setTenant] = React.useState<PortalTenant | null>(null);
-  const [loading, setLoading] = React.useState(true);
+  const { data: tenant, isLoading: loading } = useQuery<PortalTenant>({
+    queryKey: ['tenant', tenantId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE_URL}/api/public/tenants/${tenantId}`);
+      if (!res.ok) throw new Error('Failed to fetch tenant details');
+      const data = await res.json();
+      return data.tenant;
+    },
+    enabled: !!tenantId,
+  });
   
   // Form State
   const [description, setDescription] = React.useState('');
   const [propertyId, setPropertyId] = React.useState('');
   const [imageString, setImageString] = React.useState<string | null>(null);
-  const [submitting, setSubmitting] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
 
-  const fetchTenant = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/public/tenants/${tenantId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTenant(data.tenant);
-        if (data.tenant.leases?.length > 0) {
-          setPropertyId(data.tenant.leases[0].property.id);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   React.useEffect(() => {
-    if (tenantId) fetchTenant();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId]);
+    if (tenant?.leases && tenant.leases.length > 0 && !propertyId) {
+      setPropertyId(tenant.leases[0].property.id);
+    }
+  }, [tenant, propertyId]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,35 +108,73 @@ export default function TenantPortalPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setSuccess(false);
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      let uploadedImageUrl = null;
 
-    try {
+      if (imageString) {
+        const fileInput = document.getElementById('image-upload') as HTMLInputElement;
+        const file = fileInput.files?.[0];
+        
+        if (file) {
+          const presignedRes = await fetch(`${API_BASE_URL}/api/uploads/public/presigned-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: file.name,
+              contentType: file.type,
+              bucket: 'uploads'
+            })
+          });
+
+          if (!presignedRes.ok) throw new Error('Failed to get upload URL');
+          const { signedUrl, publicUrl } = await presignedRes.json();
+
+          const uploadRes = await fetch(signedUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': file.type },
+            body: file
+          });
+
+          if (!uploadRes.ok) throw new Error('Failed to upload image');
+          uploadedImageUrl = publicUrl;
+        }
+      }
+
       const res = await fetch(`${API_BASE_URL}/api/public/tenants/${tenantId}/maintenance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           propertyId,
           description,
-          imageUrl: imageString
+          imageUrl: uploadedImageUrl
         })
       });
 
-      if (res.ok) {
-        setSuccess(true);
-        setDescription('');
-        setImageString(null);
-        const fileInput = document.getElementById('image-upload') as HTMLInputElement;
-        if (fileInput) fileInput.value = '';
-        fetchTenant(); // Refresh history
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error?.message || 'Failed to submit request');
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSubmitting(false);
+      return res.json();
+    },
+    onSuccess: () => {
+      setSuccess(true);
+      setDescription('');
+      setImageString(null);
+      const fileInput = document.getElementById('image-upload') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenantId] });
+    },
+    onError: (error: any) => {
+      console.error(error);
+      alert(error.message || 'An error occurred during submission');
     }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSuccess(false);
+    submitMutation.mutate();
   };
 
   if (loading) {
@@ -349,10 +380,10 @@ export default function TenantPortalPage() {
             <div className="pt-4">
               <button 
                 type="submit" 
-                disabled={submitting || !propertyId}
-                className="w-full sm:w-auto bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 px-8 py-2.5 rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                disabled={!description.trim() || !propertyId || submitMutation.isPending}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? 'Submitting...' : 'Submit Request'}
+                {submitMutation.isPending ? 'Submitting...' : 'Submit Request'}
               </button>
             </div>
           </form>

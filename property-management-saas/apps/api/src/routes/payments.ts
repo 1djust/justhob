@@ -1,45 +1,99 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
-import { Prisma } from '@prisma/client';
+import { Prisma, PaymentStatus } from '@prisma/client';
 import { generateReceiptPDF } from '../lib/pdf';
 import { sendEmail } from '../lib/mailer';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
+const WorkspaceQuery = Type.Object({ 
+  status: Type.Optional(Type.String()),
+  page: Type.Optional(Type.String()),
+  limit: Type.Optional(Type.String())
+});
+const RecordPaymentBody = Type.Object({
+  leaseId: Type.String(),
+  amount: Type.Union([Type.String(), Type.Number()]),
+  dueDate: Type.String(),
+  paidDate: Type.Optional(Type.String()),
+  status: Type.Optional(Type.Enum(PaymentStatus)),
+  note: Type.Optional(Type.String())
+});
+const PaymentIdParams = Type.Object({ workspaceId: Type.String(), id: Type.String() });
+const LeaseIdParams = Type.Object({ workspaceId: Type.String(), leaseId: Type.String() });
+const PartialPayBody = Type.Object({
+  amountPaid: Type.Union([Type.String(), Type.Number()]),
+  balancePromise: Type.Optional(Type.String()),
+  balanceNote: Type.Optional(Type.String())
+});
+const ReviewPaymentBody = Type.Object({
+  status: Type.Optional(Type.String()),
+  rejectionReason: Type.Optional(Type.String())
+});
 
 export default async function paymentRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', verifyWorkspaceAccess);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
+  server.addHook('preHandler', verifyWorkspaceAccess);
 
   // List all payments for a workspace (across all leases)
-  fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
-    const { status } = request.query as { status?: string };
+  server.get<{ Params: Static<typeof WorkspaceParams>, Querystring: Static<typeof WorkspaceQuery> }>('/', {
+    schema: { params: WorkspaceParams, querystring: WorkspaceQuery }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
+    const { status, page = '1', limit = '20' } = request.query;
 
-    const payments = await prisma.payment.findMany({
-      where: {
-        OR: [
-          { workspaceId },
-          { lease: { tenant: { workspaceId } } }
-        ],
-        ...(status ? { status: status as any } : {})
-      },
-      include: {
-        lease: {
-          include: {
-            tenant: { select: { id: true, name: true } },
-            property: { select: { id: true, name: true } }
-          }
-        }
-      },
-      orderBy: { dueDate: 'desc' }
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const whereClause = {
+      OR: [
+        { workspaceId },
+        { lease: { tenant: { workspaceId } } }
+      ],
+      ...(status ? { status: status as import('@prisma/client').PaymentStatus } : {})
+    };
+
+    const [payments, total] = await prisma.$transaction([
+      prisma.payment.findMany({
+        where: whereClause,
+        include: {
+          lease: {
+            include: {
+              tenant: { select: { id: true, name: true } },
+              property: { select: { id: true, name: true } }
+            }
+          },
+          transactions: { orderBy: { paidDate: 'desc' } }
+        },
+        orderBy: { dueDate: 'desc' },
+        skip,
+        take: limitNum
+      }),
+      prisma.payment.count({ where: whereClause })
+    ]);
+
+    return reply.send({ 
+      payments, 
+      pagination: {
+        total,
+        page: pageNum,
+        pageSize: limitNum,
+        totalPages: Math.ceil(total / limitNum)
+      }
     });
-
-    return reply.send({ payments });
   });
 
   // Record a payment for a specific lease
-  fastify.post('/', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
-    const { leaseId, amount, dueDate, paidDate, status, note } = request.body as { leaseId?: any; amount?: any; dueDate?: any; paidDate?: any; status?: any; note?: any };
+  server.post<{ Params: Static<typeof WorkspaceParams>, Body: Static<typeof RecordPaymentBody> }>('/', {
+    preHandler: requireManager,
+    schema: { params: WorkspaceParams, body: RecordPaymentBody }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
+    const { leaseId, amount, dueDate, paidDate, status, note } = request.body;
 
     if (!leaseId || !amount || !dueDate) {
       return reply.status(400).send({ error: 'Lease ID, amount, and due date are required' });
@@ -71,7 +125,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         data: {
           leaseId,
           workspaceId,
-          amount: parseFloat(amount),
+          amount: Number(amount),
           dueDate: new Date(dueDate),
           paidDate: paidDate ? new Date(paidDate) : null,
           status: status || 'PENDING',
@@ -88,24 +142,47 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
       });
 
       return reply.status(201).send({ payment: result });
-    } catch (err: any) {
-      if (err.statusCode === 402) throw err;
+    } catch (err: unknown) {
+      const errorObj = err as { statusCode?: number };
+      if (errorObj.statusCode === 402) throw err;
       throw err;
     }
   });
 
   // Mark payment as paid
-  fastify.put('/:id/pay', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+  server.put<{ Params: Static<typeof PaymentIdParams> }>('/:id/pay', {
+    preHandler: requireManager,
+    schema: { params: PaymentIdParams }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
 
     try {
+      const existingPayment = await prisma.payment.findUnique({
+        where: { payment_workspace_id: { id, workspaceId } }
+      });
+      
+      if (!existingPayment) return reply.status(404).send({ error: 'Payment not found' });
+      
+      const amountToSettle = existingPayment.amount - (existingPayment.amountPaid || 0);
+
       const payment = await prisma.payment.update({
         where: { payment_workspace_id: { id, workspaceId } },
-        data: { status: 'PAID', paidDate: new Date() }
+        data: { 
+          status: 'PAID', 
+          paidDate: new Date(),
+          amountPaid: existingPayment.amount,
+          transactions: {
+            create: {
+              amount: amountToSettle > 0 ? amountToSettle : existingPayment.amount,
+              status: 'COMPLETED',
+              note: 'Payment marked as settled manually'
+            }
+          }
+        }
       });
 
       // Emit real-time update to all members in the workspace room
-      (fastify as any).io.to(`workspace:${workspaceId}`).emit('PAYMENT_UPDATED', {
+      (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${workspaceId}`).emit('PAYMENT_UPDATED', {
         paymentId: id,
         status: 'PAID',
         message: 'A payment has been marked as settled.'
@@ -118,11 +195,14 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   });
 
   // Get payment history for a specific lease
-  fastify.get('/lease/:leaseId', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, leaseId } = request.params as { workspaceId: string; leaseId: string };
+  server.get<{ Params: Static<typeof LeaseIdParams> }>('/lease/:leaseId', {
+    schema: { params: LeaseIdParams }
+  }, async (request, reply) => {
+    const { workspaceId, leaseId } = request.params;
 
     const payments = await prisma.payment.findMany({
       where: { leaseId },
+      include: { transactions: { orderBy: { paidDate: 'desc' } } },
       orderBy: { dueDate: 'desc' }
     });
 
@@ -130,8 +210,11 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   });
 
   // Get overdue summary for a workspace
-  fastify.get('/overdue-summary', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
+  server.get<{ Params: Static<typeof WorkspaceParams> }>('/overdue-summary', {
+    preHandler: requireManager,
+    schema: { params: WorkspaceParams }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
     const now = new Date();
     
     const overduePayments = await prisma.payment.findMany({
@@ -152,7 +235,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
       }
     };
 
-    overduePayments.forEach((payment: any) => {
+    overduePayments.forEach((payment) => {
       // Determine what constitutes an overdue payment. If not overdue yet but partially paid, should it count?
       // Since we query OVERDUE and PARTIALLY_PAID, let's include if dueDate < now.
       if (payment.dueDate > now && payment.status === 'PARTIALLY_PAID') return;
@@ -181,11 +264,13 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   });
 
   // Record a partial payment
-  fastify.post('/:id/partial-pay', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { amountPaid, balancePromise, balanceNote } = request.body as { amountPaid: number, balancePromise?: string, balanceNote?: string };
+  server.post<{ Params: Static<typeof PaymentIdParams>, Body: Static<typeof PartialPayBody> }>('/:id/partial-pay', {
+    schema: { params: PaymentIdParams, body: PartialPayBody }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
+    const { amountPaid, balancePromise, balanceNote } = request.body;
 
-    if (!amountPaid || amountPaid <= 0) {
+    if (!amountPaid || Number(amountPaid) <= 0) {
       return reply.status(400).send({ error: 'Valid partial amount is required' });
     }
 
@@ -201,7 +286,18 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     if (newAmountPaid >= payment.amount) {
       const updated = await prisma.payment.update({
         where: { id },
-        data: { status: 'PAID', amountPaid: payment.amount, paidDate: new Date() }
+        data: { 
+          status: 'PAID', 
+          amountPaid: payment.amount, 
+          paidDate: new Date(),
+          transactions: {
+            create: {
+              amount: parseFloat(amountPaid.toString()),
+              status: 'COMPLETED',
+              note: 'Final partial payment recorded manually'
+            }
+          }
+        }
       });
       return reply.send({ payment: updated, fullyPaid: true });
     }
@@ -212,11 +308,18 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         status: 'PARTIALLY_PAID',
         amountPaid: newAmountPaid,
         balancePromise: balancePromise ? new Date(balancePromise) : null,
-        balanceNote
+        balanceNote,
+        transactions: {
+          create: {
+            amount: parseFloat(amountPaid.toString()),
+            status: 'COMPLETED',
+            note: 'Partial payment recorded manually'
+          }
+        }
       }
     });
 
-    (fastify as any).io.to(`workspace:${workspaceId}`).emit('PAYMENT_UPDATED', {
+    (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${workspaceId}`).emit('PAYMENT_UPDATED', {
       paymentId: id,
       status: 'PARTIALLY_PAID',
       message: `A partial payment of ₦${amountPaid} was recorded.`
@@ -226,9 +329,12 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   });
 
   // Review a submitted proof of payment (Manager only)
-  fastify.patch('/:id/review', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { status, rejectionReason } = request.body as { status?: any; rejectionReason?: any }; // status expected: 'PAID' or 'REJECTED'
+  server.patch<{ Params: Static<typeof PaymentIdParams>, Body: Static<typeof ReviewPaymentBody> }>('/:id/review', {
+    preHandler: requireManager,
+    schema: { params: PaymentIdParams, body: ReviewPaymentBody }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
+    const { status, rejectionReason } = request.body; // status expected: 'PAID' or 'REJECTED'
 
     if (status !== 'PAID' && status !== 'REJECTED') {
       return reply.status(400).send({ error: 'Status must be PAID or REJECTED' });
@@ -255,12 +361,24 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
 
     if (status === 'PAID') {
       const receiptId = `RCPT-${Date.now()}-${id.substring(0, 4)}`.toUpperCase();
+      const amountToSettle = payment.amount - (payment.amountPaid || 0);
+      
       updatedPayment = await prisma.payment.update({
         where: { payment_workspace_id: { id, workspaceId } },
         data: {
           status: 'PAID',
           paidDate: new Date(),
           receiptId,
+          amountPaid: payment.amount,
+          transactions: {
+            create: {
+              amount: amountToSettle > 0 ? amountToSettle : payment.amount,
+              status: 'COMPLETED',
+              note: 'Proof of payment approved',
+              receiptId,
+              proofUrl: payment.proofUrl
+            }
+          }
         }
       });
       
@@ -318,7 +436,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     }
 
     // Emit real-time update to all members in the workspace room (Manager, Tenant, Landlord)
-    (fastify as any).io.to(`workspace:${workspaceId}`).emit('PAYMENT_UPDATED', {
+    (fastify as unknown as { io: import('socket.io').Server }).io.to(`workspace:${workspaceId}`).emit('PAYMENT_UPDATED', {
       paymentId: id,
       status: updatedPayment.status,
       message: status === 'PAID' ? 'Payment approved' : 'Payment proof rejected'
@@ -328,8 +446,10 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   });
 
   // Download PDF Receipt
-  fastify.get('/:id/receipt', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+  server.get<{ Params: Static<typeof PaymentIdParams> }>('/:id/receipt', {
+    schema: { params: PaymentIdParams }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
 
     const payment = await prisma.payment.findUnique({
       where: { payment_workspace_id: { id, workspaceId } },
@@ -359,7 +479,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
       propertyName: payment.lease.property.name,
       workspaceName: payment.workspace?.name || 'EstateOS Workspace',
       note: payment.note || undefined
-    }, (reply as any).raw);
+    }, (reply.raw as NodeJS.WritableStream));
 
     return reply;
   });

@@ -1,12 +1,17 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+const ExportParams = Type.Object({ workspaceId: Type.String() });
+const ExportQuery = Type.Object({ format: Type.Optional(Type.String()) });
 import PDFDocument from 'pdfkit';
 
 /**
  * Convert an array of objects to a CSV string.
  */
-function toCSV(rows: Record<string, any>[], columns: { key: string; label: string }[]): string {
+function toCSV(rows: Record<string, unknown>[], columns: { key: string; label: string }[]): string {
   const header = columns.map(c => `"${c.label}"`).join(',');
   const body = rows.map(row =>
     columns.map(c => {
@@ -26,10 +31,10 @@ function toCSV(rows: Record<string, any>[], columns: { key: string; label: strin
 /**
  * Generate a PDF document from rows and columns.
  */
-function toPDF(reply: FastifyReply, title: string, rows: Record<string, any>[], columns: { key: string; label: string }[]) {
+function toPDF(reply: FastifyReply, title: string, rows: Record<string, unknown>[], columns: { key: string; label: string }[]) {
   return new Promise<void>((resolve) => {
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
-    const chunks: any[] = [];
+    const chunks: Buffer[] = [];
 
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => {
@@ -84,13 +89,14 @@ function toPDF(reply: FastifyReply, title: string, rows: Record<string, any>[], 
 }
 
 export default async function exportRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', verifyWorkspaceAccess);
-  fastify.addHook('preHandler', requireManager);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
+  server.addHook('preHandler', verifyWorkspaceAccess);
+  server.addHook('preHandler', requireManager);
 
   // Gate: Enterprise only
-  const requireEnterprise = async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
+  const requireEnterprise = async (request: any, reply: any) => {
+    const { workspaceId } = request.params;
     const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
     if (!workspace || workspace.plan !== 'ENTERPRISE') {
       return reply.status(402).send({
@@ -100,8 +106,11 @@ export default async function exportRoutes(fastify: FastifyInstance) {
   };
 
   // ─── Export Tenants ───
-  fastify.get('/tenants', { preHandler: requireEnterprise }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
+  server.get<{ Params: Static<typeof ExportParams>, Querystring: Static<typeof ExportQuery> }>('/tenants', {
+    preHandler: requireEnterprise,
+    schema: { params: ExportParams, querystring: ExportQuery }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
 
     const tenants = await prisma.tenant.findMany({
       where: { workspaceId, deletedAt: null },
@@ -118,7 +127,7 @@ export default async function exportRoutes(fastify: FastifyInstance) {
       orderBy: { createdAt: 'desc' }
     });
 
-    const rows = tenants.map((t: any) => ({
+    const rows = tenants.map((t) => ({
       name: t.name,
       email: t.email || '',
       phone: t.phone || '',
@@ -142,7 +151,7 @@ export default async function exportRoutes(fastify: FastifyInstance) {
       { key: 'createdAt', label: 'Date Added' }
     ]);
 
-    const { format } = request.query as { format?: string };
+    const { format } = request.query;
     if (format === 'pdf') {
       await toPDF(reply, 'Tenants Report', rows, [
         { key: 'name', label: 'Name' },
@@ -161,28 +170,35 @@ export default async function exportRoutes(fastify: FastifyInstance) {
   });
 
   // ─── Export Payments ───
-  fastify.get('/payments', { preHandler: requireEnterprise }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
+  server.get<{ Params: Static<typeof ExportParams>, Querystring: Static<typeof ExportQuery> }>('/payments', {
+    preHandler: requireEnterprise,
+    schema: { params: ExportParams, querystring: ExportQuery }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
 
     const payments = await prisma.payment.findMany({
       where: { workspaceId },
       include: {
-        tenant: { select: { name: true, email: true } },
-        property: { select: { name: true } },
-        unit: { select: { unitNumber: true } }
+        lease: { 
+          include: { 
+            tenant: { select: { name: true, email: true } },
+            property: { select: { name: true } },
+            unit: { select: { unitNumber: true } }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    const rows = payments.map((p: any) => ({
+    const rows = payments.map((p) => ({
       receiptId: p.receiptId || '',
-      tenant: p.tenant?.name || '',
-      tenantEmail: p.tenant?.email || '',
-      property: p.property?.name || '',
-      unit: p.unit?.unitNumber || '',
+      tenant: p.lease?.tenant?.name || '',
+      tenantEmail: p.lease?.tenant?.email || '',
+      property: p.lease?.property?.name || '',
+      unit: p.lease?.unit?.unitNumber || '',
       amount: p.amount,
       status: p.status,
-      paymentMethod: p.paymentMethod || '',
+      paymentMethod: (p as unknown as { paymentMethod?: string }).paymentMethod || '',
       paidDate: p.paidDate ? new Date(p.paidDate).toLocaleDateString() : '',
       dueDate: p.dueDate ? new Date(p.dueDate).toLocaleDateString() : '',
       createdAt: new Date(p.createdAt).toLocaleDateString()
@@ -202,7 +218,7 @@ export default async function exportRoutes(fastify: FastifyInstance) {
       { key: 'createdAt', label: 'Created' }
     ]);
 
-    const { format } = request.query as { format?: string };
+    const { format } = request.query;
     if (format === 'pdf') {
       await toPDF(reply, 'Payments Ledger', rows, [
         { key: 'receiptId', label: 'ID' },
@@ -221,8 +237,11 @@ export default async function exportRoutes(fastify: FastifyInstance) {
   });
 
   // ─── Export Properties ───
-  fastify.get('/properties', { preHandler: requireEnterprise }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
+  server.get<{ Params: Static<typeof ExportParams>, Querystring: Static<typeof ExportQuery> }>('/properties', {
+    preHandler: requireEnterprise,
+    schema: { params: ExportParams, querystring: ExportQuery }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
 
     const properties = await prisma.property.findMany({
       where: { workspaceId, deletedAt: null },
@@ -233,8 +252,8 @@ export default async function exportRoutes(fastify: FastifyInstance) {
       orderBy: { createdAt: 'desc' }
     });
 
-    const rows: any[] = [];
-    properties.forEach((p: any) => {
+    const rows: Record<string, unknown>[] = [];
+    properties.forEach((p) => {
       if (p.units.length === 0) {
         rows.push({
           property: p.name,
@@ -247,7 +266,7 @@ export default async function exportRoutes(fastify: FastifyInstance) {
           createdAt: new Date(p.createdAt).toLocaleDateString()
         });
       } else {
-        p.units.forEach((u: any) => {
+        p.units.forEach((u) => {
           rows.push({
             property: p.name,
             address: p.address,
@@ -273,7 +292,7 @@ export default async function exportRoutes(fastify: FastifyInstance) {
       { key: 'createdAt', label: 'Date Added' }
     ]);
 
-    const { format } = request.query as { format?: string };
+    const { format } = request.query;
     if (format === 'pdf') {
       await toPDF(reply, 'Portfolio Report', rows, [
         { key: 'property', label: 'Property' },

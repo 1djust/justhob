@@ -2,10 +2,25 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate } from '../lib/middleware';
 import { supabaseAdmin } from '../lib/supabase';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { PayoutStrategy } from '@prisma/client';
+
+const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
+const CreateOwnerBody = Type.Object({
+  name: Type.String(),
+  email: Type.String(),
+  password: Type.Optional(Type.String()),
+  payoutStrategy: Type.Optional(Type.Enum(PayoutStrategy)),
+  bankCode: Type.Optional(Type.String()),
+  accountNumber: Type.Optional(Type.String()),
+  accountName: Type.Optional(Type.String())
+});
+const DeleteOwnerParams = Type.Object({ workspaceId: Type.String(), ownerId: Type.String() });
 
 const verifyPropertyManager = async (request: FastifyRequest, reply: FastifyReply) => {
   const userId = request.userId!;
-  const { workspaceId } = request.params as any;
+  const { workspaceId } = request.params as { workspaceId: string };
 
   if (!workspaceId) return reply.status(400).send({ error: 'Workspace ID required' });
 
@@ -19,12 +34,15 @@ const verifyPropertyManager = async (request: FastifyRequest, reply: FastifyRepl
 };
 
 export default async function ownerRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', verifyPropertyManager);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
+  server.addHook('preHandler', verifyPropertyManager);
 
   // List all Landlords (Owners) in a workspace
-  fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
+  server.get<{ Params: Static<typeof WorkspaceParams> }>('/', {
+    schema: { params: WorkspaceParams }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
 
     const owners = await prisma.workspaceMember.findMany({
       where: { workspaceId, role: 'LANDLORD' },
@@ -34,7 +52,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
       orderBy: { createdAt: 'desc' }
     });
 
-    const formatted = owners.map((o: any) => ({
+    const formatted = owners.map((o) => ({
       id: o.user.id,
       name: o.user.name,
       email: o.user.email,
@@ -50,9 +68,12 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
   });
 
   // Add a new Landlord (Owner) to the workspace
-  fastify.post('/', { preHandler: verifyPropertyManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
-    const { name, email, password } = request.body as { name: string; email: string; password?: string };
+  server.post<{ Params: Static<typeof WorkspaceParams>, Body: Static<typeof CreateOwnerBody> }>('/', {
+    preHandler: verifyPropertyManager,
+    schema: { params: WorkspaceParams, body: CreateOwnerBody }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
+    const { name, email, password } = request.body;
 
     if (!name || !email) {
       return reply.status(400).send({ error: 'Name and email are required' });
@@ -60,7 +81,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
 
     try {
       // Limit enforcement logic
-      const result = await prisma.$transaction(async (tx: any) => {
+      const result = await prisma.$transaction(async (tx: import('@prisma/client').Prisma.TransactionClient) => {
         // 1. Get workspace and lock it
         const workspace = await tx.workspace.findUnique({
           where: { id: workspaceId },
@@ -92,14 +113,14 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
             throw new Error('User is already a member of this workspace');
           }
           
-          const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as { payoutStrategy?: any; bankCode?: any; accountNumber?: any; accountName?: any };
+          const { payoutStrategy, bankCode, accountNumber, accountName } = request.body;
 
           const member = await tx.workspaceMember.create({
             data: { 
               userId: user.id, 
               workspaceId, 
               role: 'LANDLORD',
-              payoutStrategy,
+              payoutStrategy: payoutStrategy as import('@prisma/client').PayoutStrategy | undefined,
               bankCode,
               accountNumber,
               accountName
@@ -124,7 +145,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           options: { data: { name }, redirectTo: 'https://justhob.vercel.app/login' }
         });
 
-        const linkDataAny = linkData as any;
+        const linkDataAny = linkData as unknown as { user: { id: string }; properties?: { action_link?: string } };
         if (linkError || !linkDataAny || !linkDataAny.properties?.action_link) {
           return reply.status(400).send({ error: linkError?.message || 'Failed to generate invite link' });
         }
@@ -135,14 +156,14 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
 
         inviteLink = linkDataAny.properties.action_link;
 
-        const { payoutStrategy, bankCode, accountNumber, accountName } = request.body as { payoutStrategy?: any; bankCode?: any; accountNumber?: any; accountName?: any };
+        const { payoutStrategy, bankCode, accountNumber, accountName } = request.body;
 
         await prisma.workspaceMember.create({
           data: { 
             userId: user.id, 
             workspaceId, 
             role: 'LANDLORD',
-            payoutStrategy,
+            payoutStrategy: payoutStrategy as import('@prisma/client').PayoutStrategy | undefined,
             bankCode,
             accountNumber,
             accountName
@@ -156,7 +177,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
             email,
             options: { redirectTo: 'https://justhob.vercel.app/login' }
           });
-          const mlAny = mlData as any;
+          const mlAny = mlData as unknown as { properties?: { action_link?: string } };
           if (mlAny?.properties?.action_link) {
             inviteLink = mlAny.properties.action_link;
           }
@@ -169,17 +190,20 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         owner: { id: user.id, name: user.name, email: user.email },
         inviteLink: inviteLink || null
       });
-    } catch (error: any) {
-      if (error.message && error.message.includes('Owner limit reached')) {
-        return reply.status(402).send({ error: error.message });
+    } catch (error: unknown) {
+      const errMessage = (error as Error).message;
+      if (errMessage && errMessage.includes('Owner limit reached')) {
+        return reply.status(402).send({ error: errMessage });
       }
       return reply.status(500).send(error);
     }
   });
 
   // Remove a Landlord from the workspace
-  fastify.delete('/:ownerId', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, ownerId } = request.params as { workspaceId: string; ownerId: string };
+  server.delete<{ Params: Static<typeof DeleteOwnerParams> }>('/:ownerId', {
+    schema: { params: DeleteOwnerParams }
+  }, async (request, reply) => {
+    const { workspaceId, ownerId } = request.params;
 
     try {
       await prisma.workspaceMember.deleteMany({

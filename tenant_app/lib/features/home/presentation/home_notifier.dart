@@ -12,25 +12,33 @@ final tenantRepositoryProvider = Provider<TenantRepository>((ref) {
 });
 
 final homeStateProvider = StateNotifierProvider<HomeNotifier, AsyncValue<Tenant?>>((ref) {
-  final authState = ref.watch(authStateProvider);
   return HomeNotifier(
     ref.watch(tenantRepositoryProvider),
-    authState.value,
+    ref,
   );
 });
 
 class HomeNotifier extends StateNotifier<AsyncValue<Tenant?>> {
   final TenantRepository _repository;
-  final dynamic _user;
+  final Ref _ref;
   StreamSubscription? _socketSubscription;
   Timer? _pollTimer;
 
-  HomeNotifier(this._repository, this._user) : super(const AsyncValue.loading()) {
-    if (_user != null) {
-      _init();
-      _listenToSocket();
-      _startPolling();
-    }
+  HomeNotifier(this._repository, this._ref) : super(const AsyncValue.loading()) {
+    // Listen to auth state changes. When a user logs in, trigger _init().
+    // Using listen() instead of watch() means this notifier is NOT recreated
+    // when authState changes — only _init() is called.
+    _ref.listen<AsyncValue<dynamic>>(authStateProvider, (prev, next) {
+      final user = next.valueOrNull;
+      if (user != null) {
+        _init();
+      } else if (next.hasValue && user == null) {
+        // Logged out — clear state
+        state = const AsyncValue.data(null);
+      }
+    }, fireImmediately: true);
+    _listenToSocket();
+    _startPolling();
   }
 
   /// Periodic polling every 15 seconds as a guaranteed fallback.
@@ -81,19 +89,31 @@ class HomeNotifier extends StateNotifier<AsyncValue<Tenant?>> {
 
   Future<void> _init() async {
     try {
+      // Read current auth user without watching (avoids rebuilding the notifier)
+      final authState = _ref.read(authStateProvider);
+      final user = authState.valueOrNull;
+
+      debugPrint("[HomeNotifier] auth user: ${user?.email}, workspaces: ${user?.workspaces.length}"); if (user == null) {
+        state = const AsyncValue.data(null);
+        return;
+      }
+
       // Find the first TENANT role in user's workspaces
-      final tenantMembers = _user.workspaces.where((m) => m.role == 'TENANT');
+      final tenantMembers = user.workspaces.where((m) => m.role == 'TENANT'); debugPrint("[HomeNotifier] tenantMembers count: ${tenantMembers.length}");
       final tenantMember = tenantMembers.isNotEmpty ? tenantMembers.first : null;
 
-      if (tenantMember != null) {
+      debugPrint("[HomeNotifier] tenantMember found: ${tenantMember != null}"); if (tenantMember != null) {
         final tenant = await _repository.getTenantProfile();
+        if (!mounted) return;
         SocketService().joinWorkspace(tenant.workspaceId);
         state = AsyncValue.data(tenant);
       } else {
+        if (!mounted) return;
         state = const AsyncValue.data(null);
       }
     } catch (e, stack) {
       debugPrint('Caught error: $stack');
+      if (!mounted) return;
       state = AsyncValue.error(e, stack);
     }
   }

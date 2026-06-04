@@ -23,6 +23,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
   int _shakeCounter = 0;
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
+  bool _isPromptingBiometric = false;
+  bool _hasCancelledBiometric = false;
 
   @override
   void initState() {
@@ -57,9 +59,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
     }
   }
 
-  Future<void> _handleBiometricLogin() async {
+  Future<void> _handleBiometricLogin({bool manualTrigger = false}) async {
+    if (_isPromptingBiometric) return;
+    if (!manualTrigger && _hasCancelledBiometric) return;
+
+    _isPromptingBiometric = true;
     final bio = BiometricService();
     final success = await bio.authenticate();
+    _isPromptingBiometric = false;
+
     if (success && mounted) {
       // Biometric passed — retrieve stored credentials and login
       final credentials = await bio.getStoredCredentials();
@@ -83,6 +91,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
           _errorMessage = 'No saved credentials. Please sign in manually.';
         });
       }
+    } else if (!success && mounted) {
+      _hasCancelledBiometric = true;
     }
   }
 
@@ -172,6 +182,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                 _emailController.text,
                 _passwordController.text,
               );
+              if (!mounted) return;
               setState(() => _biometricEnabled = true);
               if (ctx.mounted) Navigator.pop(ctx);
             },
@@ -433,7 +444,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                     const SizedBox(height: 40),
                     Center(
                       child: GestureDetector(
-                        onTap: _handleBiometricLogin,
+                        onTap: () => _handleBiometricLogin(manualTrigger: true),
                         child: Icon(
                           Icons.fingerprint,
                           size: 44,

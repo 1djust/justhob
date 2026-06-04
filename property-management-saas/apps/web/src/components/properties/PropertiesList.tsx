@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExportButton } from '@/components/shared/ExportButton';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Unit {
   id: string;
@@ -51,69 +52,48 @@ const propertyTypeConfig: Record<string, { label: string; icon: React.ComponentT
 };
 
 export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyManager = true, plan }: { workspaceId: string; onPropertiesLoaded?: (props: Property[]) => void; isPropertyManager?: boolean; plan?: string }) {
-  const [properties, setProperties] = React.useState<Property[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = React.useState(false);
   const [propertyToDelete, setPropertyToDelete] = React.useState<Property | null>(null);
   const [propertyToReassign, setPropertyToReassign] = React.useState<Property | null>(null);
-  const [deleting, setDeleting] = React.useState(false);
-  const [reassigning, setReassigning] = React.useState(false);
-  const [owners, setOwners] = React.useState<{ id: string; name: string; email: string }[]>([]);
 
-  const fetchProperties = async () => {
-    try {
-      const data = await apiFetch(`/api/workspaces/${workspaceId}/properties`, {
-        credentials: 'include'
-      });
-      setProperties(data.properties || []);
-      onPropertiesLoaded?.(data.properties || []);
-    } catch (e) {
-      console.error('Failed to fetch properties:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: properties = [], isLoading: loading } = useQuery<Property[]>({
+    queryKey: ['properties', workspaceId],
+    queryFn: async () => {
+      const data = await apiFetch(`/api/workspaces/${workspaceId}/properties`, { credentials: 'include' });
+      const props = data.properties || [];
+      if (onPropertiesLoaded) onPropertiesLoaded(props);
+      return props;
+    },
+    enabled: !!workspaceId
+  });
 
-  const fetchOwners = async () => {
-    try {
+  const { data: owners = [] } = useQuery<{ id: string; name: string; email: string }[]>({
+    queryKey: ['owners', workspaceId],
+    queryFn: async () => {
       const data = await apiFetch(`/api/workspaces/${workspaceId}/owners`, { credentials: 'include' });
-      setOwners(data.owners || []);
-    } catch (e) {
-      console.error('Failed to fetch owners:', e);
-    }
-  };
+      return data.owners || [];
+    },
+    enabled: !!workspaceId
+  });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  React.useEffect(() => {
-    if (workspaceId) {
-      fetchProperties();
-      fetchOwners();
-    }
-  }, [workspaceId]);
-
-  const handleDeleteProperty = async (propertyId: string) => {
-    setDeleting(true);
-    try {
+  const deleteMutation = useMutation({
+    mutationFn: async (propertyId: string) => {
       await apiFetch(`/api/workspaces/${workspaceId}/properties/${propertyId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
+    },
+    onSuccess: () => {
       setPropertyToDelete(null);
-      fetchProperties();
-    } catch (e) {
-      console.error('Failed to delete property:', e);
-      // No need to alert() here, apiFetch automatically shows a toast
-    } finally {
-      setDeleting(false);
+      queryClient.invalidateQueries({ queryKey: ['properties', workspaceId] });
     }
-  };
+  });
 
-  const handleReassignProperty = async (propertyId: string, ownerId: string) => {
-    setReassigning(true);
-    try {
+  const reassignMutation = useMutation({
+    mutationFn: async ({ propertyId, ownerId }: { propertyId: string, ownerId: string }) => {
       const property = properties.find(p => p.id === propertyId);
-      if (!property) return;
-
+      if (!property) throw new Error('Property not found');
       await apiFetch(`/api/workspaces/${workspaceId}/properties/${propertyId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -124,14 +104,17 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
         }),
         credentials: 'include'
       });
+    },
+    onSuccess: () => {
       setPropertyToReassign(null);
-      fetchProperties();
-    } catch (e) {
-      console.error('Failed to reassign property:', e);
-    } finally {
-      setReassigning(false);
+      queryClient.invalidateQueries({ queryKey: ['properties', workspaceId] });
     }
-  };
+  });
+
+  const handleDeleteProperty = (propertyId: string) => deleteMutation.mutate(propertyId);
+  const handleReassignProperty = (propertyId: string, ownerId: string) => reassignMutation.mutate({ propertyId, ownerId });
+  const deleting = deleteMutation.isPending;
+  const reassigning = reassignMutation.isPending;
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -163,7 +146,7 @@ export function PropertiesList({ workspaceId, onPropertiesLoaded, isPropertyMana
 
       {showForm && (
         <div className="animate-in zoom-in-95 fade-in duration-300">
-          <PropertyForm workspaceId={workspaceId} onComplete={() => { setShowForm(false); fetchProperties(); }} />
+          <PropertyForm workspaceId={workspaceId} onComplete={() => setShowForm(false)} />
         </div>
       )}
 
@@ -382,14 +365,22 @@ function DeleteConfirmationModal({ property, isDeleting, onConfirm, onClose }: {
 }
 
 function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComplete: () => void }) {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = React.useState<{ name: string; address: string; ownerId: string }>({ 
     name: '', 
     address: '', 
     ownerId: '' 
   });
   const [units, setUnits] = React.useState<{ unitNumber: string; type: string }[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [owners, setOwners] = React.useState<{ id: string; name: string; email: string }[]>([]);
+
+  const { data: owners = [] } = useQuery<{ id: string; name: string; email: string }[]>({
+    queryKey: ['owners', workspaceId],
+    queryFn: async () => {
+      const data = await apiFetch(`/api/workspaces/${workspaceId}/owners`, { credentials: 'include' });
+      return data.owners || [];
+    },
+    enabled: !!workspaceId
+  });
 
   const addUnit = () => {
     setUnits([...units, { unitNumber: '', type: 'MINI_FLAT' }]);
@@ -405,16 +396,8 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
     setUnits(newUnits);
   };
 
-  React.useEffect(() => {
-    apiFetch(`/api/workspaces/${workspaceId}/owners`, { credentials: 'include' })
-      .then(data => setOwners(data.owners || []))
-      .catch(e => console.error('Failed to fetch owners:', e));
-  }, [workspaceId]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
+  const createMutation = useMutation({
+    mutationFn: async () => {
       const payload = { ...formData, units, ownerId: formData.ownerId || undefined };
       await apiFetch(`/api/workspaces/${workspaceId}/properties`, {
         method: 'POST',
@@ -422,13 +405,18 @@ function PropertyForm({ workspaceId, onComplete }: { workspaceId: string, onComp
         body: JSON.stringify(payload),
         credentials: 'include'
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['properties', workspaceId] });
       onComplete();
-    } catch (e) {
-      console.error('Failed to create property:', e);
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createMutation.mutate();
   };
+  const loading = createMutation.isPending;
 
   return (
     <form onSubmit={handleSubmit} className="mb-12 p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-white dark:bg-zinc-950 shadow-2xl space-y-8 relative overflow-hidden">

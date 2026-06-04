@@ -29,30 +29,7 @@ export function setupOverdueChecker(fastify: FastifyInstance) {
         gracePeriodEnd.setMonth(gracePeriodEnd.getMonth() + 3);
 
         const daysOverdue = Math.floor((today.getTime() - payment.dueDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        let reminderType = null;
-        let notificationTitle = '';
-        let notificationMessage = '';
 
-        if (daysOverdue === 1) {
-          reminderType = 'OVERDUE_1';
-          notificationTitle = 'Rent is Overdue';
-          notificationMessage = `Your rent of ₦${payment.amount} was due yesterday. Please make your payment.`;
-        } else if (daysOverdue === 30) {
-          reminderType = 'OVERDUE_30';
-          notificationTitle = 'Rent 1 Month Overdue';
-          notificationMessage = `Your rent is now 1 month overdue. Please contact your property manager immediately.`;
-        } else if (daysOverdue === 60) {
-          reminderType = 'OVERDUE_60';
-          notificationTitle = 'Rent 2 Months Overdue';
-          notificationMessage = `Your rent is 2 months overdue. Your 3-month grace period is ending soon.`;
-        } else if (today >= gracePeriodEnd) {
-          reminderType = 'FINAL_NOTICE';
-          notificationTitle = 'Grace Period Ended';
-          notificationMessage = `Your 3-month grace period has ended. Your property manager may now take action to end your tenancy.`;
-        }
-
-        // Only update if not already OVERDUE or to set gracePeriodEnd if not set
         await prisma.payment.update({
           where: { id: payment.id },
           data: { 
@@ -61,39 +38,102 @@ export function setupOverdueChecker(fastify: FastifyInstance) {
           }
         });
 
-        // Send notifications if applicable and not already sent
+        let reminderType: string | null = null;
+        let notifTitle = '';
+        let notifMsg = '';
+
+        if (daysOverdue === 1) {
+          reminderType = 'OVERDUE_1';
+          notifTitle = 'Rent is Overdue';
+          notifMsg = `Your rent of ₦${payment.amount} was due yesterday. Please make your payment.`;
+        } else if (daysOverdue === 14) {
+          reminderType = 'RESTRICTION_APPLIED';
+          notifTitle = 'Features Restricted';
+          notifMsg = `Your rent is 14 days overdue. Non-essential app features are now restricted.`;
+        } else if (daysOverdue === 21) {
+          reminderType = 'FINAL_WARNING';
+          notifTitle = 'Final Warning: Impending Lockout';
+          notifMsg = `Your rent is 21 days overdue. Your account will be locked and an eviction notice served in 9 days.`;
+        } else if (daysOverdue >= 30 && !(payment as unknown as { evictionNoticeSent?: boolean }).evictionNoticeSent) {
+          reminderType = 'ACCOUNT_LOCKED';
+          notifTitle = 'Account Locked & Notice Served';
+          notifMsg = `Your account is locked and an eviction notice has been emailed to you.`;
+        }
+
         if (reminderType) {
           const existingReminder = await prisma.rentReminder.findFirst({
             where: { paymentId: payment.id, type: reminderType }
           });
 
           if (!existingReminder) {
-            // Log reminder
             await prisma.rentReminder.create({
               data: { paymentId: payment.id, type: reminderType, channel: 'IN_APP' }
             });
 
-            // Notify Tenant
             const tenantUser = await prisma.user.findUnique({ where: { email: payment.lease.tenant.email || '' } });
+            
             if (tenantUser) {
-              await prisma.notification.create({
+              const notification = await prisma.notification.create({
                 data: {
                   userId: tenantUser.id,
-                  title: notificationTitle,
-                  message: notificationMessage,
-                  type: 'PAYMENT_OVERDUE'
+                  title: notifTitle,
+                  message: notifMsg,
+                  type: reminderType
                 }
               });
+
+              if (payment.workspaceId) {
+                (fastify as unknown as { io?: import('socket.io').Server }).io?.to(`workspace:${payment.workspaceId}`).emit('NOTIFICATION_CREATED', notification);
+                (fastify as unknown as { io?: import('socket.io').Server }).io?.to(`workspace:${payment.workspaceId}`).emit(reminderType, { paymentId: payment.id });
+              }
             }
 
-            // Emit socket event to workspace
+            if (reminderType === 'ACCOUNT_LOCKED') {
+              const evictionDate = new Date(today);
+              evictionDate.setDate(evictionDate.getDate() + 7);
+              
+              await prisma.payment.update({
+                where: { id: payment.id },
+                data: { 
+                  evictionNoticeSent: true,
+                  evictionDate
+                }
+              });
+              console.log(`[Email] Eviction Notice sent to ${payment.lease.tenant.email} for ${payment.lease.tenant.name}`);
+            }
+
             if (payment.workspaceId) {
-               (fastify as any).io.to(`workspace:${payment.workspaceId}`).emit('TENANT_OVERDUE', {
-                 tenantId: payment.lease.tenantId,
-                 paymentId: payment.id,
-                 daysOverdue,
-                 message: `Tenant ${payment.lease.tenant.name} is ${daysOverdue} days overdue.`
-               });
+              (fastify as unknown as { io?: import('socket.io').Server }).io?.to(`workspace:${payment.workspaceId}`).emit('TENANT_OVERDUE', {
+                tenantId: payment.lease.tenantId,
+                paymentId: payment.id,
+                daysOverdue,
+                message: `Tenant ${payment.lease.tenant.name} is ${daysOverdue} days overdue.`
+              });
+              
+              (fastify as unknown as { io?: import('socket.io').Server }).io?.to(`workspace:${payment.workspaceId}`).emit('PAYMENT_UPDATED', {
+                paymentId: payment.id,
+                status: 'OVERDUE'
+              });
+              
+              const managers = await prisma.workspaceMember.findMany({
+                where: { workspaceId: payment.workspaceId, role: 'PROPERTY_MANAGER' },
+                include: { user: true }
+              });
+              
+              for (const manager of managers) {
+                const managerNotif = await prisma.notification.create({
+                  data: {
+                    userId: manager.userId,
+                    title: notifTitle,
+                    message: `Tenant ${payment.lease.tenant.name} is ${daysOverdue} days overdue on their ₦${payment.amount} rent.`,
+                    type: 'PAYMENT_OVERDUE'
+                  }
+                });
+                if (manager.userId) {
+                  (fastify as unknown as { io?: import('socket.io').Server }).io?.to(`user:${manager.userId}`).emit('NOTIFICATION_CREATED', managerNotif);
+                  (fastify as unknown as { io?: import('socket.io').Server }).io?.to(`workspace:${payment.workspaceId}`).emit('NOTIFICATION_CREATED', managerNotif);
+                }
+              }
             }
           }
         }

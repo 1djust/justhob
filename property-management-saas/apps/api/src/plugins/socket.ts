@@ -20,7 +20,7 @@ const socketPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
   fastify.register(fastifySocketIO, {
     cors: {
-      origin: true, // Permissive for mobile/development
+      origin: allowedOrigins, // Restricted to known frontend domains
       methods: ["GET", "POST"],
       credentials: true
     }
@@ -72,7 +72,7 @@ const socketPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
             isAuthorized = true;
           } else {
             // Check if user is a tenant in this workspace
-            const userEmail = (data.user as any).email;
+            const userEmail = data.user.email;
             if (userEmail) {
               const tenant = await prisma.tenant.findFirst({
                 where: { workspaceId, email: userEmail, deletedAt: null }

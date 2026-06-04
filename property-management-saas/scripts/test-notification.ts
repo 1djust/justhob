@@ -25,9 +25,9 @@ async function main() {
     const list = await prisma.notification.findMany({ where: { userId: user.id } });
     console.log('Found:', list.length, 'notifications');
 
-  } catch (e: any) {
-    console.error('FAILED to create/access Notification:', e.message);
-    if (e.code === 'P2021') {
+  } catch (e: unknown) {
+    console.error('FAILED to create/access Notification:', (e as Error).message);
+    if ((e as any).code === 'P2021') {
       console.error('The table Notification does not exist in the database.');
     }
   }

@@ -9,14 +9,12 @@ import 'dart:io' show Platform;
 class ApiConfig {
   static const bool isProduction = false;
   static const String prodUrl = 'https://justhob.onrender.com/api';
-  static const String devUrl = 'http://localhost:3001/api'; // USB tunnel via `adb reverse tcp:3001 tcp:3001`
+  static const String devUrl = 'http://10.0.2.2:3001/api'; // Android Emulator alias
   
   static String get baseUrl {
     if (isProduction) return prodUrl;
-    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-      return 'http://127.0.0.1:3001/api';
-    }
-    return devUrl;
+    if (Platform.isAndroid) return devUrl;
+    return 'http://127.0.0.1:3001/api';
   }
 }
 

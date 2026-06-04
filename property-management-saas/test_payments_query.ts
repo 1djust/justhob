@@ -28,8 +28,8 @@ async function testFetch() {
     });
 
     console.log('Payments fetch success! Count:', payments.length);
-  } catch (e: any) {
-    console.error('Error fetching payments:', e.message);
+  } catch (e: unknown) {
+    console.error('Error fetching payments:', (e as Error).message);
   }
 }
 

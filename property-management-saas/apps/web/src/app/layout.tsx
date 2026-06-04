@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
+import QueryProvider from '@/components/providers/QueryProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -33,10 +34,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased`} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <RealtimeProvider>
-            {children}
-            <Toaster position="top-right" richColors closeButton />
-          </RealtimeProvider>
+          <QueryProvider>
+            <RealtimeProvider>
+              {children}
+              <Toaster position="top-right" richColors closeButton />
+            </RealtimeProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

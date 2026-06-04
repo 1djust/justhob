@@ -1,21 +1,33 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/database';
 import { authenticate, verifyWorkspaceAccess, requireManager } from '../lib/middleware';
 import { sendEmail } from '../lib/mailer';
+import { Type, Static } from '@sinclair/typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { MaintenanceStatus } from '@prisma/client';
+
+const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
+const MaintenanceQuery = Type.Object({ status: Type.Optional(Type.String()) });
+const MaintenanceParams = Type.Object({ workspaceId: Type.String(), id: Type.String() });
+const MessageBody = Type.Object({ content: Type.String() });
+const UpdateStatusBody = Type.Object({ status: Type.Enum(MaintenanceStatus) });
 
 export default async function maintenanceRoutes(fastify: FastifyInstance) {
-  fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', verifyWorkspaceAccess);
+  const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
+  server.addHook('preHandler', authenticate);
+  server.addHook('preHandler', verifyWorkspaceAccess);
 
   // List all maintenance requests for a workspace
-  fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId } = request.params as { workspaceId: string };
-    const { status } = request.query as { status?: string };
+  server.get<{ Params: Static<typeof WorkspaceParams>, Querystring: Static<typeof MaintenanceQuery> }>('/', {
+    schema: { params: WorkspaceParams, querystring: MaintenanceQuery }
+  }, async (request, reply) => {
+    const { workspaceId } = request.params;
+    const { status } = request.query;
 
     const requests = await prisma.maintenanceRequest.findMany({
       where: {
         workspaceId,
-        ...(status ? { status: status as any } : {})
+        ...(status ? { status: status as MaintenanceStatus } : {})
       },
       include: {
         tenant: { select: { id: true, name: true, phone: true } },
@@ -28,8 +40,10 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
   });
 
   // Get maintenance request conversation history
-  fastify.get('/:id/messages', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
+  server.get<{ Params: Static<typeof MaintenanceParams> }>('/:id/messages', {
+    schema: { params: MaintenanceParams }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
 
     const messages = await prisma.maintenanceMessage.findMany({
       where: { requestId: id, workspaceId },
@@ -45,9 +59,11 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
   });
 
   // Send a message in a maintenance request
-  fastify.post('/:id/messages', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { content } = request.body as { content: string };
+  server.post<{ Params: Static<typeof MaintenanceParams>, Body: Static<typeof MessageBody> }>('/:id/messages', {
+    schema: { params: MaintenanceParams, body: MessageBody }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
+    const { content } = request.body;
     const userId = request.userId!;
 
     const message = await prisma.maintenanceMessage.create({
@@ -66,10 +82,10 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
     });
 
     // Broadcast to the maintenance room
-    fastify.io.to(`maintenance:${id}`).emit('maintenance-message', message);
+    (fastify as unknown as { io?: import('socket.io').Server }).io?.to(`maintenance:${id}`).emit('maintenance-message', message);
     
     // Also notify the workspace room for unread badges
-    fastify.io.to(`workspace:${workspaceId}`).emit('maintenance-notification', {
+    (fastify as unknown as { io?: import('socket.io').Server }).io?.to(`workspace:${workspaceId}`).emit('maintenance-notification', {
       requestId: id,
       message: content
     });
@@ -78,9 +94,12 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
   });
 
   // Update maintenance request status
-  fastify.put('/:id', { preHandler: requireManager }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { workspaceId, id } = request.params as { workspaceId: string; id: string };
-    const { status } = request.body as { status: MaintenanceStatus };
+  server.put<{ Params: Static<typeof MaintenanceParams>, Body: Static<typeof UpdateStatusBody> }>('/:id', {
+    preHandler: requireManager,
+    schema: { params: MaintenanceParams, body: UpdateStatusBody }
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params;
+    const { status } = request.body;
 
     try {
       const oldRequest = await prisma.maintenanceRequest.findUnique({
@@ -108,7 +127,7 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
         });
         
         // Broadcast the system message
-        fastify.io.to(`maintenance:${id}`).emit('maintenance-message', systemMessage);
+        (fastify as unknown as { io?: import('socket.io').Server }).io?.to(`maintenance:${id}`).emit('maintenance-message', systemMessage);
 
         // Notify tenant via email ONLY for PRO/ENTERPRISE
         const isPro = oldRequest.workspace?.plan !== 'FREE';
@@ -122,7 +141,7 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
       }
 
       // Broadcast status change to workspace
-      fastify.io.to(`workspace:${workspaceId}`).emit('MAINTENANCE_UPDATED', maintenanceRequest);
+      (fastify as unknown as { io?: import('socket.io').Server }).io?.to(`workspace:${workspaceId}`).emit('MAINTENANCE_UPDATED', maintenanceRequest);
 
       return reply.send({ request: maintenanceRequest });
     } catch (e) {
@@ -131,4 +150,3 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
   });
 }
 
-import { MaintenanceStatus } from '@prisma/client';

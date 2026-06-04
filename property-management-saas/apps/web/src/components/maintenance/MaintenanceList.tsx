@@ -22,6 +22,7 @@ import {
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { MaintenanceChat } from './MaintenanceChat';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface MaintenanceListProps {
   workspaceId: string;
@@ -39,28 +40,21 @@ interface MaintenanceRequest {
 }
 
 export function MaintenanceList({ workspaceId, isPropertyManager = true }: MaintenanceListProps) {
-  const [requests, setRequests] = React.useState<MaintenanceRequest[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const queryClient = useQueryClient();
   const [filter, setFilter] = React.useState<string>('');
   const [selectedRequestId, setSelectedRequestId] = React.useState<string | null>(null);
   const [unreadRequests, setUnreadRequests] = React.useState<Set<string>>(new Set());
   const { socket } = useRealtime();
 
-  const fetchRequests = React.useCallback(async () => {
-    try {
+  const { data: requests = [], isLoading: loading } = useQuery<MaintenanceRequest[]>({
+    queryKey: ['maintenance', workspaceId, filter],
+    queryFn: async () => {
       const url = `${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance${filter ? `?status=${filter}` : ''}`;
       const data = await apiFetch(url, { credentials: 'include' });
-      setRequests(data.requests || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId, filter]);
-
-  React.useEffect(() => {
-    if (workspaceId) fetchRequests();
-  }, [workspaceId, filter, fetchRequests]);
+      return data.requests || [];
+    },
+    enabled: !!workspaceId
+  });
 
   React.useEffect(() => {
     if (!socket) return;
@@ -70,6 +64,7 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
       if (selectedRequestId !== requestId) {
         setUnreadRequests(prev => new Set([...Array.from(prev), requestId]));
       }
+      queryClient.invalidateQueries({ queryKey: ['maintenance', workspaceId] });
     };
 
     socket.on('maintenance-notification', handleNotification);
@@ -77,20 +72,24 @@ export function MaintenanceList({ workspaceId, isPropertyManager = true }: Maint
     return () => {
       socket.off('maintenance-notification', handleNotification);
     };
-  }, [socket, selectedRequestId]);
+  }, [socket, selectedRequestId, workspaceId, queryClient]);
 
-  const handleUpdateStatus = async (id: string, newStatus: string) => {
-    try {
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, newStatus }: { id: string, newStatus: string }) => {
       await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
         credentials: 'include'
       });
-      fetchRequests();
-    } catch (e) {
-      console.error(e);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['maintenance', workspaceId] });
     }
+  });
+
+  const handleUpdateStatus = (id: string, newStatus: string) => {
+    updateStatusMutation.mutate({ id, newStatus });
   };
 
   if (loading) {
