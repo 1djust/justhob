@@ -60,7 +60,7 @@ export function LandingPage() {
               <div className="bg-indigo-600 p-2 rounded-lg">
                 <Building2 className="h-6 w-6 text-white" />
               </div>
-              <span className="font-bold text-xl tracking-tight">Just Hub</span>
+              <span className="font-bold text-xl tracking-tight">PropertyStack</span>
             </div>
             <div className="flex items-center gap-2 mb-2">
               <span className="bg-primary/20 text-primary text-xs font-semibold px-2 py-1 rounded-full uppercase tracking-wider">
@@ -112,7 +112,7 @@ export function LandingPage() {
                 <span>Start for Free</span>
                 <ArrowRight className="h-5 w-5" />
               </Link>
-              <a href="/downloads/justhub-tenant.apk" download className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-4 rounded-full font-semibold text-lg text-slate-700 dark:text-slate-200 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 transition-all shadow-sm">
+              <a href="/downloads/propertystack-tenant.apk" download className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-4 rounded-full font-semibold text-lg text-slate-700 dark:text-slate-200 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 transition-all shadow-sm">
                 <Download className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 <span>Download App (v{version})</span>
               </a>
@@ -197,7 +197,7 @@ export function LandingPage() {
                  <Sparkles className="h-4 w-4" />
                  <span>Version {version} Released</span>
                </div>
-               <h2 className="text-3xl md:text-4xl font-bold">What's New in Just Hub</h2>
+               <h2 className="text-3xl md:text-4xl font-bold">What's New in PropertyStack</h2>
             </div>
             <div className="hidden md:block">
               <span onClick={() => window.location.href='/register'} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center space-x-1 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer">
@@ -221,7 +221,7 @@ export function LandingPage() {
                <div>
                  <h3 className="text-xl font-bold mb-2">Dedicated Tenant App</h3>
                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-4">Our massively updated Android app is now available. Tenants can securely login, review open balances, and coordinate with management seamlessly from their phones.</p>
-                 <a href="/downloads/justhub-tenant.apk" download className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm hover:underline flex items-center space-x-1">
+                 <a href="/downloads/propertystack-tenant.apk" download className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm hover:underline flex items-center space-x-1">
                    <span>Download v{version} directly</span>
                    <Download className="h-4 w-4" />
                  </a>
@@ -369,7 +369,7 @@ export function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <a href="/downloads/justhub-tenant.apk" download className="inline-flex items-center justify-center w-full sm:w-auto space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50">
+              <a href="/downloads/propertystack-tenant.apk" download className="inline-flex items-center justify-center w-full sm:w-auto space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50">
                 <Download className="h-5 w-5" />
                 <span>Download Android App (v{version})</span>
               </a>
@@ -457,7 +457,7 @@ export function LandingPage() {
         
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Ready to scale your portfolio?</h2>
-          <p className="text-xl text-indigo-100 mb-10">Join thousands of property managers modernizing their operations with Just Hub.</p>
+          <p className="text-xl text-indigo-100 mb-10">Join thousands of property managers modernizing their operations with PropertyStack.</p>
           <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
             <Link href="/register" className="bg-white text-indigo-600 hover:bg-slate-100 px-8 py-4 rounded-full font-bold text-lg transition-colors w-full sm:w-auto shadow-xl">
               Create Free Account
@@ -471,10 +471,10 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
           <div className="flex items-center space-x-2 mb-4 md:mb-0">
             <Building2 className="h-6 w-6 text-indigo-600" />
-            <span className="font-bold text-xl">Just Hub</span>
+            <span className="font-bold text-xl">PropertyStack</span>
           </div>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            &copy; {new Date().getFullYear()} Just Hub. All rights reserved.
+            &copy; {new Date().getFullYear()} PropertyStack. All rights reserved.
           </p>
         </div>
       </footer>

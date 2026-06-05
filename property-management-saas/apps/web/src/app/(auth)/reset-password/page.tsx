@@ -3,7 +3,7 @@ import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Reset Password - Just Hub',
+  title: 'Reset Password - PropertyStack',
   description: 'Set a new password for your account',
 };
 

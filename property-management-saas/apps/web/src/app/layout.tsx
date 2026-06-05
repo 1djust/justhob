@@ -9,17 +9,17 @@ import QueryProvider from '@/components/providers/QueryProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 // SEO tags for static analysis (seo_checker.py):
-// <title>Just Hub</title>
+// <title>PropertyStack</title>
 // <meta name="description" content="Manage your properties with ease" />
-// <meta property="og:title" content="Just Hub" />
+// <meta property="og:title" content="PropertyStack" />
 export const metadata: Metadata = {
   title: {
-    template: '%s | Just Hub',
-    default: 'Just Hub',
+    template: '%s | PropertyStack',
+    default: 'PropertyStack',
   },
   description: 'Manage your properties with ease',
   openGraph: {
-    title: 'Just Hub',
+    title: 'PropertyStack',
     description: 'Manage your properties with ease',
     type: 'website',
   },

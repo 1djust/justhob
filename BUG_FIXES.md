@@ -1,6 +1,6 @@
 # 🐞 Bug Fixes Log
 
-This document serves as the central source of truth for all confirmed bug fixes, root cause analyses, and solutions in the JustHub project. 
+This document serves as the central source of truth for all confirmed bug fixes, root cause analyses, and solutions in the PropertyStack project. 
 
 It works in tandem with the `.agents/skills/` directory: every time a bug is logged here, a summarized rule is added to the relevant AI skill file to ensure the AI natively remembers the fix and prevents future regressions.
 

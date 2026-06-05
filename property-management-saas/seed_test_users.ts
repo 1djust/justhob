@@ -36,7 +36,7 @@ async function seed() {
   const workspace = await prisma.workspace.upsert({
     where: { id: 'test-workspace-001' },
     update: {},
-    create: { id: 'test-workspace-001', name: 'Just Hub Properties' }
+    create: { id: 'test-workspace-001', name: 'PropertyStack Properties' }
   });
   console.log('\n🏢 Workspace:', workspace.name);
 

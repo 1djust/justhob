@@ -116,7 +116,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   Icon(Icons.apartment_rounded, size: 48, color: Colors.grey.shade400),
                   const SizedBox(height: 8),
                   Text(
-                    'EstateOS Tenant App',
+                    'PropertyStack Tenant App',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.grey.shade600,

@@ -1,6 +1,6 @@
 # Development Guide
 
-This document explains how to start and run the local development environment for the Justhub project.
+This document explains how to start and run the local development environment for the PropertyStack project.
 
 ## Prerequisites
 - **WSL 2 (Ubuntu)**: All commands should be run within the WSL environment.

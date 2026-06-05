@@ -8,7 +8,7 @@ import 'dart:io' show Platform;
 
 class ApiConfig {
   static const bool isProduction = false;
-  static const String prodUrl = 'https://justhob.onrender.com/api';
+  static const String prodUrl = 'https://propertystack.onrender.com/api';
   static const String devUrl = 'http://10.0.2.2:3001/api'; // Android Emulator alias
   
   static String get baseUrl {

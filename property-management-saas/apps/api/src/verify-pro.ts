@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 async function runQA() {
-  console.log('🚀 Starting EstateOS Pro Feature QA Test...\n');
+  console.log('🚀 Starting PropertyStack Pro Feature QA Test...\n');
 
   // 1. Test Mailer
   console.log('--- [1/3] Testing Email Notifications ---');
@@ -32,7 +32,7 @@ async function runQA() {
       tenantName: 'John Doe (QA)',
       propertyName: 'Silicon Valley Towers',
       unitNumber: 'Suite 404',
-      workspaceName: 'EstateOS QA Workspace',
+      workspaceName: 'PropertyStack QA Workspace',
       note: 'QA validation for Pro Plan digital receipts.'
     }, writeStream);
 

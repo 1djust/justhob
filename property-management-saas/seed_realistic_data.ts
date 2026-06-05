@@ -59,13 +59,13 @@ async function seed() {
     update: {},
     create: {
       id: 'ws-justhub-lagos',
-      name: 'JustHub Lagos Properties',
+      name: 'PropertyStack Lagos Properties',
       bankCode: '058',
       accountNumber: '0123456789'
     }
   });
 
-  console.log('🏢 Workspace: JustHub Lagos Properties');
+  console.log('🏢 Workspace: PropertyStack Lagos Properties');
 
   // ═══════════════════════════════════════
   // WORKSPACE MEMBERS (Roles)

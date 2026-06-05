@@ -447,7 +447,7 @@ function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComple
 
   const handleCopy = () => {
     if (!credentials) return;
-    const text = `Welcome to Just Hub!\n\nYour tenant account has been created.\n\nEmail: ${credentials.email}\nTemporary Password: ${credentials.tempPassword}\n\nPlease download the Just Hub app and sign in with these credentials. Change your password after first login.`;
+    const text = `Welcome to PropertyStack!\n\nYour tenant account has been created.\n\nEmail: ${credentials.email}\nTemporary Password: ${credentials.tempPassword}\n\nPlease download the PropertyStack app and sign in with these credentials. Change your password after first login.`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -525,7 +525,7 @@ function TenantForm({ workspaceId, onComplete }: { workspaceId: string; onComple
         </div>
         <p className="text-xs text-zinc-400 flex items-center gap-1.5">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          The tenant can use these credentials to sign in on the Just Hub mobile app.
+          The tenant can use these credentials to sign in on the PropertyStack mobile app.
         </p>
       </div>
     );

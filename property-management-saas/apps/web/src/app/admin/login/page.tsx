@@ -2,7 +2,7 @@ import { AdminLoginForm } from '@/components/auth/AdminLoginForm';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Admin Access - Just Hub',
+  title: 'Admin Access - PropertyStack',
 };
 
 export default function AdminLoginPage() {

@@ -30,7 +30,7 @@ class ReceiptService {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(
-                        'JUST HUB',
+                        'PROPERTYSTACK',
                         style: pw.TextStyle(
                           fontSize: 24,
                           fontWeight: pw.FontWeight.bold,

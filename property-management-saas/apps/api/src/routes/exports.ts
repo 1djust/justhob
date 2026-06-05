@@ -47,7 +47,7 @@ function toPDF(reply: FastifyReply, title: string, rows: Record<string, unknown>
     });
 
     // Header
-    doc.fontSize(20).text('Just Hub - Property Management', { align: 'center' });
+    doc.fontSize(20).text('PropertyStack - Secure Asset Center', { align: 'center' });
   doc.fontSize(10).text('Enterprise Report', { align: 'center' });
   doc.moveDown();
   doc.fontSize(16).text(title, { underline: true });

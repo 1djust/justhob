@@ -89,7 +89,7 @@ The Flutter mobile app (`tenant_app`) runs directly on Windows to support native
 1. Open your terminal in VS Code or Android Studio on Windows.
 2. Navigate to the mobile app directory:
 ```powershell
-cd "C:\Users\USER\Desktop\Just hub\tenant_app"
+cd "C:\Users\USER\Desktop\PropertyStack\tenant_app"
 ```
 3. Connect an Android device or start an emulator, then run:
 ```powershell
@@ -125,6 +125,6 @@ The application bypassed traditional App Stores by implementing a modern Over-Th
 When you want to deploy a new version of the Flutter Mobile app:
 1. Bump the release version mapping in `tenant_app/pubspec.yaml` (e.g., `version: 0.1.0+2`).
 2. Construct the Android APK (`flutter build apk`).
-3. Take your `app-release.apk` output and copy it to `apps/web/public/downloads/justhub-tenant-latest.apk`.
+3. Take your `app-release.apk` output and copy it to `apps/web/public/downloads/propertystack-tenant-latest.apk`.
 4. Update `apps/web/public/downloads/version.json` and change `"latestBuildNumber"` to match your new `+2` build code.
 5. Tenants will automatically experience an update prompt upon their next `HomeScreen` launch.

@@ -87,7 +87,7 @@ class MainApp extends ConsumerWidget {
     });
 
     return MaterialApp.router(
-      title: 'Just Hub Tenant',
+      title: 'PropertyStack Tenant',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: router,

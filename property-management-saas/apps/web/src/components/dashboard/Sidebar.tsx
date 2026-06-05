@@ -58,6 +58,7 @@ interface Notification {
 
 export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail, plan, onLogout, workspaceId, isSuperAdmin }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [showNotifications, setShowNotifications] = React.useState(false);
   const [selectedNotification, setSelectedNotification] = React.useState<Notification | null>(null);
@@ -233,7 +234,7 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
         <div className="h-16 flex items-center justify-between px-6 border-b border-border">
           {!isCollapsed && (
             <span className="font-bold text-lg tracking-tight whitespace-nowrap bg-gradient-to-br from-zinc-900 to-zinc-500 dark:from-white dark:to-zinc-500 bg-clip-text text-transparent">
-              Just Hub
+              PropertyStack
             </span>
           )}
           <div className={cn("hidden lg:block", isCollapsed && "mx-auto")}>
@@ -460,7 +461,7 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
             </div>
             
             <button
-              onClick={onLogout}
+              onClick={() => setIsLogoutModalOpen(true)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 w-full text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-all duration-200 group active:scale-[0.98]",
                 isCollapsed && "justify-center"
@@ -519,6 +520,51 @@ export function Sidebar({ activeView, onViewChange, isPropertyManager, userEmail
                 className="px-6 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm shadow-sm hover:scale-105 active:scale-95 transition-all"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {isLogoutModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsLogoutModalOpen(false)}
+          />
+          <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex flex-col items-center justify-center pt-8 pb-4">
+              <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+                <LogOut className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="font-bold text-zinc-900 dark:text-white text-xl">Sign Out</h3>
+            </div>
+            
+            {/* Body */}
+            <div className="px-6 pb-6 text-center">
+              <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+                Are you sure you want to sign out? You will need to log back in to access your dashboard.
+              </p>
+            </div>
+            
+            {/* Footer */}
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800 flex gap-3">
+              <button
+                onClick={() => setIsLogoutModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 font-bold text-sm shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsLogoutModalOpen(false);
+                  onLogout();
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold text-sm shadow-sm hover:bg-red-600 active:scale-[0.98] transition-all"
+              >
+                Sign Out
               </button>
             </div>
           </div>

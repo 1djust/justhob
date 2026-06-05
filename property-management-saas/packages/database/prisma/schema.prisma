@@ -15,6 +15,7 @@ model User {
   email               String               @unique
   name                String?
   role                Role                 @default(PROPERTY_MANAGER)
+  isActive            Boolean              @default(true)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   maintenanceMessages MaintenanceMessage[]
@@ -24,21 +25,23 @@ model User {
 }
 
 model Workspace {
-  id                  String               @id @default(uuid())
-  name                String
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  bankCode            String?
-  accountNumber       String?
-  accountName         String?
-  plan                SubscriptionPlan     @default(FREE)
-  maintenanceMessages MaintenanceMessage[]
-  maintenanceRequests MaintenanceRequest[]
-  payments            Payment[]
-  properties          Property[]
-  tenants             Tenant[]
-  units               Unit[]
-  members             WorkspaceMember[]
+  id                    String               @id @default(uuid())
+  name                  String
+  status                WorkspaceStatus      @default(ACTIVE)
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  bankCode              String?
+  accountNumber         String?
+  accountName           String?
+  plan                  SubscriptionPlan     @default(FREE)
+  subscriptionExpiresAt DateTime?
+  maintenanceMessages   MaintenanceMessage[]
+  maintenanceRequests   MaintenanceRequest[]
+  payments              Payment[]
+  properties            Property[]
+  tenants               Tenant[]
+  units                 Unit[]
+  members               WorkspaceMember[]
 }
 
 model WorkspaceMember {
@@ -252,6 +255,13 @@ enum SubscriptionPlan {
   FREE
   PRO
   ENTERPRISE
+}
+
+enum WorkspaceStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  REJECTED
 }
 
 enum PayoutStrategy {

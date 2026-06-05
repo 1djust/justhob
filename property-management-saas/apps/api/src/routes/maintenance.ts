@@ -134,7 +134,7 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
         if (oldRequest.tenant.email && isPro) {
           await sendEmail(
             oldRequest.tenant.email,
-            'Maintenance Request Update - EstateOS',
+            'Maintenance Request Update - PropertyStack',
             `Hi ${oldRequest.tenant.name},\n\nThe status of your maintenance request "${maintenanceRequest.description.substring(0, 50)}..." has been updated to: ${status.replace('_', ' ')}.`
           );
         }

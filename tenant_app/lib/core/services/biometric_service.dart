@@ -82,7 +82,7 @@ class BiometricService {
   Future<bool> authenticate() async {
     try {
       return await _auth.authenticate(
-        localizedReason: 'Scan your fingerprint to access EstateOS',
+        localizedReason: 'Scan your fingerprint to access PropertyStack',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,

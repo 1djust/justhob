@@ -84,7 +84,7 @@ export function AdminLoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="flex h-12 w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 transition-all"
-            placeholder="admin@justhob.com"
+            placeholder="admin@propertystack.com"
             required
             disabled={loading}
           />

@@ -41,7 +41,7 @@ class UpdateService {
   // We fetch updates from the web frontend directly, as it hosts the static files
   String get _webBaseUrl {
     if (ApiConfig.isProduction) {
-      return 'https://justhob.vercel.app';
+      return 'https://propertystack.vercel.app';
     }
     if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
       return 'http://localhost:3000';

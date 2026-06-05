@@ -396,7 +396,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         if (isPro) {
           await sendEmail(
             tenantEmail!,
-            'Payment Approved - EstateOS',
+            'Payment Approved - PropertyStack',
             `Your payment of ₦${updatedPayment.amount.toLocaleString()} has been approved. Your Receipt ID is ${receiptId}. You can download your official receipt from the tenant portal.`
           );
         }
@@ -428,7 +428,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         if (isPro) {
           await sendEmail(
             tenantEmail!,
-            'Payment Proof Rejected - EstateOS',
+            'Payment Proof Rejected - PropertyStack',
             `Your submitted proof of payment for your rent has been rejected. \n\nReason: ${rejectionReason}\n\nPlease review the feedback and upload a valid proof of payment from the portal.`
           );
         }
@@ -477,7 +477,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
       paidDate: payment.paidDate,
       tenantName: payment.lease.tenant.name,
       propertyName: payment.lease.property.name,
-      workspaceName: payment.workspace?.name || 'EstateOS Workspace',
+      workspaceName: payment.workspace?.name || 'PropertyStack Workspace',
       note: payment.note || undefined
     }, (reply.raw as NodeJS.WritableStream));
 

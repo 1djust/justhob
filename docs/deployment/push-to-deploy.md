@@ -33,16 +33,16 @@ Rename and copy the extracted APK to overwrite the existing one:
 
 ```bash
 cp /mnt/c/Users/USER/Downloads/tenant-app-release/app-release.apk \
-   ~/projects/justhub/property-management-saas/apps/web/public/downloads/justhub-tenant.apk
+   ~/projects/justhub/property-management-saas/apps/web/public/downloads/propertystack-tenant.apk
 ```
 
-> **Note:** Adjust the source path if the download location differs. The file **must** be named `justhub-tenant.apk` to match the OTA download URL.
+> **Note:** Adjust the source path if the download location differs. The file **must** be named `propertystack-tenant.apk` to match the OTA download URL.
 
 ### Step 4: Commit and Push
 
 ```bash
 cd ~/projects/justhub
-git add property-management-saas/apps/web/public/downloads/justhub-tenant.apk
+git add property-management-saas/apps/web/public/downloads/propertystack-tenant.apk
 git commit -m "feat: upload vX.Y.Z+N APK"
 git push origin main
 ```
@@ -69,7 +69,7 @@ Vercel will automatically detect the push and deploy the new files. This typical
 │  Tenant App     │     │  Vercel (Web Server)                 │
 │  (on phone)     │     │                                      │
 │                 │     │  /downloads/version.json             │
-│  On app launch: │────▶│  /downloads/justhub-tenant.apk       │
+│  On app launch: │────▶│  /downloads/propertystack-tenant.apk       │
 │  Fetch version  │     │                                      │
 │  .json          │     └──────────────────────────────────────┘
 │                 │
@@ -91,7 +91,7 @@ Vercel will automatically detect the push and deploy the new files. This typical
 |------|---------|
 | `tenant_app/pubspec.yaml` | App version (`version: X.Y.Z+N`) |
 | `property-management-saas/apps/web/public/downloads/version.json` | OTA metadata (version, build number, download URL, release notes) |
-| `property-management-saas/apps/web/public/downloads/justhub-tenant.apk` | The actual APK binary served to users |
+| `property-management-saas/apps/web/public/downloads/propertystack-tenant.apk` | The actual APK binary served to users |
 | `.github/workflows/build-apk.yml` | GitHub Actions workflow that builds the APK |
 
 ### version.json Format
@@ -101,7 +101,7 @@ Vercel will automatically detect the push and deploy the new files. This typical
   "latestVersion": "0.1.9",
   "latestBuildNumber": 12,
   "isMandatory": true,
-  "downloadUrl": "https://justhob.vercel.app/downloads/justhub-tenant.apk",
+  "downloadUrl": "https://propertystack.vercel.app/downloads/propertystack-tenant.apk",
   "releaseNotes": "• Bank name displayed instead of code\n• Payment account details on Dashboard"
 }
 ```
@@ -115,7 +115,7 @@ Vercel will automatically detect the push and deploy the new files. This typical
 - [ ] `version.json` updated with matching version and build number
 - [ ] GitHub Actions build passed ✅
 - [ ] APK artifact downloaded and extracted
-- [ ] APK copied to `public/downloads/justhub-tenant.apk`
+- [ ] APK copied to `public/downloads/propertystack-tenant.apk`
 - [ ] Changes committed and pushed to deploy via Vercel
 - [ ] Verified update prompt on device
 

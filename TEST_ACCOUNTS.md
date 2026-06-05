@@ -1,4 +1,4 @@
-# Just Hub Test Accounts
+# PropertyStack Test Accounts
 
 All test accounts have been synchronized with the following password for ease of use.
 

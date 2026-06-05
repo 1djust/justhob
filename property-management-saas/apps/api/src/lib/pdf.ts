@@ -20,7 +20,7 @@ export const generateReceiptPDF = (data: ReceiptData, stream: NodeJS.WritableStr
   doc
     .fillColor('#4f46e5')
     .fontSize(24)
-    .text('EstateOS', { align: 'center' })
+    .text('PropertyStack', { align: 'center' })
     .fontSize(10)
     .fillColor('#64748b')
     .text('Digital Rent Receipt', { align: 'center' })
@@ -79,7 +79,7 @@ export const generateReceiptPDF = (data: ReceiptData, stream: NodeJS.WritableStr
     .moveDown(4)
     .fontSize(10)
     .fillColor('#94a3b8')
-    .text('Thank you for choosing EstateOS for your property management needs.', { align: 'center' })
+    .text('Thank you for choosing PropertyStack for your property management needs.', { align: 'center' })
     .moveDown(0.5)
     .text('This is a computer-generated receipt and does not require a physical signature.', { align: 'center' });
 

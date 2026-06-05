@@ -34,7 +34,7 @@ const transporter = createTransporter();
 export const sendEmail = async (to: string, subject: string, content: string, html?: string) => {
   try {
     await transporter.sendMail({
-      from: '"EstateOS" <notifications@estateos.app>',
+      from: '"PropertyStack" <notifications@propertystack.com>',
       to,
       subject,
       text: content,

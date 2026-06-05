@@ -1,8 +1,8 @@
-# AGENTS.md — Just hub Workspace
+# AGENTS.md — PropertyStack Workspace
 
 ## Project Overview
 
-This is a Turbo monorepo workspace at `C:\Users\USER\Desktop\Just hub`. Key projects:
+This is a Turbo monorepo workspace at `C:\Users\USER\Desktop\PropertyStack`. Key projects:
 
 - `property-management-saas/` — Main monorepo (API + Web workspaces)
 - `tenant_app/` — Flutter mobile app

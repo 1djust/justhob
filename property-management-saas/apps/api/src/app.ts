@@ -24,6 +24,7 @@ import leaseRoutes from './routes/leases';
 import exportRoutes from './routes/exports';
 import leaseRenewalRoutes from './routes/lease-renewals';
 import adminRoutes from './routes/admin';
+import superAdminRoutes from './routes/super-admin';
 import uploadRoutes from './routes/upload';
 import socketPlugin from './plugins/socket';
 import { setupOverdueChecker } from './cron/overdue-checker';
@@ -149,7 +150,7 @@ export function buildApp() {
       latestVersion: "0.1.4",
       latestBuildNumber: 5,
       isMandatory: true,
-      downloadUrl: "https://justhob.vercel.app/downloads/estateos-tenant.apk",
+      downloadUrl: "https://justhob.vercel.app/downloads/propertystack-tenant.apk",
       releaseNotes: "• Fixed silent authentication failure on physical devices\n• Added precise login error messages\n• Enhanced hardware secure storage configuration\n• Fixed update system URL"
     };
   });
@@ -173,12 +174,32 @@ export function buildApp() {
   fastify.register(notificationRoutes, { prefix: '/api/notifications' });
   fastify.register(publicRoutes, { prefix: '/api/public' });
   fastify.register(webhookRoutes, { prefix: '/api/public/webhooks' });
-  fastify.register(publicLogRoutes, { prefix: '/api/public' });
+
+  // Security: Extremely strict rate limit for public logs to prevent DB exhaustion
+  fastify.register(async (scope) => {
+    scope.register(rateLimit, {
+      max: 5,
+      timeWindow: '1 minute',
+      keyGenerator: (request) => request.ip,
+    });
+    scope.register(publicLogRoutes);
+  }, { prefix: '/api/public' });
   fastify.register(bankVerificationRoutes, { prefix: '/api/workspaces/:workspaceId/bank' });
   fastify.register(leaseRoutes, { prefix: '/api/workspaces/:workspaceId/leases' });
   fastify.register(leaseRenewalRoutes, { prefix: '/api/workspaces/:workspaceId' });
   fastify.register(exportRoutes, { prefix: '/api/workspaces/:workspaceId/export' });
   fastify.register(adminRoutes, { prefix: '/api/admin' });
+
+  // Security: Stricter rate limit for super-admin routes (data exfiltration prevention)
+  fastify.register(async (scope) => {
+    scope.register(rateLimit, {
+      max: 20,
+      timeWindow: '1 minute',
+      keyGenerator: (request) => request.ip,
+    });
+    scope.register(superAdminRoutes);
+  }, { prefix: '/api/super-admin' });
+
   fastify.register(uploadRoutes, { prefix: '/api/uploads' });
 
   return fastify;

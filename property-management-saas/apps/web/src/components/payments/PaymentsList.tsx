@@ -759,7 +759,7 @@ function ReceiptModal({ payment, onClose }: { payment: Payment; onClose: () => v
             <div className="w-16 h-16 rounded-2xl bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center mb-4 shadow-xl">
               <Building className="w-8 h-8 text-white dark:text-zinc-900" />
             </div>
-            <h3 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter">Just Hub Settlement</h3>
+            <h3 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter">PropertyStack Settlement</h3>
             <p className="text-[10px] font-black text-emerald-500 tracking-[0.2em] uppercase mt-1">Certified Digital Receipt</p>
           </div>
 
@@ -872,7 +872,7 @@ function InvoiceModal({ payment, onClose }: { payment: Payment; onClose: () => v
             <div className="w-16 h-16 rounded-2xl bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center mb-4 shadow-xl">
               <Building className="w-8 h-8 text-white dark:text-zinc-900" />
             </div>
-            <h3 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter">Just Hub Invoice</h3>
+            <h3 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter">PropertyStack Invoice</h3>
             <p className="text-[10px] font-black text-amber-500 tracking-[0.2em] uppercase mt-1">Payment Request</p>
           </div>
 
