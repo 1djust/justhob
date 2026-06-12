@@ -66,12 +66,16 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Icon(Icons.lock_reset, size: 48, color: Colors.black),
+        child: CustomScrollView(
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Icon(Icons.lock_reset, size: 48, color: Colors.black),
               const SizedBox(height: 24),
               const Text(
                 'Change Password',
@@ -152,10 +156,13 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Text('Update & Continue', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-      ),
     );
   }
 }

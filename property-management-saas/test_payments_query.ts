@@ -1,35 +1,35 @@
-import { prisma } from './packages/database';
+import { prisma } from "./packages/database";
 
 async function testFetch() {
   try {
     const tenant = await prisma.tenant.findFirst();
     if (!tenant) {
-      console.log('No tenant found to test.');
+      console.log("No tenant found to test.");
       return;
     }
 
-    console.log('Found tenant:', tenant.id);
-    
+    console.log("Found tenant:", tenant.id);
+
     // Simulate the query from GET /payments
     const payments = await prisma.payment.findMany({
       where: {
         lease: {
-          tenantId: tenant.id
-        }
+          tenantId: tenant.id,
+        },
       },
       include: {
         lease: {
           include: {
-            property: { select: { id: true, name: true, address: true } }
-          }
-        }
+            property: { select: { id: true, name: true, address: true } },
+          },
+        },
       },
-      orderBy: { dueDate: 'desc' }
+      orderBy: { dueDate: "desc" },
     });
 
-    console.log('Payments fetch success! Count:', payments.length);
+    console.log("Payments fetch success! Count:", payments.length);
   } catch (e: unknown) {
-    console.error('Error fetching payments:', (e as Error).message);
+    console.error("Error fetching payments:", (e as Error).message);
   }
 }
 

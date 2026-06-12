@@ -32,6 +32,10 @@ _$PaymentImpl _$$PaymentImplFromJson(Map<String, dynamic> json) =>
       evictionDate: json['evictionDate'] == null
           ? null
           : DateTime.parse(json['evictionDate'] as String),
+      transactions: (json['transactions'] as List<dynamic>?)
+              ?.map((e) => Transaction.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
 
 Map<String, dynamic> _$$PaymentImplToJson(_$PaymentImpl instance) =>
@@ -52,4 +56,5 @@ Map<String, dynamic> _$$PaymentImplToJson(_$PaymentImpl instance) =>
       'paymentPlanRequested': instance.paymentPlanRequested,
       'paymentPlanStatus': instance.paymentPlanStatus,
       'evictionDate': instance.evictionDate?.toIso8601String(),
+      'transactions': instance.transactions,
     };

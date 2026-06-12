@@ -1,17 +1,17 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
   const users = await prisma.user.findMany({
-    where: { email: 'justusolawole@gmail.com' },
-    include: { workspaces: true }
+    where: { email: "justusolawole@gmail.com" },
+    include: { workspaces: true },
   });
   console.log(JSON.stringify(users, null, 2));
 }
 
 main()
-  .catch(e => {
+  .catch((e) => {
     console.error(e);
     process.exit(1);
   })

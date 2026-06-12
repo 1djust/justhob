@@ -1,24 +1,24 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { 
-  Send, 
-  User, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
+import * as React from "react";
+import {
+  Send,
+  User,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
   Wrench,
   Calendar,
-  MoreVertical
-} from 'lucide-react';
-import { apiFetch, API_BASE_URL } from '@/lib/api';
-import { useRealtime } from '@/components/providers/RealtimeProvider';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+  MoreVertical,
+} from "lucide-react";
+import { apiFetch, API_BASE_URL } from "@/lib/api";
+import { useRealtime } from "@/components/providers/RealtimeProvider";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Message {
   id: string;
   content: string;
-  type: 'USER' | 'SYSTEM';
+  type: "USER" | "SYSTEM";
   createdAt: string;
   senderId?: string;
   sender?: { name: string };
@@ -30,38 +30,48 @@ interface MaintenanceChatProps {
   isPropertyManager?: boolean;
 }
 
-export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = true }: MaintenanceChatProps) {
+export function MaintenanceChat({
+  workspaceId,
+  requestId,
+  isPropertyManager = true,
+}: MaintenanceChatProps) {
   const queryClient = useQueryClient();
-  const [newMessage, setNewMessage] = React.useState('');
+  const [newMessage, setNewMessage] = React.useState("");
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { socket } = useRealtime();
 
   const { data: messages = [], isLoading: loading } = useQuery<Message[]>({
-    queryKey: ['maintenance-messages', workspaceId, requestId],
+    queryKey: ["maintenance-messages", workspaceId, requestId],
     queryFn: async () => {
-      const data = await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance/${requestId}/messages`, {
-        credentials: 'include'
-      });
+      const data = await apiFetch(
+        `${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance/${requestId}/messages`,
+        {
+          credentials: "include",
+        },
+      );
       return data.messages || [];
     },
-    enabled: !!workspaceId && !!requestId
+    enabled: !!workspaceId && !!requestId,
   });
 
   React.useEffect(() => {
     if (!socket) return;
 
     // Join the specific maintenance room
-    socket.emit('join-maintenance', { workspaceId, requestId });
+    socket.emit("join-maintenance", { workspaceId, requestId });
 
     const handleNewMessage = (message: Message) => {
-      queryClient.setQueryData(['maintenance-messages', workspaceId, requestId], (old: Message[] = []) => [...old, message]);
+      queryClient.setQueryData(
+        ["maintenance-messages", workspaceId, requestId],
+        (old: Message[] = []) => [...old, message],
+      );
     };
 
-    socket.on('maintenance-message', handleNewMessage);
+    socket.on("maintenance-message", handleNewMessage);
 
     return () => {
-      socket.off('maintenance-message', handleNewMessage);
-      socket.emit('leave-maintenance', requestId);
+      socket.off("maintenance-message", handleNewMessage);
+      socket.emit("leave-maintenance", requestId);
     };
   }, [socket, workspaceId, requestId, queryClient]);
 
@@ -73,16 +83,19 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance/${requestId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
-        credentials: 'include'
-      });
+      await apiFetch(
+        `${API_BASE_URL}/api/workspaces/${workspaceId}/maintenance/${requestId}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+          credentials: "include",
+        },
+      );
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       console.error(e);
-    }
+    },
   });
 
   const handleSendMessage = (e?: React.FormEvent) => {
@@ -90,7 +103,7 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
     if (!newMessage.trim()) return;
 
     const content = newMessage;
-    setNewMessage('');
+    setNewMessage("");
     sendMessageMutation.mutate(content);
   };
 
@@ -107,13 +120,17 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
       {/* Header */}
       <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
         <div>
-          <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Issue History</h4>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">Timeline & Communication</p>
+          <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+            Issue History
+          </h4>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">
+            Timeline & Communication
+          </p>
         </div>
       </div>
 
       {/* Messages Feed */}
-      <div 
+      <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth scrollbar-hide"
       >
@@ -122,8 +139,12 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
             <div className="w-12 h-12 bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-4">
               <Clock className="w-6 h-6 text-zinc-300" />
             </div>
-            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">No activity logged yet</p>
-            <p className="text-[10px] text-zinc-400 mt-1">Status changes and messages will appear here.</p>
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+              No activity logged yet
+            </p>
+            <p className="text-[10px] text-zinc-400 mt-1">
+              Status changes and messages will appear here.
+            </p>
           </div>
         ) : (
           messages.map((msg, i) => (
@@ -133,7 +154,7 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
                 <div className="absolute left-[11px] top-6 bottom-[-24px] w-[1px] bg-zinc-100 dark:bg-zinc-800" />
               )}
 
-              {msg.type === 'SYSTEM' ? (
+              {msg.type === "SYSTEM" ? (
                 <div className="flex items-start gap-4 animate-in fade-in slide-in-from-left-2">
                   <div className="w-[23px] h-[23px] bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center z-10 border-2 border-white dark:border-zinc-950">
                     <AlertCircle className="w-3 h-3 text-zinc-500" />
@@ -142,7 +163,12 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
                     <p className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 italic">
                       {msg.content}
                     </p>
-                    <span className="text-[9px] text-zinc-400">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="text-[9px] text-zinc-400">
+                      {new Date(msg.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -155,7 +181,12 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
                       <span className="text-[11px] font-black uppercase tracking-tight text-zinc-900 dark:text-zinc-100">
                         {msg.sender?.name}
                       </span>
-                      <span className="text-[9px] text-zinc-400">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className="text-[9px] text-zinc-400">
+                        {new Date(msg.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
                     </div>
                     <div className="bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded-2xl rounded-tl-none border border-zinc-100 dark:border-zinc-800">
                       <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
@@ -171,19 +202,19 @@ export function MaintenanceChat({ workspaceId, requestId, isPropertyManager = tr
       </div>
 
       {/* Input */}
-      <form 
+      <form
         onSubmit={handleSendMessage}
         className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30"
       >
         <div className="relative group">
-          <input 
+          <input
             type="text"
             value={newMessage}
-            onChange={e => setNewMessage(e.target.value)}
+            onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message or update..."
             className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl py-3 pl-4 pr-12 text-xs focus:ring-4 focus:ring-zinc-900/5 outline-none transition-all group-hover:border-zinc-400"
           />
-          <button 
+          <button
             type="submit"
             disabled={!newMessage.trim()}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-900 hover:scale-105 active:scale-95 transition-all disabled:opacity-20 disabled:grayscale disabled:scale-100"

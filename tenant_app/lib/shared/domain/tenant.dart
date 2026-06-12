@@ -13,6 +13,7 @@ class Tenant with _$Tenant {
     String? email,
     String? phone,
     required String workspaceId,
+    bool? allowPartialPayments,
     List<Lease>? leases,
     List<MaintenanceRequest>? maintenanceRequests,
   }) = _Tenant;

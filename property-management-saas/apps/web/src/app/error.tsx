@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { logger } from '@/lib/logger';
+import { useEffect } from "react";
+import { logger } from "@/lib/logger";
 
 /**
  * Global Error Recovery Component for Next.js App Router.
- * 
+ *
  * Automatically catches and reports client-side errors to the database.
  */
 export default function Error({
@@ -17,7 +17,7 @@ export default function Error({
 }) {
   useEffect(() => {
     // Log the error to our custom Supabase monitoring
-    logger.error('Client-side Application Error', error, {
+    logger.error("Client-side Application Error", error, {
       digest: error.digest,
     });
   }, [error]);
@@ -26,7 +26,8 @@ export default function Error({
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4 text-center">
       <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
       <p className="text-muted-foreground mb-8 max-w-md">
-        An unexpected error occurred. We've been notified and are looking into it.
+        An unexpected error occurred. We&apos;ve been notified and are looking into
+        it.
       </p>
       <div className="flex gap-4">
         <button
@@ -36,7 +37,7 @@ export default function Error({
           Try again
         </button>
         <button
-          onClick={() => window.location.href = '/'}
+          onClick={() => (window.location.href = "/")}
           className="px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors"
         >
           Go to Home

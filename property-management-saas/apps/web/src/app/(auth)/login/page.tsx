@@ -1,9 +1,9 @@
-import { AuthLayout } from '@/components/auth/AuthLayout';
-import { LoginForm } from '@/components/auth/LoginForm';
-import type { Metadata } from 'next';
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { LoginForm } from "@/components/auth/LoginForm";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'Sign In - PropertyStack',
+  title: "Sign In - PropertyStack",
 };
 
 export default function LoginPage() {

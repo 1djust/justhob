@@ -36,6 +36,7 @@ mixin _$Payment {
   bool get paymentPlanRequested => throw _privateConstructorUsedError;
   String? get paymentPlanStatus => throw _privateConstructorUsedError;
   DateTime? get evictionDate => throw _privateConstructorUsedError;
+  List<Transaction> get transactions => throw _privateConstructorUsedError;
 
   /// Serializes this Payment to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -67,7 +68,8 @@ abstract class $PaymentCopyWith<$Res> {
       DateTime? gracePeriodEnd,
       bool paymentPlanRequested,
       String? paymentPlanStatus,
-      DateTime? evictionDate});
+      DateTime? evictionDate,
+      List<Transaction> transactions});
 }
 
 /// @nodoc
@@ -101,6 +103,7 @@ class _$PaymentCopyWithImpl<$Res, $Val extends Payment>
     Object? paymentPlanRequested = null,
     Object? paymentPlanStatus = freezed,
     Object? evictionDate = freezed,
+    Object? transactions = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -167,6 +170,10 @@ class _$PaymentCopyWithImpl<$Res, $Val extends Payment>
           ? _value.evictionDate
           : evictionDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      transactions: null == transactions
+          ? _value.transactions
+          : transactions // ignore: cast_nullable_to_non_nullable
+              as List<Transaction>,
     ) as $Val);
   }
 }
@@ -194,7 +201,8 @@ abstract class _$$PaymentImplCopyWith<$Res> implements $PaymentCopyWith<$Res> {
       DateTime? gracePeriodEnd,
       bool paymentPlanRequested,
       String? paymentPlanStatus,
-      DateTime? evictionDate});
+      DateTime? evictionDate,
+      List<Transaction> transactions});
 }
 
 /// @nodoc
@@ -226,6 +234,7 @@ class __$$PaymentImplCopyWithImpl<$Res>
     Object? paymentPlanRequested = null,
     Object? paymentPlanStatus = freezed,
     Object? evictionDate = freezed,
+    Object? transactions = null,
   }) {
     return _then(_$PaymentImpl(
       id: null == id
@@ -292,6 +301,10 @@ class __$$PaymentImplCopyWithImpl<$Res>
           ? _value.evictionDate
           : evictionDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      transactions: null == transactions
+          ? _value._transactions
+          : transactions // ignore: cast_nullable_to_non_nullable
+              as List<Transaction>,
     ));
   }
 }
@@ -315,7 +328,9 @@ class _$PaymentImpl implements _Payment {
       this.gracePeriodEnd,
       this.paymentPlanRequested = false,
       this.paymentPlanStatus,
-      this.evictionDate});
+      this.evictionDate,
+      final List<Transaction> transactions = const []})
+      : _transactions = transactions;
 
   factory _$PaymentImpl.fromJson(Map<String, dynamic> json) =>
       _$$PaymentImplFromJson(json);
@@ -353,10 +368,18 @@ class _$PaymentImpl implements _Payment {
   final String? paymentPlanStatus;
   @override
   final DateTime? evictionDate;
+  final List<Transaction> _transactions;
+  @override
+  @JsonKey()
+  List<Transaction> get transactions {
+    if (_transactions is EqualUnmodifiableListView) return _transactions;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_transactions);
+  }
 
   @override
   String toString() {
-    return 'Payment(id: $id, amount: $amount, dueDate: $dueDate, paidDate: $paidDate, leaseId: $leaseId, status: $status, note: $note, proofUrl: $proofUrl, rejectionReason: $rejectionReason, receiptId: $receiptId, amountPaid: $amountPaid, promiseDate: $promiseDate, gracePeriodEnd: $gracePeriodEnd, paymentPlanRequested: $paymentPlanRequested, paymentPlanStatus: $paymentPlanStatus, evictionDate: $evictionDate)';
+    return 'Payment(id: $id, amount: $amount, dueDate: $dueDate, paidDate: $paidDate, leaseId: $leaseId, status: $status, note: $note, proofUrl: $proofUrl, rejectionReason: $rejectionReason, receiptId: $receiptId, amountPaid: $amountPaid, promiseDate: $promiseDate, gracePeriodEnd: $gracePeriodEnd, paymentPlanRequested: $paymentPlanRequested, paymentPlanStatus: $paymentPlanStatus, evictionDate: $evictionDate, transactions: $transactions)';
   }
 
   @override
@@ -389,7 +412,9 @@ class _$PaymentImpl implements _Payment {
             (identical(other.paymentPlanStatus, paymentPlanStatus) ||
                 other.paymentPlanStatus == paymentPlanStatus) &&
             (identical(other.evictionDate, evictionDate) ||
-                other.evictionDate == evictionDate));
+                other.evictionDate == evictionDate) &&
+            const DeepCollectionEquality()
+                .equals(other._transactions, _transactions));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -411,7 +436,8 @@ class _$PaymentImpl implements _Payment {
       gracePeriodEnd,
       paymentPlanRequested,
       paymentPlanStatus,
-      evictionDate);
+      evictionDate,
+      const DeepCollectionEquality().hash(_transactions));
 
   /// Create a copy of Payment
   /// with the given fields replaced by the non-null parameter values.
@@ -446,7 +472,8 @@ abstract class _Payment implements Payment {
       final DateTime? gracePeriodEnd,
       final bool paymentPlanRequested,
       final String? paymentPlanStatus,
-      final DateTime? evictionDate}) = _$PaymentImpl;
+      final DateTime? evictionDate,
+      final List<Transaction> transactions}) = _$PaymentImpl;
 
   factory _Payment.fromJson(Map<String, dynamic> json) = _$PaymentImpl.fromJson;
 
@@ -482,6 +509,8 @@ abstract class _Payment implements Payment {
   String? get paymentPlanStatus;
   @override
   DateTime? get evictionDate;
+  @override
+  List<Transaction> get transactions;
 
   /// Create a copy of Payment
   /// with the given fields replaced by the non-null parameter values.

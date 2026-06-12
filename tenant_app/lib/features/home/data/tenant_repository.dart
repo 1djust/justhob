@@ -108,6 +108,8 @@ class TenantRepository {
     required double amount,
     required String leaseId,
     String? note,
+    double? amountPaid,
+    String? promiseDate,
   }) async {
     final response = await _apiClient.dio.post(
       '/tenant/payments',
@@ -115,6 +117,8 @@ class TenantRepository {
         'amount': amount,
         'leaseId': leaseId,
         'note': note,
+        if (amountPaid != null) 'amountPaid': amountPaid,
+        if (promiseDate != null) 'promiseDate': promiseDate,
       },
     );
     return response.data['paymentId'] as String;
@@ -124,12 +128,16 @@ class TenantRepository {
     required String paymentId,
     required String base64Image,
     String? note,
+    double? amountPaid,
+    String? promiseDate,
   }) async {
     final response = await _apiClient.dio.post(
       '/tenant/payments/$paymentId/submit-proof',
       data: {
         'proofUrl': 'data:image/jpeg;base64,$base64Image',
-        'note': note,
+        if (note != null) 'note': note,
+        if (amountPaid != null) 'amountPaid': amountPaid,
+        if (promiseDate != null) 'promiseDate': promiseDate,
       },
     );
     return Payment.fromJson(response.data['payment']);

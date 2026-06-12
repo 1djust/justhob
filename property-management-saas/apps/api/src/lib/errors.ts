@@ -6,7 +6,12 @@ export class AppError extends Error {
   public readonly code: string;
   public readonly details?: Record<string, unknown> | unknown;
 
-  constructor(message: string, statusCode: number = 500, code: string = 'INTERNAL_SERVER_ERROR', details?: Record<string, unknown> | unknown) {
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    code: string = "INTERNAL_SERVER_ERROR",
+    details?: Record<string, unknown> | unknown,
+  ) {
     super(message);
     this.name = this.constructor.name;
     this.statusCode = statusCode;
@@ -17,31 +22,46 @@ export class AppError extends Error {
 }
 
 export class NotFoundError extends AppError {
-  constructor(message: string = 'Resource not found', details?: Record<string, unknown> | unknown) {
-    super(message, 404, 'NOT_FOUND', details);
+  constructor(
+    message: string = "Resource not found",
+    details?: Record<string, unknown> | unknown,
+  ) {
+    super(message, 404, "NOT_FOUND", details);
   }
 }
 
 export class UnauthorizedError extends AppError {
-  constructor(message: string = 'Unauthorized access', details?: Record<string, unknown> | unknown) {
-    super(message, 401, 'UNAUTHORIZED', details);
+  constructor(
+    message: string = "Unauthorized access",
+    details?: Record<string, unknown> | unknown,
+  ) {
+    super(message, 401, "UNAUTHORIZED", details);
   }
 }
 
 export class ForbiddenError extends AppError {
-  constructor(message: string = 'Forbidden access', details?: Record<string, unknown> | unknown) {
-    super(message, 403, 'FORBIDDEN', details);
+  constructor(
+    message: string = "Forbidden access",
+    details?: Record<string, unknown> | unknown,
+  ) {
+    super(message, 403, "FORBIDDEN", details);
   }
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string = 'Validation failed', details?: Record<string, unknown> | unknown) {
-    super(message, 400, 'VALIDATION_ERROR', details);
+  constructor(
+    message: string = "Validation failed",
+    details?: Record<string, unknown> | unknown,
+  ) {
+    super(message, 400, "VALIDATION_ERROR", details);
   }
 }
 
 export class ConflictError extends AppError {
-  constructor(message: string = 'Conflict occurred', details?: Record<string, unknown> | unknown) {
-    super(message, 409, 'CONFLICT', details);
+  constructor(
+    message: string = "Conflict occurred",
+    details?: Record<string, unknown> | unknown,
+  ) {
+    super(message, 409, "CONFLICT", details);
   }
 }

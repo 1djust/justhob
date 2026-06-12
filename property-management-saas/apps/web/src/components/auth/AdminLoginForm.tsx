@@ -1,24 +1,24 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, ShieldCheck, Lock } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { apiFetch, API_BASE_URL } from '@/lib/api';
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, ShieldCheck, Lock } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api";
 
 export function AdminLoginForm() {
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [securityKey, setSecurityKey] = React.useState('');
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [securityKey, setSecurityKey] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
-  const [error, setError] = React.useState('');
+  const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       // 1. Authenticate with Supabase first
@@ -28,30 +28,31 @@ export function AdminLoginForm() {
       });
 
       if (sbError || !data.user) {
-        throw new Error(sbError?.message || 'Invalid login credentials');
+        throw new Error(sbError?.message || "Invalid login credentials");
       }
 
       // 2. Sync and Verify with Backend using the Security Key
-      const verifyResponse = await apiFetch('/api/admin/verify', {
-        method: 'POST',
+      const verifyResponse = await apiFetch("/api/admin/verify", {
+        method: "POST",
         body: JSON.stringify({ securityKey }),
       });
 
       if (!verifyResponse.success) {
         await supabase.auth.signOut();
-        throw new Error('Verification failed. Invalid Security Key.');
+        throw new Error("Verification failed. Invalid Security Key.");
       }
 
       // 3. Final sync to ensure everything is set up
-      await apiFetch('/api/auth/sync', { method: 'POST' });
+      await apiFetch("/api/auth/sync", { method: "POST" });
 
-      router.push('/dashboard');
-    } catch (err: any) {
-      console.error('Admin login error:', err);
-      setError(err.message || 'An unexpected error occurred');
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      const errorObj = err as Error;
+      console.error("Admin login error:", errorObj);
+      setError(errorObj.message || "An unexpected error occurred");
       // If verification failed after login, make sure we are signed out
-      if (err.message.includes('Security Key')) {
-         await supabase.auth.signOut();
+      if (errorObj.message.includes("Security Key")) {
+        await supabase.auth.signOut();
       }
     } finally {
       setLoading(false);
@@ -64,8 +65,12 @@ export function AdminLoginForm() {
         <div className="w-16 h-16 bg-rose-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-rose-600/20">
           <ShieldCheck className="w-10 h-10 text-white" />
         </div>
-        <h2 className="text-3xl font-black tracking-tighter text-zinc-900 dark:text-white">Admin Portal</h2>
-        <p className="text-zinc-500 dark:text-zinc-400 mt-2 text-sm font-medium">Authorised Access Only</p>
+        <h2 className="text-3xl font-black tracking-tighter text-zinc-900 dark:text-white">
+          Admin Portal
+        </h2>
+        <p className="text-zinc-500 dark:text-zinc-400 mt-2 text-sm font-medium">
+          Authorised Access Only
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -74,7 +79,7 @@ export function AdminLoginForm() {
             {error}
           </div>
         )}
-        
+
         <div className="space-y-2">
           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 ml-1">
             Admin Identity
@@ -89,7 +94,7 @@ export function AdminLoginForm() {
             disabled={loading}
           />
         </div>
-        
+
         <div className="space-y-2">
           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 ml-1">
             Password
@@ -110,7 +115,11 @@ export function AdminLoginForm() {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-rose-500 transition-colors"
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>
@@ -131,7 +140,7 @@ export function AdminLoginForm() {
             />
           </div>
         </div>
-        
+
         <button
           type="submit"
           disabled={loading}

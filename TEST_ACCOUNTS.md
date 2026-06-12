@@ -9,8 +9,11 @@ All test accounts have been synchronized with the following password for ease of
 | Role | Email | Purpose |
 | :--- | :--- | :--- |
 | **Super Admin** | `admin@justhob.com` | Access Admin Dashboard, trigger System Jobs (Crons), and manage global settings. |
-| **Property Manager** | `manager@justhob.com` | Manage properties, approve payments, and send lease renewal offers. |
+| **Property Manager (Free)** | `manager@justhob.com` | Manage properties, approve payments, and send lease renewal offers (Free Plan). |
+| **Property Manager (Pro)** | `manager_pro@justhob.com` | Pro tier test account with pre-seeded data. |
+| **Property Manager (Enterprise)** | `manager_ent@justhob.com` | Enterprise tier test account with pre-seeded data. |
 | **Tenant** | `tenant@justhob.com` | Used for testing all lease expiry and payment overdue notifications based on the scenario script. |
+| **Custom Tester** | `djokn@gmail.com` | Additional user account utilized for active manual testing. |
 
 ---
 

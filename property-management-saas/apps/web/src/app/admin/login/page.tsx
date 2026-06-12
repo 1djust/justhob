@@ -1,8 +1,8 @@
-import { AdminLoginForm } from '@/components/auth/AdminLoginForm';
-import type { Metadata } from 'next';
+import { AdminLoginForm } from "@/components/auth/AdminLoginForm";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'Admin Access - PropertyStack',
+  title: "Admin Access - PropertyStack",
 };
 
 export default function AdminLoginPage() {

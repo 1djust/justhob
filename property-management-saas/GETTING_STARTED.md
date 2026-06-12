@@ -12,10 +12,13 @@ Follow these steps to set up and run the application locally.
 The `DATABASE_URL` format is: `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`
 
 ### Option A: Cloud (Recommended for speed, 100% Free)
+
 Create a free project on [Supabase](https://supabase.com) (Recommended) or [Neon](https://neon.tech). They provide connection strings immediately.
 
 ### Option B: Local Installation
+
 If you have Postgres installed locally:
+
 - **USER**: your system username (often `postgres`)
 - **PASSWORD**: the password you set during installation
 - **HOST**: `localhost`
@@ -31,12 +34,14 @@ Example: `postgresql://postgres:mysecretpassword@localhost:5432/property_mgmt`
 You need to create `.env` files for the database and the API.
 
 ### Database (`packages/database/.env`)
+
 ```env
 DATABASE_URL="postgresql://username:password@localhost:5432/property_mgmt"
 DIRECT_URL="postgresql://username:password@localhost:5432/property_mgmt"
 ```
 
 ### API (`apps/api/.env`)
+
 ```env
 DATABASE_URL="postgresql://username:password@localhost:5432/property_mgmt"
 JWT_SECRET="your-secret-key-here"
@@ -49,12 +54,14 @@ COOKIE_SECRET="another-secret-key-here"
 ## 2. Installation & Setup
 
 1. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 2. **Database Sync**:
    Push the schema to your PostgreSQL database:
+
    ```bash
    npm run push --workspace=@property-management/database
    ```
@@ -69,29 +76,40 @@ COOKIE_SECRET="another-secret-key-here"
 ## 3. Run the Application
 
 ### 3.1 Backend API & Web App (WSL / Ubuntu)
+
 For performance reasons, the API and Web apps must be run inside your WSL 2 (Ubuntu) environment:
+
 1. Open your Ubuntu terminal.
 2. Navigate to the project directory:
+
 ```bash
 cd ~/projects/justhub/property-management-saas
 ```
+
 3. Start the development server:
+
 ```bash
 npm run dev
 ```
+
 - **Frontend**: [http://localhost:3000](http://localhost:3000)
 - **Backend API**: [http://localhost:3001](http://localhost:3001)
 
-*(Note: Windows 11 automatically bridges these ports, allowing you to access them from your Windows browser).*
+_(Note: Windows 11 automatically bridges these ports, allowing you to access them from your Windows browser)._
 
 ### 3.2 Mobile App (Windows)
+
 The Flutter mobile app (`tenant_app`) runs directly on Windows to support native USB debugging:
+
 1. Open your terminal in VS Code or Android Studio on Windows.
 2. Navigate to the mobile app directory:
+
 ```powershell
 cd "C:\Users\USER\Desktop\PropertyStack\tenant_app"
 ```
+
 3. Connect an Android device or start an emulator, then run:
+
 ```powershell
 flutter run
 ```
@@ -123,6 +141,7 @@ The system uses a custom, zero-cost monitoring solution instead of Sentry.
 The application bypassed traditional App Stores by implementing a modern Over-The-Air (OTA) direct downloader pipeline from the web frontend.
 
 When you want to deploy a new version of the Flutter Mobile app:
+
 1. Bump the release version mapping in `tenant_app/pubspec.yaml` (e.g., `version: 0.1.0+2`).
 2. Construct the Android APK (`flutter build apk`).
 3. Take your `app-release.apk` output and copy it to `apps/web/public/downloads/propertystack-tenant-latest.apk`.

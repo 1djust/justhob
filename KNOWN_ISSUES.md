@@ -22,15 +22,43 @@ Please make sure your database server is running...
 **Root Cause**:
 Prisma's native Rust query engine has a known issue in certain environments (particularly WSL/Ubuntu) where it preferentially resolves and attempts to connect via IPv6. Supabase's connection pooler domains currently return IPv6 addresses that may not be properly routed from inside the local WSL network, causing the connection attempt to hang and eventually time out.
 
-**Resolution**:
-We bypassed the IPv6 DNS resolution by hardcoding the resolved IPv4 address of the Supabase pooler in the connection string and explicitly disabling SSL hostname verification (since the certificate is bound to the domain name, not the raw IP).
+**Resolution (Updated June 2026)**:
+Previously, the workaround was to hardcode the IPv4 address and append `sslmode=disable`. However, Supabase pooler now enforces SSL and using `sslmode=disable` will actively drop connections, resulting in the exact same `Can't reach database server` error. 
 
-*Steps to fix*:
-1. Ping or lookup the IPv4 address of your Supabase pooler domain: `ping aws-1-eu-north-1.pooler.supabase.com` -> (e.g., `51.21.189.77`).
-2. Update the `.env` files (`apps/api/.env` and `packages/database/.env`):
-   ```env
-   # Replace the hostname with the IPv4 address, and append &sslmode=disable
-   DATABASE_URL="postgresql://postgres.[project-ref]:[password]@51.21.189.77:6543/postgres?pgbouncer=true&sslmode=disable"
-   DIRECT_URL="postgresql://postgres.[project-ref]:[password]@51.21.189.77:5432/postgres?sslmode=disable"
-   ```
-   *(Note: This workaround should strictly be kept to local development `.env` files.)*
+The IPv6 resolution issues appear to be resolved upstream, so the correct connection strings should use the standard pooler domain, `sslmode=require`, and `pgbouncer=true`:
+
+*Correct `.env` configuration*:
+```env
+# Connection pooling (6543) for Prisma Client with pgbouncer=true
+DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-1-eu-north-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require"
+
+# Direct connection (5432) for Prisma Migrations
+DIRECT_URL="postgresql://postgres.[project-ref]:[password]@aws-1-eu-north-1.pooler.supabase.com:5432/postgres?sslmode=require"
+```
+
+---
+
+## 2. Prisma Include Relation Missing Error (reset-tenant-payments.ts)
+
+**Date**: June 11, 2026
+**Error Message**:
+```text
+TypeError: Cannot read properties of undefined (reading 'workspaceId')
+    at main (reset-tenant-payments.ts:42:40)
+```
+
+**Root Cause**:
+When trying to access a nested relation (`firstLease.property.workspaceId`), the `property` relation was not explicitly fetched in the `prisma.tenant.findFirst` query. Prisma queries only return the data that is explicitly requested in the `include` block.
+
+**Resolution**:
+Updated the query in the script to deeply include the `property` table within `leases`:
+```typescript
+const tenant = await prisma.tenant.findFirst({
+  where: { email },
+  include: { 
+    leases: {
+      include: { property: true }
+    } 
+  }
+});
+```

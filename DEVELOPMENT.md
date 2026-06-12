@@ -92,6 +92,16 @@ flutter run -d linux
 
 ---
 
+## 3. Test Data Generation
+We have provided helper scripts to generate fresh database scenarios or to quickly reset messy testing data. Run these from the `property-management-saas/` directory:
+
+| Script Name | Command | Description |
+| :--- | :--- | :--- |
+| **Mega Test Scenario** | `npx tsx setup-mega-test.ts 30` | Generates a complex test scenario (change `30` to `90`, `60`, or `7` to simulate different lease expiration timelines). |
+| **Reset Tenant Payments** | `npx tsx scripts/test-seeds/reset-tenant-payments.ts <email>` | Wipes all previous payments for the given tenant and creates exactly one clean **OVERDUE** invoice for UI and payment testing. Example: `npx tsx scripts/test-seeds/reset-tenant-payments.ts djokn@gmail.com` |
+
+---
+
 ## Troubleshooting
 - **Port Conflicts**: If a port is already in use, you can find the process with `lsof -i :PORT_NUMBER`.
 - **Flutter Keyring**: If `run.sh` fails, ensure `dbus-run-session` and `gnome-keyring` are installed in your WSL environment.

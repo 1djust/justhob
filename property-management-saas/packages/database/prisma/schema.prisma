@@ -14,10 +14,10 @@ model User {
   id                  String               @id
   email               String               @unique
   name                String?
-  role                Role                 @default(PROPERTY_MANAGER)
-  isActive            Boolean              @default(true)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+  role                Role                 @default(PROPERTY_MANAGER)
+  isActive            Boolean              @default(true)
   maintenanceMessages MaintenanceMessage[]
   notifications       Notification[]
   propertiesOwned     Property[]
@@ -27,14 +27,15 @@ model User {
 model Workspace {
   id                    String               @id @default(uuid())
   name                  String
-  status                WorkspaceStatus      @default(ACTIVE)
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
   bankCode              String?
   accountNumber         String?
   accountName           String?
   plan                  SubscriptionPlan     @default(FREE)
+  status                WorkspaceStatus      @default(ACTIVE)
   subscriptionExpiresAt DateTime?
+  allowPartialPayments  Boolean              @default(true)
   maintenanceMessages   MaintenanceMessage[]
   maintenanceRequests   MaintenanceRequest[]
   payments              Payment[]
@@ -70,6 +71,7 @@ model Property {
   updatedAt           DateTime             @updatedAt
   deletedAt           DateTime?
   ownerId             String?
+  imageUrl            String?
   leases              Lease[]
   maintenanceRequests MaintenanceRequest[]
   owner               User?                @relation(fields: [ownerId], references: [id])
@@ -97,17 +99,18 @@ model Unit {
 }
 
 model Tenant {
-  id                  String               @id @default(uuid())
-  name                String
-  email               String?
-  phone               String?
-  workspaceId         String
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  deletedAt           DateTime?
-  leases              Lease[]
-  maintenanceRequests MaintenanceRequest[]
-  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id                   String               @id @default(uuid())
+  name                 String
+  email                String?
+  phone                String?
+  workspaceId          String
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  deletedAt            DateTime?
+  allowPartialPayments Boolean?
+  leases               Lease[]
+  maintenanceRequests  MaintenanceRequest[]
+  workspace            Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([id, workspaceId], name: "tenant_workspace_id")
 }
@@ -131,49 +134,49 @@ model Lease {
 }
 
 model Payment {
-  id                 String         @id @default(uuid())
-  leaseId            String
-  amount             Float
-  dueDate            DateTime
-  paidDate           DateTime?
-  status             PaymentStatus  @default(PENDING)
-  note               String?
-  rrr                String?        @unique
-  transactionId      String?        @unique
-  paymentUrl         String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  proofUrl           String?
-  receiptId          String?        @unique
-  rejectionReason    String?
-  workspaceId        String?
-  amountPaid         Float?
-  balanceNote        String?
-  balancePromise     DateTime?
-  paymentPlanRequested Boolean @default(false)
-  paymentPlanStatus  String?
-  evictionDate       DateTime?
-  gracePeriodEnd     DateTime?
-  evictionNoticeSent Boolean        @default(false)
-  lease              Lease          @relation(fields: [leaseId], references: [id], onDelete: Cascade)
-  workspace          Workspace?     @relation(fields: [workspaceId], references: [id])
-  reminders          RentReminder[]
-  transactions       PaymentTransaction[]
+  id                   String               @id @default(uuid())
+  leaseId              String
+  amount               Float
+  dueDate              DateTime
+  paidDate             DateTime?
+  status               PaymentStatus        @default(PENDING)
+  note                 String?
+  rrr                  String?              @unique
+  transactionId        String?              @unique
+  paymentUrl           String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  proofUrl             String?
+  receiptId            String?              @unique
+  rejectionReason      String?
+  workspaceId          String?
+  amountPaid           Float?
+  balanceNote          String?
+  balancePromise       DateTime?
+  gracePeriodEnd       DateTime?
+  evictionNoticeSent   Boolean              @default(false)
+  evictionDate         DateTime?
+  paymentPlanRequested Boolean              @default(false)
+  paymentPlanStatus    String?
+  lease                Lease                @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  workspace            Workspace?           @relation(fields: [workspaceId], references: [id])
+  transactions         PaymentTransaction[]
+  reminders            RentReminder[]
 
   @@unique([id, workspaceId], name: "payment_workspace_id")
 }
 
 model PaymentTransaction {
-  id            String   @id @default(uuid())
-  paymentId     String
-  amount        Float
-  status        String   @default("COMPLETED")
-  note          String?
-  receiptId     String?  @unique
-  proofUrl      String?
-  paidDate      DateTime @default(now())
-  createdAt     DateTime @default(now())
-  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  paymentId String
+  amount    Float
+  status    String   @default("COMPLETED")
+  note      String?
+  receiptId String?  @unique
+  proofUrl  String?
+  paidDate  DateTime @default(now())
+  createdAt DateTime @default(now())
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 }
 
 model MaintenanceRequest {
@@ -186,6 +189,8 @@ model MaintenanceRequest {
   workspaceId String
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
+  priority    MaintenancePriority  @default(MEDIUM)
+  vendor      String?
   messages    MaintenanceMessage[]
   property    Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -251,6 +256,26 @@ model LeaseRenewalOffer {
   lease        Lease     @relation(fields: [leaseId], references: [id], onDelete: Cascade)
 }
 
+model WebhookEvent {
+  id        String   @id @default(uuid())
+  source    String
+  eventId   String   @unique
+  payload   Json
+  status    String   @default("PROCESSED")
+  createdAt DateTime @default(now())
+}
+
+model SecurityAuditLog {
+  id        String   @id @default(uuid())
+  eventType String
+  ipAddress String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([ipAddress])
+  @@index([createdAt])
+}
+
 enum SubscriptionPlan {
   FREE
   PRO
@@ -270,10 +295,10 @@ enum PayoutStrategy {
 }
 
 enum Role {
-  SUPER_ADMIN
   PROPERTY_MANAGER
   LANDLORD
   TENANT
+  SUPER_ADMIN
 }
 
 enum PropertyType {
@@ -305,7 +330,6 @@ enum PaymentStatus {
   PAID
   OVERDUE
   UNDER_REVIEW
-  REJECTED
   PARTIALLY_PAID
 }
 
@@ -315,11 +339,8 @@ enum MaintenanceStatus {
   COMPLETED
 }
 
-model WebhookEvent {
-  id        String   @id @default(uuid())
-  source    String
-  eventId   String   @unique
-  payload   Json
-  status    String   @default("PROCESSED")
-  createdAt DateTime @default(now())
+enum MaintenancePriority {
+  LOW
+  MEDIUM
+  HIGH
 }

@@ -12,6 +12,7 @@ _$TenantImpl _$$TenantImplFromJson(Map<String, dynamic> json) => _$TenantImpl(
       email: json['email'] as String?,
       phone: json['phone'] as String?,
       workspaceId: json['workspaceId'] as String,
+      allowPartialPayments: json['allowPartialPayments'] as bool?,
       leases: (json['leases'] as List<dynamic>?)
           ?.map((e) => Lease.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -27,6 +28,7 @@ Map<String, dynamic> _$$TenantImplToJson(_$TenantImpl instance) =>
       'email': instance.email,
       'phone': instance.phone,
       'workspaceId': instance.workspaceId,
+      'allowPartialPayments': instance.allowPartialPayments,
       'leases': instance.leases,
       'maintenanceRequests': instance.maintenanceRequests,
     };

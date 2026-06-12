@@ -1,5 +1,5 @@
-import type { FastifyInstance, FastifyPluginCallback } from 'fastify';
-import { prisma } from '../lib/database';
+import type { FastifyInstance, FastifyPluginCallback } from "fastify";
+import { prisma } from "../lib/database";
 
 /**
  * Custom Error Logger Plugin for Fastify.
@@ -10,11 +10,10 @@ import { prisma } from '../lib/database';
 const errorLoggerPlugin: FastifyPluginCallback = (
   fastify: FastifyInstance,
   _opts: Record<string, unknown>,
-  done: (err?: Error) => void
+  done: (err?: Error) => void,
 ) => {
-
   // Hook: Capture every error that Fastify encounters
-  fastify.addHook('onError', async (request, _reply, error) => {
+  fastify.addHook("onError", async (request, _reply, error) => {
     try {
       const context = {
         url: request.url,
@@ -23,48 +22,51 @@ const errorLoggerPlugin: FastifyPluginCallback = (
         params: request.params,
         query: request.query,
         headers: {
-          'user-agent': request.headers['user-agent'],
-          'content-type': request.headers['content-type'],
+          "user-agent": request.headers["user-agent"],
+          "content-type": request.headers["content-type"],
         },
       };
 
       const log = await prisma.errorLog.create({
         data: {
-          level: 'error',
-          message: error.message || 'Unknown API Error',
+          level: "error",
+          message: error.message || "Unknown API Error",
           stack: error.stack,
-          source: 'api',
-          context: context as import('@prisma/client').Prisma.InputJsonValue,
+          source: "api",
+          context: context as import("@prisma/client").Prisma.InputJsonValue,
         },
       });
 
-      fastify.log.info({ errorId: log.id }, 'Saved error to database');
+      fastify.log.info({ errorId: log.id }, "Saved error to database");
     } catch (ingestError) {
-      fastify.log.error({ err: ingestError }, 'Log ingestion failed');
+      fastify.log.error({ err: ingestError }, "Log ingestion failed");
       // Intentionally swallow ingestion error so we do not crash onError handler
     }
   });
 
   // Hook: Track slow responses (>3s)
-  fastify.addHook('onResponse', async (request, reply) => {
+  fastify.addHook("onResponse", async (request, reply) => {
     const responseTime = reply.elapsedTime;
     if (responseTime > 3000) {
       try {
         await prisma.errorLog.create({
           data: {
-            level: 'warn',
+            level: "warn",
             message: `Slow API response: ${Math.round(responseTime)}ms`,
-            source: 'api',
+            source: "api",
             context: {
               url: request.url,
               method: request.method,
               responseTimeMs: Math.round(responseTime),
               statusCode: reply.statusCode,
-            } as import('@prisma/client').Prisma.InputJsonValue,
+            } as import("@prisma/client").Prisma.InputJsonValue,
           },
         });
       } catch (dbError) {
-        fastify.log.warn({ err: dbError }, 'Failed to save performance warning to database');
+        fastify.log.warn(
+          { err: dbError },
+          "Failed to save performance warning to database",
+        );
       }
     }
   });

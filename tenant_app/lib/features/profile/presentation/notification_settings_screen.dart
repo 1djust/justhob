@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tenant_app/core/theme/app_theme.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -20,15 +21,15 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Notifications'),
         backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF18181B)),
+        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
         titleTextStyle: theme.textTheme.titleLarge?.copyWith(
-          color: const Color(0xFF18181B),
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -44,7 +45,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               value: _pushEnabled,
               onChanged: (val) => setState(() => _pushEnabled = val),
             ),
-            const Divider(height: 1, color: Color(0xFFE4E4E7)),
+            const Divider(height: 1, color: AppTheme.borderColor),
             _buildToggleTile(
               title: 'Email Notifications',
               subtitle: 'Receive updates in your inbox.',
@@ -60,7 +61,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               onChanged: (val) => setState(() => _maintenanceUpdates = val),
               enabled: _pushEnabled || _emailEnabled,
             ),
-            const Divider(height: 1, color: Color(0xFFE4E4E7)),
+            const Divider(height: 1, color: AppTheme.borderColor),
             _buildToggleTile(
               title: 'Payment Reminders',
               subtitle: 'Alerts for upcoming and overdue invoices.',
@@ -68,7 +69,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               onChanged: (val) => setState(() => _paymentReminders = val),
               enabled: _pushEnabled || _emailEnabled,
             ),
-            const Divider(height: 1, color: Color(0xFFE4E4E7)),
+            const Divider(height: 1, color: AppTheme.borderColor),
             _buildToggleTile(
               title: 'Announcements',
               subtitle: 'News and updates from your property manager.',
@@ -90,7 +91,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.bold,
-          color: Color(0xFFA1A1AA),
+          color: AppTheme.textSecondary,
           letterSpacing: 1.2,
         ),
       ),
@@ -112,19 +113,19 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF18181B),
+            color: AppTheme.textPrimary,
           ),
         ),
         subtitle: Text(
           subtitle,
           style: const TextStyle(
             fontSize: 14,
-            color: Color(0xFF71717A),
+            color: AppTheme.textSecondary,
           ),
         ),
         value: value,
         onChanged: enabled ? onChanged : null,
-        activeColor: const Color(0xFF18181B),
+        activeColor: AppTheme.textPrimary,
         contentPadding: const EdgeInsets.symmetric(vertical: 8),
       ),
     );

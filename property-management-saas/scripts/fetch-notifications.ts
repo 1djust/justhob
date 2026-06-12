@@ -1,28 +1,28 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
   const user = await prisma.user.findFirst();
   if (!user) {
-    console.log('No user found');
+    console.log("No user found");
     return;
   }
-  
-  console.log('Fetching notifications for user:', user.email);
+
+  console.log("Fetching notifications for user:", user.email);
   try {
     const notifications = await prisma.notification.findMany({
       where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
-      take: 50
+      orderBy: { createdAt: "desc" },
+      take: 50,
     });
-    console.log('Success, found:', notifications.length);
+    console.log("Success, found:", notifications.length);
   } catch (error: unknown) {
-    console.error('Error fetching notifications:', error);
+    console.error("Error fetching notifications:", error);
   }
 }
 
 main()
-  .catch(e => {
+  .catch((e) => {
     console.error(e);
     process.exit(1);
   })

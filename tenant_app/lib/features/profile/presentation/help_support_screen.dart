@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tenant_app/core/theme/app_theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class HelpSupportScreen extends StatefulWidget {
@@ -39,15 +40,15 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Help & Support'),
         backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF18181B)),
+        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
         titleTextStyle: theme.textTheme.titleLarge?.copyWith(
-          color: const Color(0xFF18181B),
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -87,14 +88,14 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 );
               },
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.help_outline_rounded, color: Color(0xFF18181B)),
+              leading: const Icon(Icons.help_outline_rounded, color: AppTheme.textPrimary),
               title: const Text(
                 'Frequently Asked Questions',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFA1A1AA)),
+              trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
             ),
-            const Divider(height: 32, color: Color(0xFFE4E4E7)),
+            const Divider(height: 32, color: AppTheme.borderColor),
             ListTile(
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -102,12 +103,12 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 );
               },
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.menu_book_rounded, color: Color(0xFF18181B)),
+              leading: const Icon(Icons.menu_book_rounded, color: AppTheme.textPrimary),
               title: const Text(
                 'Tenant User Guide',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFA1A1AA)),
+              trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 64),
             Center(
@@ -147,7 +148,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.bold,
-          color: Color(0xFFA1A1AA),
+          color: AppTheme.textSecondary,
           letterSpacing: 1.2,
         ),
       ),
@@ -170,7 +171,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE4E4E7)),
+            border: Border.all(color: AppTheme.borderColor),
           ),
           child: Row(
             children: [
@@ -180,7 +181,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   color: const Color(0xFFF4F4F5),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: const Color(0xFF18181B), size: 28),
+                child: Icon(icon, color: AppTheme.textPrimary, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -192,7 +193,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF18181B),
+                        color: AppTheme.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -200,14 +201,14 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                       subtitle,
                       style: const TextStyle(
                         fontSize: 13,
-                        color: Color(0xFF71717A),
+                        color: AppTheme.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFFA1A1AA)),
+              const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
             ],
           ),
         ),

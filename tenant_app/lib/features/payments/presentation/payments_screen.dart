@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:tenant_app/core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -50,7 +51,10 @@ class PaymentsScreen extends ConsumerWidget {
           }
 
           return RefreshIndicator(
-            onRefresh: () => ref.read(paymentsProvider.notifier).fetchPayments(),
+            onRefresh: () async {
+              await ref.read(homeStateProvider.notifier).refresh();
+              await ref.read(paymentsProvider.notifier).fetchPayments();
+            },
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               children: [
@@ -105,7 +109,7 @@ class PaymentsScreen extends ConsumerWidget {
         onPressed: () => _showSubmitProofSheet(context, ref),
         icon: const Icon(Icons.upload_file_rounded),
         label: const Text('Submit Proof'),
-        backgroundColor: const Color(0xFF18181B),
+        backgroundColor: AppTheme.textPrimary,
         foregroundColor: Colors.white,
         elevation: 3,
       ),
@@ -129,7 +133,8 @@ class PaymentsScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       builder: (ctx) => _SubmitProofSheet(
         leases: tenant.leases!,
-        onSubmit: (leaseId, amount, base64Image, note) async {
+        allowPartialPayments: tenant.allowPartialPayments ?? false,
+        onSubmit: (leaseId, amount, base64Image, note, amountPaid, promiseDate) async {
           Navigator.of(ctx).pop();
           try {
             await ref.read(paymentsProvider.notifier).createAndSubmitProof(
@@ -137,6 +142,8 @@ class PaymentsScreen extends ConsumerWidget {
               amount: amount,
               base64Image: base64Image,
               note: note,
+              amountPaid: amountPaid,
+              promiseDate: promiseDate,
             );
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -173,9 +180,10 @@ class PaymentsScreen extends ConsumerWidget {
 
 class _SubmitProofSheet extends StatefulWidget {
   final List<dynamic> leases;
-  final Future<void> Function(String leaseId, double amount, String base64Image, String? note) onSubmit;
+  final bool allowPartialPayments;
+  final Future<void> Function(String leaseId, double amount, String base64Image, String? note, double? amountPaid, String? promiseDate) onSubmit;
 
-  const _SubmitProofSheet({required this.leases, required this.onSubmit});
+  const _SubmitProofSheet({required this.leases, required this.allowPartialPayments, required this.onSubmit});
 
   @override
   State<_SubmitProofSheet> createState() => _SubmitProofSheetState();
@@ -185,6 +193,9 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
   late String _selectedLeaseId;
   late double _amount;
   final _noteController = TextEditingController();
+  final _amountPaidController = TextEditingController();
+  DateTime? _promiseDate;
+  bool _isPartialPayment = false;
   XFile? _pickedImage;
   bool _isSubmitting = false;
 
@@ -199,6 +210,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
   @override
   void dispose() {
     _noteController.dispose();
+    _amountPaidController.dispose();
     super.dispose();
   }
 
@@ -226,6 +238,24 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
       return;
     }
 
+    double? parsedAmountPaid;
+    if (_isPartialPayment) {
+      final amountPaidStr = _amountPaidController.text.replaceAll(',', '').replaceAll('₦', '').trim();
+      parsedAmountPaid = double.tryParse(amountPaidStr);
+      if (parsedAmountPaid == null || parsedAmountPaid <= 0 || parsedAmountPaid >= _amount) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid partial amount')),
+        );
+        return;
+      }
+      if (_promiseDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a promise date')),
+        );
+        return;
+      }
+    }
+
     setState(() => _isSubmitting = true);
 
     final bytes = await _pickedImage!.readAsBytes();
@@ -236,6 +266,8 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
       _amount,
       base64Str,
       _noteController.text.isNotEmpty ? _noteController.text : null,
+      _isPartialPayment ? parsedAmountPaid : null,
+      _isPartialPayment && _promiseDate != null ? _promiseDate!.toIso8601String() : null,
     );
 
     if (mounted) setState(() => _isSubmitting = false);
@@ -281,10 +313,10 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF18181B).withAlpha(20),
+                    color: AppTheme.textPrimary.withAlpha(20),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.receipt_long, color: Color(0xFF18181B), size: 22),
+                  child: const Icon(Icons.receipt_long, color: AppTheme.textPrimary, size: 22),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -297,7 +329,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
                       ),
                       Text(
                         'Upload your payment receipt for verification',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF71717A)),
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                       ),
                     ],
                   ),
@@ -311,13 +343,13 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
             if (widget.leases.length > 1) ...[
               const Text(
                 'SELECT LEASE',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: Color(0xFF71717A)),
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE4E4E7)),
+                  border: Border.all(color: AppTheme.borderColor),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: DropdownButtonHideUnderline(
@@ -354,8 +386,8 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF18181B),
-                    const Color(0xFF18181B).withAlpha(216),
+                    AppTheme.textPrimary,
+                    AppTheme.textPrimary.withAlpha(216),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -384,12 +416,80 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
               ),
             ),
 
+            if (widget.allowPartialPayments) ...[
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'PARTIAL PAYMENT',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppTheme.textSecondary),
+                  ),
+                  Switch(
+                    value: _isPartialPayment,
+                    activeColor: AppTheme.textPrimary,
+                    onChanged: (val) {
+                      setState(() => _isPartialPayment = val);
+                    },
+                  ),
+                ],
+              ),
+              if (_isPartialPayment) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _amountPaidController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Amount Paid (₦)',
+                    hintText: 'e.g. 500000',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now().add(const Duration(days: 7)),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() => _promiseDate = picked);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppTheme.borderColor),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _promiseDate == null
+                              ? 'Select Promise Date'
+                              : 'Promise Date: ${DateFormat.yMMMd().format(_promiseDate!)}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: _promiseDate == null ? AppTheme.textSecondary : AppTheme.textPrimary,
+                          ),
+                        ),
+                        const Icon(Icons.calendar_today, size: 20, color: AppTheme.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+
             const SizedBox(height: 24),
 
             // Image picker
             const Text(
               'PROOF OF PAYMENT',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: Color(0xFF71717A)),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 8),
             if (_pickedImage != null)
@@ -447,7 +547,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
             // Note field
             const Text(
               'NOTE (OPTIONAL)',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: Color(0xFF71717A)),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -467,7 +567,7 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF18181B),
+                  backgroundColor: AppTheme.textPrimary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
@@ -512,17 +612,17 @@ class _ImagePickerButton extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.symmetric(vertical: 32),
           decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFE4E4E7), width: 1.5),
+            border: Border.all(color: AppTheme.borderColor, width: 1.5),
             borderRadius: BorderRadius.circular(14),
-            color: const Color(0xFFFAFAFA),
+            color: AppTheme.backgroundColor,
           ),
           child: Column(
             children: [
-              Icon(icon, size: 32, color: const Color(0xFF71717A)),
+              Icon(icon, size: 32, color: AppTheme.textSecondary),
               const SizedBox(height: 8),
               Text(
                 label,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF71717A)),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
               ),
             ],
           ),
@@ -545,40 +645,54 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
   bool _isLoading = false;
 
   Future<void> _submitProofOfPayment() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-    
-    if (image == null) return;
-    
-    final bytes = await image.readAsBytes();
-    final base64Str = base64Encode(bytes);
-    
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-    try {
-      await ref.read(paymentsProvider.notifier).submitProof(widget.payment.id, base64Str);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Proof submitted and is pending review.'),
-            backgroundColor: Colors.green.shade600,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Caught error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting proof: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+    final homeState = ref.read(homeStateProvider);
+    final tenant = homeState.valueOrNull;
+    final allowPartial = (tenant?.allowPartialPayments ?? false) && widget.payment.status != 'PARTIALLY_PAID';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _SubmitExistingProofSheet(
+        payment: widget.payment,
+        allowPartialPayments: allowPartial,
+        onSubmit: (base64Image, note, amountPaid, promiseDate) async {
+          Navigator.of(ctx).pop();
+          if (!mounted) return;
+          setState(() => _isLoading = true);
+          try {
+            await ref.read(paymentsProvider.notifier).submitProof(
+                  widget.payment.id,
+                  base64Image,
+                  note: note,
+                  amountPaid: amountPaid,
+                  promiseDate: promiseDate,
+                );
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Proof submitted and is pending review.'),
+                  backgroundColor: Colors.green.shade600,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              );
+            }
+          } catch (e) {
+            debugPrint('Caught error: $e');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error submitting proof: $e')),
+              );
+            }
+          } finally {
+            if (mounted) {
+              setState(() => _isLoading = false);
+            }
+          }
+        },
+      ),
+    );
   }
 
   @override
@@ -586,9 +700,11 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
     final payment = widget.payment;
     final isPaid = payment.status == 'PAID' || payment.status == 'COMPLETED';
     final isUnderReview = payment.status == 'UNDER_REVIEW';
-    final isRejected = payment.status == 'REJECTED';
-    final isOverdue = (!isPaid && !isUnderReview) && payment.dueDate.isBefore(DateTime.now());
     final isPartial = payment.status == 'PARTIALLY_PAID';
+    final isOverdue = (!isPaid && !isUnderReview && !isPartial) && payment.dueDate.isBefore(DateTime.now());
+
+    final hasPartialAmount = (payment.amountPaid ?? 0) > 0;
+    final isPartialState = isPartial || (isUnderReview && hasPartialAmount);
 
     Color statusColor;
     IconData statusIcon;
@@ -598,9 +714,6 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
     } else if (isUnderReview) {
       statusColor = Colors.blue.shade500;
       statusIcon = Icons.hourglass_top;
-    } else if (isRejected) {
-      statusColor = Colors.red.shade500;
-      statusIcon = Icons.cancel_outlined;
     } else if (isPartial) {
       statusColor = Colors.orange.shade700;
       statusIcon = Icons.pie_chart_outline;
@@ -612,7 +725,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
       statusIcon = Icons.pending_actions_outlined;
     }
 
-    final displayAmount = isPartial 
+    final displayAmount = isPartialState 
         ? (payment.amount - (payment.amountPaid ?? 0))
         : payment.amount;
 
@@ -643,7 +756,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                             NumberFormat.currency(symbol: '₦ ', decimalDigits: 2).format(displayAmount),
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.5),
                           ),
-                          if (isPartial) ...[
+                          if (isPartialState) ...[
                             const SizedBox(width: 4),
                             Text(
                               'Bal',
@@ -654,11 +767,11 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        isPartial && payment.promiseDate != null
+                        isPartialState && payment.promiseDate != null
                             ? 'Promised by: ${DateFormat.yMMMd().format(payment.promiseDate!)}'
                             : 'Due: ${DateFormat.yMMMd().format(payment.dueDate)}',
                         style: TextStyle(
-                            color: isPartial && payment.promiseDate != null && payment.promiseDate!.isBefore(DateTime.now()) 
+                            color: isPartialState && payment.promiseDate != null && payment.promiseDate!.isBefore(DateTime.now()) 
                                 ? Colors.red.shade600 
                                 : Colors.grey.shade600, 
                             fontSize: 13, 
@@ -737,8 +850,10 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Your proof is being reviewed by management',
-                        style: TextStyle(color: Colors.blue.shade900, fontSize: 13),
+                        hasPartialAmount 
+                            ? 'Your partial payment of ${NumberFormat.currency(symbol: '₦ ', decimalDigits: 0).format(payment.amountPaid)} is being reviewed'
+                            : 'Your proof is being reviewed by management',
+                        style: TextStyle(color: Colors.blue.shade800, fontSize: 13, height: 1.3),
                       ),
                     ),
                   ],
@@ -747,7 +862,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
             ],
 
             // Rejection reason
-            if (isRejected && payment.rejectionReason != null) ...[
+            if (!isPaid && !isUnderReview && payment.rejectionReason != null) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -772,21 +887,40 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
               const SizedBox(height: 16),
               const Divider(height: 1),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _submitProofOfPayment,
-                  icon: _isLoading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.upload_file),
-                  label: Text(isRejected ? 'Re-upload Proof' : 'Upload Proof'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showInvoiceDialog(context, payment),
+                      icon: const Icon(Icons.receipt_long),
+                      label: const Text('Invoice'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _submitProofOfPayment,
+                      icon: _isLoading
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.upload_file),
+                      label: Text(payment.rejectionReason != null ? 'Re-upload' : 'Pay / Proof'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ]
           ],
@@ -794,6 +928,134 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
       ),
     );
   }
+
+  void _showInvoiceDialog(BuildContext context, Payment payment) {
+    final homeState = ref.read(homeStateProvider);
+    final tenant = homeState.valueOrNull;
+    
+    // Find the property name/address from the lease
+    String propertyName = 'N/A';
+    dynamic paymentInfo;
+
+    if (tenant != null && tenant.leases != null) {
+      final lease = tenant.leases!.firstWhere(
+        (l) => l.id == payment.leaseId,
+        orElse: () => tenant.leases!.first,
+      );
+      final property = lease.property;
+      propertyName = property?.name ?? 'Property';
+      paymentInfo = lease.paymentInfo;
+    }
+
+    final isPartial = payment.status == 'PARTIALLY_PAID';
+    final amountDue = isPartial ? (payment.amount - (payment.amountPaid ?? 0)) : payment.amount;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade600,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: const Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.receipt_long, color: Colors.white, size: 48),
+                      SizedBox(height: 12),
+                      Text(
+                        'INVOICE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                    Text(
+                      NumberFormat.currency(symbol: '₦ ', decimalDigits: 2).format(amountDue),
+                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Text(
+                        'DUE: ${DateFormat.yMMMd().format(payment.dueDate)}',
+                        style: TextStyle(color: Colors.orange.shade800, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    _ReceiptRow(label: 'Property', value: propertyName),
+                    const SizedBox(height: 16),
+                    _ReceiptRow(label: 'Invoice ID', value: payment.id.substring(0, 8).toUpperCase()),
+                    const SizedBox(height: 16),
+                    _ReceiptRow(label: 'Date Issued', value: DateFormat.yMMMd().format(payment.dueDate)),
+                    const SizedBox(height: 32),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    const Text('PAYMENT DETAILS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey)),
+                    const SizedBox(height: 16),
+                    if (paymentInfo != null) ...[
+                      _ReceiptRow(label: 'Bank Code', value: paymentInfo.bankCode ?? 'N/A'),
+                      const SizedBox(height: 12),
+                      _ReceiptRow(label: 'Account Name', value: paymentInfo.accountName ?? 'N/A'),
+                      const SizedBox(height: 12),
+                      _ReceiptRow(label: 'Account No.', value: paymentInfo.accountNumber ?? 'N/A'),
+                    ] else ...[
+                      const Text('No payment information available.', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade200,
+                          foregroundColor: Colors.black87,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
   void _showReceiptDialog(BuildContext context, Payment payment) {
     final homeState = ref.read(homeStateProvider);
@@ -829,7 +1091,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 decoration: const BoxDecoration(
-                  color: Color(0xFF18181B),
+                  color: AppTheme.textPrimary,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: const Center(
@@ -852,13 +1114,16 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
               ),
 
               // Content
-              Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                     const Text(
                       'TOTAL AMOUNT PAID',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF71717A), letterSpacing: 1),
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.textSecondary, letterSpacing: 1),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -872,23 +1137,69 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                     _ReceiptRow(label: 'PROPERTY', value: propertyName),
                     _ReceiptRow(label: 'REFERENCE', value: payment.note ?? 'Rent Payment'),
                     
+                    if (payment.transactions.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'PAYMENT BREAKDOWN',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.textSecondary, letterSpacing: 1),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.borderColor),
+                        ),
+                        child: Column(
+                          children: payment.transactions.map((t) => Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      DateFormat.yMMMMd().format(t.createdAt),
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                                    ),
+                                    Text(
+                                      t.note ?? 'Payment',
+                                      style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  NumberFormat.currency(symbol: '₦ ', decimalDigits: 2).format(t.amount),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+                                ),
+                              ],
+                            ),
+                          )).toList(),
+                        ),
+                      ),
+                    ],
+                    
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
                       child: Row(
                         children: [
-                          Expanded(child: Divider(color: Color(0xFFE4E4E7), thickness: 2)),
+                          Expanded(child: Divider(color: AppTheme.borderColor, thickness: 2)),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Icon(Icons.qr_code_2, color: Color(0xFFD4D4D8), size: 32),
+                            child: Icon(Icons.qr_code_2, color: AppTheme.textSecondary, size: 32),
                           ),
-                          Expanded(child: Divider(color: Color(0xFFE4E4E7), thickness: 2)),
+                          Expanded(child: Divider(color: AppTheme.borderColor, thickness: 2)),
                         ],
                       ),
                     ),
                     
                     const Text(
                       'RECEIPT NUMBER',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF71717A), letterSpacing: 1),
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.textSecondary, letterSpacing: 1),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -897,6 +1208,8 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                     ),
                   ],
                 ),
+              ),
+              ),
               ),
 
               // Actions
@@ -907,7 +1220,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                     Expanded(
                       child: TextButton(
                         onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Close', style: TextStyle(color: Color(0xFF71717A), fontWeight: FontWeight.bold)),
+                        child: const Text('Close', style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -944,7 +1257,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                         icon: const Icon(Icons.share_rounded, size: 18),
                         label: const Text('Share'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF18181B),
+                          backgroundColor: AppTheme.textPrimary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
@@ -953,6 +1266,178 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                   ],
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SubmitExistingProofSheet extends StatefulWidget {
+  final dynamic payment;
+  final bool allowPartialPayments;
+  final Future<void> Function(String base64Image, String? note, double? amountPaid, String? promiseDate) onSubmit;
+
+  const _SubmitExistingProofSheet({required this.payment, required this.allowPartialPayments, required this.onSubmit});
+
+  @override
+  State<_SubmitExistingProofSheet> createState() => _SubmitExistingProofSheetState();
+}
+
+class _SubmitExistingProofSheetState extends State<_SubmitExistingProofSheet> {
+  final _noteController = TextEditingController();
+  final _amountPaidController = TextEditingController();
+  DateTime? _promiseDate;
+  bool _isPartialPayment = false;
+  XFile? _pickedImage;
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    _amountPaidController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image != null && mounted) setState(() => _pickedImage = image);
+  }
+
+  Future<void> _takePhoto() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    if (image != null && mounted) setState(() => _pickedImage = image);
+  }
+
+  Future<void> _submit() async {
+    if (_pickedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a proof of payment image')));
+      return;
+    }
+
+    double? parsedAmountPaid;
+    if (_isPartialPayment) {
+      final amountPaidStr = _amountPaidController.text.replaceAll(',', '').replaceAll('₦', '').trim();
+      parsedAmountPaid = double.tryParse(amountPaidStr);
+      final remainingBalance = widget.payment.amount - (widget.payment.amountPaid ?? 0);
+      if (parsedAmountPaid == null || parsedAmountPaid <= 0 || parsedAmountPaid >= remainingBalance) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid partial amount')));
+        return;
+      }
+      if (_promiseDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a promise date')));
+        return;
+      }
+    }
+
+    final bytes = await _pickedImage!.readAsBytes();
+    final base64Str = base64Encode(bytes);
+
+    await widget.onSubmit(base64Str, _noteController.text.isEmpty ? null : _noteController.text, parsedAmountPaid, _promiseDate?.toIso8601String());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 12),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 48, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Pay Existing Invoice', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                  if (widget.payment.status == 'PARTIALLY_PAID') ...[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text('BALANCE DUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppTheme.textSecondary)),
+                        const SizedBox(height: 2),
+                        Text(
+                          NumberFormat.currency(symbol: '₦ ', decimalDigits: 2).format(widget.payment.amount - (widget.payment.amountPaid ?? 0)),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primaryColor),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 32),
+              
+              if (widget.allowPartialPayments) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('PARTIAL PAYMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppTheme.textSecondary)),
+                    Switch(
+                      value: _isPartialPayment,
+                      activeColor: AppTheme.textPrimary,
+                      onChanged: (val) => setState(() => _isPartialPayment = val),
+                    ),
+                  ],
+                ),
+                if (_isPartialPayment) ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _amountPaidController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(labelText: 'Amount Paid (₦)', hintText: 'e.g. 500000', border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
+                  ),
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(context: context, initialDate: DateTime.now().add(const Duration(days: 7)), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                      if (picked != null) setState(() => _promiseDate = picked);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(border: Border.all(color: AppTheme.borderColor), borderRadius: BorderRadius.circular(14)),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_promiseDate == null ? 'Select Promise Date' : 'Promise Date: ${DateFormat.yMMMd().format(_promiseDate!)}', style: TextStyle(fontSize: 14, color: _promiseDate == null ? AppTheme.textSecondary : AppTheme.textPrimary)),
+                          const Icon(Icons.calendar_today, size: 20, color: AppTheme.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ],
+
+              const Text('PROOF OF PAYMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppTheme.textSecondary)),
+              const SizedBox(height: 12),
+              if (_pickedImage != null)
+                Container(height: 140, width: double.infinity, decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.borderColor), image: DecorationImage(image: FileImage(File(_pickedImage!.path)), fit: BoxFit.cover)))
+              else
+                Row(
+                  children: [
+                    Expanded(child: InkWell(onTap: _pickImage, child: Container(height: 100, decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.borderColor)), child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.photo_library_outlined, color: AppTheme.textPrimary, size: 32), SizedBox(height: 8), Text('Gallery', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600))])))),
+                    const SizedBox(width: 16),
+                    Expanded(child: InkWell(onTap: _takePhoto, child: Container(height: 100, decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.borderColor)), child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.camera_alt_outlined, color: AppTheme.textPrimary, size: 32), SizedBox(height: 8), Text('Camera', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600))])))),
+                  ],
+                ),
+
+              const SizedBox(height: 24),
+              const Text('NOTE (OPTIONAL)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppTheme.textSecondary)),
+              const SizedBox(height: 8),
+              TextField(controller: _noteController, maxLines: 2, decoration: const InputDecoration(hintText: 'e.g. Bank transfer reference #12345', hintStyle: TextStyle(fontSize: 13))),
+
+              const SizedBox(height: 28),
+              SizedBox(width: double.infinity, height: 56, child: ElevatedButton(onPressed: _submit, style: ElevatedButton.styleFrom(backgroundColor: AppTheme.textPrimary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), elevation: 0), child: const Text('Submit Proof', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)))),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -976,7 +1461,7 @@ class _ReceiptRow extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFA1A1AA)),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
           ),
           Text(
             value,
@@ -1000,9 +1485,9 @@ class _PaymentAccountCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F9FF), // Light blue
+        color: AppTheme.backgroundColor, // Light blue
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFBAE6FD)),
+        border: Border.all(color: AppTheme.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1012,10 +1497,10 @@ class _PaymentAccountCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withAlpha(25),
+                  color: AppTheme.primaryColor.withAlpha(25),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.account_balance_rounded, color: Color(0xFF0284C7), size: 20),
+                child: const Icon(Icons.account_balance_rounded, color: AppTheme.primaryColor, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1025,7 +1510,7 @@ class _PaymentAccountCard extends StatelessWidget {
                     const Text(
                       'PAYMENT ACCOUNT',
                       style: TextStyle(
-                        color: Color(0xFF0369A1),
+                        color: AppTheme.primaryColor,
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.1,
@@ -1036,7 +1521,7 @@ class _PaymentAccountCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF0C4A6E),
+                        color: AppTheme.accentColor,
                       ),
                     ),
                   ],
@@ -1045,7 +1530,7 @@ class _PaymentAccountCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const Divider(color: Color(0xFFBAE6FD), height: 1),
+          const Divider(color: AppTheme.borderColor, height: 1),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1053,11 +1538,11 @@ class _PaymentAccountCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Account Number', style: TextStyle(color: Color(0xFF0369A1), fontSize: 11)),
+                  const Text('Account Number', style: TextStyle(color: AppTheme.primaryColor, fontSize: 11)),
                   const SizedBox(height: 2),
                   Text(
                     paymentInfo.accountNumber ?? 'N/A',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: Color(0xFF0C4A6E)),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: AppTheme.accentColor),
                   ),
                 ],
               ),
@@ -1065,11 +1550,11 @@ class _PaymentAccountCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text('Bank', style: TextStyle(color: Color(0xFF0369A1), fontSize: 11)),
+                    const Text('Bank', style: TextStyle(color: AppTheme.primaryColor, fontSize: 11)),
                     const SizedBox(height: 2),
                     Text(
                       NigerianBanks.getBankName(paymentInfo.bankCode),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0C4A6E)),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.accentColor),
                     ),
                   ],
                 ),
@@ -1088,7 +1573,7 @@ class _PaymentAccountCard extends StatelessWidget {
                 Icon(
                   isDirect ? Icons.person_pin_rounded : Icons.business_center_rounded,
                   size: 14,
-                  color: const Color(0xFF0369A1),
+                  color: AppTheme.primaryColor,
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -1096,7 +1581,7 @@ class _PaymentAccountCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF0369A1),
+                    color: AppTheme.primaryColor,
                   ),
                 ),
               ],

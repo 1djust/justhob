@@ -1,15 +1,14 @@
-
-import { prisma } from './packages/database';
+import { prisma } from "./packages/database";
 
 async function main() {
   const users = await prisma.user.findMany({
     include: {
       workspaces: {
         include: {
-          workspace: true
-        }
-      }
-    }
+          workspace: true,
+        },
+      },
+    },
   });
 
   console.log(JSON.stringify(users, null, 2));

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tenant_app/core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'home_notifier.dart';
@@ -383,7 +384,7 @@ class _LeaseCard extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             Theme.of(context).colorScheme.primary,
-            const Color(0xFF1E293B), // Slate 800
+            AppTheme.textPrimary, // Slate 800
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -746,10 +747,10 @@ class _DashboardPaymentAccountCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withAlpha(25),
+                  color: AppTheme.primaryColor.withAlpha(25),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.account_balance_wallet, color: Color(0xFF0284C7), size: 22),
+                child: const Icon(Icons.account_balance_wallet, color: AppTheme.primaryColor, size: 22),
               ),
               const SizedBox(width: 14),
               const Expanded(
@@ -759,7 +760,7 @@ class _DashboardPaymentAccountCard extends StatelessWidget {
                     Text(
                       'RENT PAYMENT ACCOUNT',
                       style: TextStyle(
-                        color: Color(0xFF0284C7),
+                        color: AppTheme.primaryColor,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.2,
@@ -768,7 +769,7 @@ class _DashboardPaymentAccountCard extends StatelessWidget {
                     Text(
                       'Transfer your rent here',
                       style: TextStyle(
-                        color: Color(0xFF64748B),
+                        color: AppTheme.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -781,22 +782,22 @@ class _DashboardPaymentAccountCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: AppTheme.backgroundColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
+              border: Border.all(color: AppTheme.borderColor),
             ),
             child: Column(
               children: [
                 _AccountRow(label: 'Account Name', value: paymentInfo.accountName ?? 'N/A'),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  child: Divider(height: 1, color: AppTheme.borderColor),
                 ),
                 _AccountRow(label: 'Account Number', value: paymentInfo.accountNumber ?? 'N/A', isCopyable: true),
                 if (paymentInfo.bankCode != null) ...[
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                    child: Divider(height: 1, color: AppTheme.borderColor),
                   ),
                   _AccountRow(label: 'Bank', value: NigerianBanks.getBankName(paymentInfo.bankCode)),
                 ],
@@ -850,14 +851,14 @@ class _AccountRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
         ),
         Row(
           children: [
             Text(
               value,
               style: const TextStyle(
-                color: Color(0xFF1E293B),
+                color: AppTheme.textPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
@@ -924,7 +925,16 @@ class _OverdueBanner extends StatelessWidget {
                 ((p.amountPaid as num?)?.toDouble() ?? 0);
             
             final daysOverdue = DateTime.now().difference(p.dueDate).inDays;
-            final overdueText = daysOverdue > 0 ? 'Overdue by $daysOverdue days' : 'Amount due';
+            final isPartial = p.status == 'PARTIALLY_PAID' || ((p.amountPaid as num?)?.toDouble() ?? 0) > 0;
+            
+            String rowLabel;
+            if (isPartial) {
+              rowLabel = 'Balance (due ${DateFormat('MMM d').format(p.dueDate)})';
+            } else if (daysOverdue > 0) {
+              rowLabel = 'Overdue (${daysOverdue}d) — ${DateFormat('MMM d').format(p.dueDate)}';
+            } else {
+              rowLabel = 'Due ${DateFormat('MMM d').format(p.dueDate)}';
+            }
             
             return Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -932,9 +942,7 @@ class _OverdueBanner extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    p.status == 'PARTIALLY_PAID'
-                        ? 'Partially paid — balance due'
-                        : overdueText,
+                    rowLabel,
                     style: TextStyle(color: Colors.red.shade600, fontSize: 13),
                   ),
                   Text(

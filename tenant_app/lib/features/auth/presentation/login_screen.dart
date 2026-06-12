@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tenant_app/core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'auth_notifier.dart';
@@ -239,7 +240,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 40.0),
@@ -265,7 +266,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                     child: Icon(
                       Icons.apartment_rounded,
                       size: 72,
-                      color: const Color(0xFF18181B),
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -274,7 +275,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                     'Welcome Back',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF18181B),
+                      color: AppTheme.textPrimary,
                       letterSpacing: -0.5,
                       fontSize: 28,
                     ),
@@ -284,7 +285,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                   Text(
                     'Sign in to your tenant portal',
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: const Color(0xFF71717A),
+                      color: AppTheme.textSecondary,
                       fontSize: 15,
                     ),
                     textAlign: TextAlign.center,
@@ -296,25 +297,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                     controller: _emailController,
                     enabled: !isLoading,
                     onChanged: _onInputChanged,
-                    style: const TextStyle(color: Color(0xFF18181B), fontSize: 15),
+                    style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15),
                     decoration: InputDecoration(
                       hintText: 'Email Address',
-                      hintStyle: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 15),
-                      prefixIcon: const Icon(Icons.mail_outline_rounded, color: Color(0xFFA1A1AA), size: 22),
+                      hintStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+                      prefixIcon: const Icon(Icons.mail_outline_rounded, color: AppTheme.textSecondary, size: 22),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+                        borderSide: const BorderSide(color: AppTheme.borderColor),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+                        borderSide: const BorderSide(color: AppTheme.borderColor),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF18181B), width: 1.5),
+                        borderSide: const BorderSide(color: AppTheme.textPrimary, width: 1.5),
                       ),
                     ),
                     keyboardType: TextInputType.emailAddress,
@@ -327,17 +328,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                     controller: _passwordController,
                     enabled: !isLoading,
                     onChanged: _onInputChanged,
-                    style: const TextStyle(color: Color(0xFF18181B), fontSize: 15),
+                    style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15),
                     decoration: InputDecoration(
                       hintText: 'Password',
-                      hintStyle: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 15),
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFFA1A1AA), size: 22),
+                      hintStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.textSecondary, size: 22),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
                               ? Icons.visibility_off_outlined
                               : Icons.visibility_outlined,
-                          color: const Color(0xFFA1A1AA),
+                          color: AppTheme.textSecondary,
                           size: 22,
                         ),
                         onPressed: isLoading
@@ -353,15 +354,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+                        borderSide: const BorderSide(color: AppTheme.borderColor),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+                        borderSide: const BorderSide(color: AppTheme.borderColor),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF18181B), width: 1.5),
+                        borderSide: const BorderSide(color: AppTheme.textPrimary, width: 1.5),
                       ),
                     ),
                     obscureText: _obscurePassword,
@@ -374,7 +375,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                     child: TextButton(
                       onPressed: () => _showForgotPasswordDialog(context),
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF18181B),
+                        foregroundColor: AppTheme.textPrimary,
                         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                       ),
                       child: const Text('Forgot Password?'),
@@ -387,9 +388,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                     child: ElevatedButton(
                       onPressed: isLoading ? null : _handleLogin,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF18181B),
+                        backgroundColor: AppTheme.textPrimary,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor: const Color(0xFF18181B).withAlpha(150),
+                        disabledBackgroundColor: AppTheme.textPrimary.withAlpha(150),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -418,7 +419,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                       Text(
                         'Need an account?',
                         style: TextStyle(
-                          color: const Color(0xFF71717A),
+                          color: AppTheme.textSecondary,
                           fontSize: 14,
                         ),
                       ),
@@ -431,7 +432,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                         child: const Text(
                           'Contact Manager',
                           style: TextStyle(
-                            color: Color(0xFF18181B),
+                            color: AppTheme.textPrimary,
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
@@ -448,7 +449,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                         child: Icon(
                           Icons.fingerprint,
                           size: 44,
-                          color: const Color(0xFF71717A),
+                          color: AppTheme.textSecondary,
                         ),
                       ),
                     ),

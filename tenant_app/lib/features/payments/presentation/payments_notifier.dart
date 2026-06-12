@@ -58,12 +58,14 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
     }
   }
 
-  Future<void> submitProof(String paymentId, String base64Image, {String? note}) async {
+  Future<void> submitProof(String paymentId, String base64Image, {String? note, double? amountPaid, String? promiseDate}) async {
     try {
       await _repository.uploadPaymentProof(
         paymentId: paymentId,
         base64Image: base64Image,
         note: note,
+        amountPaid: amountPaid,
+        promiseDate: promiseDate,
       );
       // Fetch latest payments to reflect the UNDER_REVIEW status
       await fetchPayments();
@@ -79,6 +81,8 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
     required double amount,
     required String base64Image,
     String? note,
+    double? amountPaid,
+    String? promiseDate,
   }) async {
     try {
       // Step 1: Create the payment record
@@ -86,6 +90,8 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
         amount: amount,
         leaseId: leaseId,
         note: note,
+        amountPaid: amountPaid,
+        promiseDate: promiseDate,
       );
 
       // Step 2: Submit the proof image to the newly created payment
@@ -93,6 +99,8 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
         paymentId: paymentId,
         base64Image: base64Image,
         note: note,
+        amountPaid: amountPaid,
+        promiseDate: promiseDate,
       );
 
       // Refresh the list

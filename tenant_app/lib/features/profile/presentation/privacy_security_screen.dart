@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tenant_app/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/biometric_service.dart';
 
@@ -82,15 +83,15 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Privacy & Security'),
         backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF18181B)),
+        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
         titleTextStyle: theme.textTheme.titleLarge?.copyWith(
-          color: const Color(0xFF18181B),
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -103,15 +104,15 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             ListTile(
               onTap: () => context.push('/change-password'),
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.password_rounded, color: Color(0xFF18181B)),
+              leading: const Icon(Icons.password_rounded, color: AppTheme.textPrimary),
               title: const Text(
                 'Change Password',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
               ),
-              subtitle: const Text('Update your login password securely.', style: TextStyle(color: Color(0xFF71717A))),
-              trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFA1A1AA)),
+              subtitle: const Text('Update your login password securely.', style: TextStyle(color: AppTheme.textSecondary)),
+              trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
             ),
-            const Divider(height: 32, color: Color(0xFFE4E4E7)),
+            const Divider(height: 32, color: AppTheme.borderColor),
             if (_isLoadingBiometric)
               const Center(child: CircularProgressIndicator())
             else if (_biometricAvailable)
@@ -121,11 +122,11 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                   'Biometric Login',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                 ),
-                subtitle: const Text('Use fingerprint or FaceID to sign in.', style: TextStyle(color: Color(0xFF71717A))),
+                subtitle: const Text('Use fingerprint or FaceID to sign in.', style: TextStyle(color: AppTheme.textSecondary)),
                 value: _biometricEnabled,
                 onChanged: _toggleBiometric,
-                activeColor: const Color(0xFF18181B),
-                secondary: const Icon(Icons.fingerprint_rounded, color: Color(0xFF18181B)),
+                activeColor: AppTheme.textPrimary,
+                secondary: const Icon(Icons.fingerprint_rounded, color: AppTheme.textPrimary),
               ),
             if (_biometricAvailable) const SizedBox(height: 32),
             _buildSectionHeader('Privacy'),
@@ -136,15 +137,15 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 );
               },
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.policy_outlined, color: Color(0xFF18181B)),
+              leading: const Icon(Icons.policy_outlined, color: AppTheme.textPrimary),
               title: const Text(
                 'Privacy Policy',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
               ),
-              subtitle: const Text('Review how we handle your data.', style: TextStyle(color: Color(0xFF71717A))),
-              trailing: const Icon(Icons.open_in_new_rounded, color: Color(0xFFA1A1AA)),
+              subtitle: const Text('Review how we handle your data.', style: TextStyle(color: AppTheme.textSecondary)),
+              trailing: const Icon(Icons.open_in_new_rounded, color: AppTheme.textSecondary),
             ),
-            const Divider(height: 32, color: Color(0xFFE4E4E7)),
+            const Divider(height: 32, color: AppTheme.borderColor),
             ListTile(
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -152,12 +153,12 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 );
               },
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.description_outlined, color: Color(0xFF18181B)),
+              leading: const Icon(Icons.description_outlined, color: AppTheme.textPrimary),
               title: const Text(
                 'Terms of Service',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
               ),
-              trailing: const Icon(Icons.open_in_new_rounded, color: Color(0xFFA1A1AA)),
+              trailing: const Icon(Icons.open_in_new_rounded, color: AppTheme.textSecondary),
             ),
           ],
         ),
@@ -173,7 +174,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
         style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.bold,
-          color: Color(0xFFA1A1AA),
+          color: AppTheme.textSecondary,
           letterSpacing: 1.2,
         ),
       ),

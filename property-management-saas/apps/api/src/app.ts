@@ -1,34 +1,36 @@
-import 'dotenv/config';
-import Fastify from 'fastify';
-import cors from '@fastify/cors';
-import cookie from '@fastify/cookie';
-import helmet from '@fastify/helmet';
-import rateLimit from '@fastify/rate-limit';
-import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import errorLoggerPlugin from './plugins/error-logger';
-import publicLogRoutes from './routes/public-logs';
+import "dotenv/config";
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
+import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
+import errorLoggerPlugin from "./plugins/error-logger";
+import publicLogRoutes from "./routes/public-logs";
+import { SecurityService } from "./services/security";
 
-import authRoutes from './routes/auth';
-import workspaceRoutes from './routes/workspaces';
-import propertiesRoutes from './routes/properties';
-import tenantRoutes from './routes/tenants';
-import paymentRoutes from './routes/payments';
-import maintenanceRoutes from './routes/maintenance';
-import publicRoutes from './routes/public';
-import tenantProfileRoutes from './routes/tenant-profile';
-import webhookRoutes from './routes/webhooks';
-import ownerRoutes from './routes/owners';
-import notificationRoutes from './routes/notifications';
-import bankVerificationRoutes from './routes/bank-verification';
-import leaseRoutes from './routes/leases';
-import exportRoutes from './routes/exports';
-import leaseRenewalRoutes from './routes/lease-renewals';
-import adminRoutes from './routes/admin';
-import superAdminRoutes from './routes/super-admin';
-import uploadRoutes from './routes/upload';
-import socketPlugin from './plugins/socket';
-import { setupOverdueChecker } from './cron/overdue-checker';
-import { setupLeaseExpiryReminder } from './cron/lease-expiry-reminder';
+import authRoutes from "./routes/auth";
+import workspaceRoutes from "./routes/workspaces";
+import propertiesRoutes from "./routes/properties";
+import timelineRoutes from "./routes/timeline";
+import tenantRoutes from "./routes/tenants";
+import paymentRoutes from "./routes/payments";
+import maintenanceRoutes from "./routes/maintenance";
+import publicRoutes from "./routes/public";
+import tenantProfileRoutes from "./routes/tenant-profile";
+import webhookRoutes from "./routes/webhooks";
+import ownerRoutes from "./routes/owners";
+import notificationRoutes from "./routes/notifications";
+import bankVerificationRoutes from "./routes/bank-verification";
+import leaseRoutes from "./routes/leases";
+import exportRoutes from "./routes/exports";
+import leaseRenewalRoutes from "./routes/lease-renewals";
+import adminRoutes from "./routes/admin";
+import superAdminRoutes from "./routes/super-admin";
+import uploadRoutes from "./routes/upload";
+import socketPlugin from "./plugins/socket";
+import { setupOverdueChecker } from "./cron/overdue-checker";
+import { setupLeaseExpiryReminder } from "./cron/lease-expiry-reminder";
 
 interface FastifyErrorWithMeta extends Error {
   statusCode?: number;
@@ -38,15 +40,15 @@ interface FastifyErrorWithMeta extends Error {
 }
 
 export function buildApp() {
-  const fastify = Fastify({ 
+  const fastify = Fastify({
     logger: true,
-    bodyLimit: 10 * 1024 * 1024 // 10MB for image uploads
+    bodyLimit: 10 * 1024 * 1024, // 10MB for image uploads
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   // Security: Restrict CORS to known frontend origins only
   const allowedOrigins = [
-    'http://localhost:3000',
-    'https://justhob.vercel.app',
+    "http://localhost:3000",
+    "https://justhob.vercel.app",
     process.env.FRONTEND_URL,
   ].filter(Boolean) as string[];
 
@@ -56,15 +58,17 @@ export function buildApp() {
   });
 
   // PRODUCTION HARDENING: Check for mandatory secrets
-  const isProd = process.env.NODE_ENV === 'production';
+  const isProd = process.env.NODE_ENV === "production";
   const cookieSecret = process.env.COOKIE_SECRET;
-  
-  if (isProd && (!cookieSecret || cookieSecret === 'super-secret-cookie-key')) {
-    throw new Error('PRODUCTION ERROR: COOKIE_SECRET must be set to a secure unique value in production environments.');
+
+  if (isProd && (!cookieSecret || cookieSecret === "super-secret-cookie-key")) {
+    throw new Error(
+      "PRODUCTION ERROR: COOKIE_SECRET must be set to a secure unique value in production environments.",
+    );
   }
 
   fastify.register(cookie, {
-    secret: cookieSecret || 'super-secret-cookie-key',
+    secret: cookieSecret || "super-secret-cookie-key",
   });
 
   // Security: HTTP security headers (CSP, X-Frame-Options, HSTS, etc.)
@@ -75,7 +79,7 @@ export function buildApp() {
   // Security: Rate limiting — prevents brute force and DDoS
   fastify.register(rateLimit, {
     max: 100,
-    timeWindow: '1 minute',
+    timeWindow: "1 minute",
   });
 
   // Production monitoring — custom zero-cost logger using Supabase
@@ -85,45 +89,76 @@ export function buildApp() {
   fastify.register(socketPlugin);
 
   // Initialize background cron jobs
-  setupOverdueChecker(fastify as unknown as Parameters<typeof setupOverdueChecker>[0]);
-  setupLeaseExpiryReminder(fastify as unknown as Parameters<typeof setupLeaseExpiryReminder>[0]);
+  setupOverdueChecker(
+    fastify as unknown as Parameters<typeof setupOverdueChecker>[0],
+  );
+  setupLeaseExpiryReminder(
+    fastify as unknown as Parameters<typeof setupLeaseExpiryReminder>[0],
+  );
+
+  // Global Security Hook to monitor anomalous events
+  fastify.addHook("onSend", async (request, reply, payload) => {
+    const code = reply.statusCode;
+    if (code === 401 || code === 403 || code === 429) {
+      let eventType = "UNAUTHORIZED_API_ACCESS";
+      if (code === 429) eventType = "RATE_LIMIT_EXCEEDED";
+      
+      SecurityService.logEvent(
+        request.ip,
+        eventType,
+        { url: request.url, method: request.method, userAgent: request.headers["user-agent"] }
+      ).catch(err => request.log.error({ err }, "[Security Hook Error]"));
+    }
+  });
 
   // Global Error Handler
   fastify.setErrorHandler((error, request, reply) => {
     const err = error as FastifyErrorWithMeta;
     // Determine status code
     const statusCode = err.statusCode || err.status || 500;
-    
+
     // Extract error details safely
-    let errorMessage = error.message || 'Internal Server Error';
-    
+    let errorMessage = error.message || "Internal Server Error";
+
     // Sanitize raw Prisma and database connection errors for the frontend
-    if (errorMessage.includes('Can\'t reach database server') || errorMessage.includes('PrismaClientInitializationError')) {
-      errorMessage = 'Unable to connect to the database. Please check your internet connection and try again.';
-    } else if (errorMessage.includes('\n') && errorMessage.includes('invocation in')) {
+    if (
+      errorMessage.includes("Can't reach database server") ||
+      errorMessage.includes("PrismaClientInitializationError")
+    ) {
+      errorMessage =
+        "Unable to connect to the database. Please check your internet connection and try again.";
+    } else if (
+      errorMessage.includes("\n") &&
+      errorMessage.includes("invocation in")
+    ) {
       // Hide raw Prisma stack traces
-      errorMessage = 'An unexpected database error occurred. Please try again later.';
+      errorMessage =
+        "An unexpected database error occurred. Please try again later.";
+    } else if (errorMessage.includes("must match pattern") && errorMessage.includes("newPassword")) {
+      errorMessage =
+        "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.";
     }
 
-    const errorCode = err.code || (statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
-    
+    const errorCode =
+      err.code || (statusCode >= 500 ? "INTERNAL_SERVER_ERROR" : "BAD_REQUEST");
+
     // Safely handle details (ensure it's not nested if already structured)
     let errorDetails = err.details || undefined;
-    
+
     // Log the error
     if (statusCode === 400) {
       console.error(`[400 Error] ${request.method} ${request.url}:`, {
         message: error.message,
         body: request.body,
         params: request.params,
-        query: request.query
+        query: request.query,
       });
     } else {
-      console.error({ 
-        err: error, 
+      console.error({
+        err: error,
         requestId: request.id,
         url: request.url,
-        method: request.method
+        method: request.method,
       });
     }
 
@@ -134,73 +169,105 @@ export function buildApp() {
         message: errorMessage,
         code: String(errorCode),
         details: errorDetails,
-        requestId: request.id
-      }
+        requestId: request.id,
+      },
     });
   });
 
-  fastify.get('/health', { schema: {} }, async () => {
-    return { status: 'ok' };
+  fastify.get("/health", { schema: {} }, async () => {
+    return { status: "ok" };
   });
 
   // Backward compatibility route for older mobile app clients (v0.1.3 and below).
   // These clients still look at onrender.com/downloads/version.json due to hardcoded logic.
-  fastify.get('/downloads/version.json', { schema: {} }, async () => {
+  fastify.get("/downloads/version.json", { schema: {} }, async () => {
     return {
       latestVersion: "0.1.4",
       latestBuildNumber: 5,
       isMandatory: true,
-      downloadUrl: "https://justhob.vercel.app/downloads/propertystack-tenant.apk",
-      releaseNotes: "• Fixed silent authentication failure on physical devices\n• Added precise login error messages\n• Enhanced hardware secure storage configuration\n• Fixed update system URL"
+      downloadUrl:
+        "https://justhob.vercel.app/downloads/propertystack-tenant.apk",
+      releaseNotes:
+        "• Fixed silent authentication failure on physical devices\n• Added precise login error messages\n• Enhanced hardware secure storage configuration\n• Fixed update system URL",
     };
   });
 
   // Security: Stricter rate limit for auth endpoints (brute force prevention)
-  fastify.register(async (scope) => {
-    scope.register(rateLimit, {
-      max: 10,
-      timeWindow: '1 minute',
-      keyGenerator: (request) => request.ip,
-    });
-    scope.register(authRoutes);
-  }, { prefix: '/api/auth' });
-  fastify.register(workspaceRoutes, { prefix: '/api/workspaces' });
-  fastify.register(propertiesRoutes, { prefix: '/api/workspaces/:workspaceId/properties' });
-  fastify.register(tenantRoutes, { prefix: '/api/workspaces/:workspaceId/tenants' });
-  fastify.register(paymentRoutes, { prefix: '/api/workspaces/:workspaceId/payments' });
-  fastify.register(maintenanceRoutes, { prefix: '/api/workspaces/:workspaceId/maintenance' });
-  fastify.register(ownerRoutes, { prefix: '/api/workspaces/:workspaceId/owners' });
-  fastify.register(tenantProfileRoutes, { prefix: '/api/tenant' });
-  fastify.register(notificationRoutes, { prefix: '/api/notifications' });
-  fastify.register(publicRoutes, { prefix: '/api/public' });
-  fastify.register(webhookRoutes, { prefix: '/api/public/webhooks' });
+  fastify.register(
+    async (scope) => {
+      scope.register(rateLimit, {
+        max: 10,
+        timeWindow: "1 minute",
+        keyGenerator: (request) => request.ip,
+      });
+      scope.register(authRoutes);
+    },
+    { prefix: "/api/auth" },
+  );
+  fastify.register(workspaceRoutes, { prefix: "/api/workspaces" });
+  fastify.register(propertiesRoutes, {
+    prefix: "/api/workspaces/:workspaceId/properties",
+  });
+  fastify.register(timelineRoutes, {
+    prefix: "/api/workspaces/:workspaceId/timeline",
+  });
+  fastify.register(tenantRoutes, {
+    prefix: "/api/workspaces/:workspaceId/tenants",
+  });
+  fastify.register(paymentRoutes, {
+    prefix: "/api/workspaces/:workspaceId/payments",
+  });
+  fastify.register(maintenanceRoutes, {
+    prefix: "/api/workspaces/:workspaceId/maintenance",
+  });
+  fastify.register(ownerRoutes, {
+    prefix: "/api/workspaces/:workspaceId/owners",
+  });
+  fastify.register(tenantProfileRoutes, { prefix: "/api/tenant" });
+  fastify.register(notificationRoutes, { prefix: "/api/notifications" });
+  fastify.register(publicRoutes, { prefix: "/api/public" });
+  fastify.register(webhookRoutes, { prefix: "/api/public/webhooks" });
 
   // Security: Extremely strict rate limit for public logs to prevent DB exhaustion
-  fastify.register(async (scope) => {
-    scope.register(rateLimit, {
-      max: 5,
-      timeWindow: '1 minute',
-      keyGenerator: (request) => request.ip,
-    });
-    scope.register(publicLogRoutes);
-  }, { prefix: '/api/public' });
-  fastify.register(bankVerificationRoutes, { prefix: '/api/workspaces/:workspaceId/bank' });
-  fastify.register(leaseRoutes, { prefix: '/api/workspaces/:workspaceId/leases' });
-  fastify.register(leaseRenewalRoutes, { prefix: '/api/workspaces/:workspaceId' });
-  fastify.register(exportRoutes, { prefix: '/api/workspaces/:workspaceId/export' });
-  fastify.register(adminRoutes, { prefix: '/api/admin' });
+  fastify.register(
+    async (scope) => {
+      scope.register(rateLimit, {
+        max: 5,
+        timeWindow: "1 minute",
+        keyGenerator: (request) => request.ip,
+      });
+      scope.register(publicLogRoutes);
+    },
+    { prefix: "/api/public" },
+  );
+  fastify.register(bankVerificationRoutes, {
+    prefix: "/api/workspaces/:workspaceId/bank",
+  });
+  fastify.register(leaseRoutes, {
+    prefix: "/api/workspaces/:workspaceId/leases",
+  });
+  fastify.register(leaseRenewalRoutes, {
+    prefix: "/api/workspaces/:workspaceId",
+  });
+  fastify.register(exportRoutes, {
+    prefix: "/api/workspaces/:workspaceId/export",
+  });
+  fastify.register(adminRoutes, { prefix: "/api/admin" });
 
   // Security: Stricter rate limit for super-admin routes (data exfiltration prevention)
-  fastify.register(async (scope) => {
-    scope.register(rateLimit, {
-      max: 20,
-      timeWindow: '1 minute',
-      keyGenerator: (request) => request.ip,
-    });
-    scope.register(superAdminRoutes);
-  }, { prefix: '/api/super-admin' });
+  fastify.register(
+    async (scope) => {
+      scope.register(rateLimit, {
+        max: 20,
+        timeWindow: "1 minute",
+        keyGenerator: (request) => request.ip,
+      });
+      scope.register(superAdminRoutes);
+    },
+    { prefix: "/api/super-admin" },
+  );
 
-  fastify.register(uploadRoutes, { prefix: '/api/uploads' });
+  fastify.register(uploadRoutes, { prefix: "/api/uploads" });
 
   return fastify;
 }

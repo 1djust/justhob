@@ -1,11 +1,16 @@
-import { supabase } from './supabase';
-import { toast } from 'sonner';
+import { supabase } from "./supabase";
+import { toast } from "sonner";
 
-const isProduction = typeof window !== 'undefined' && 
-  (window.location.hostname === 'propertystack.vercel.app' || !window.location.hostname.includes('localhost'));
+const isProduction =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "propertystack.vercel.app" ||
+    !window.location.hostname.includes("localhost"));
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
-  (isProduction ? 'https://propertystack.onrender.com' : 'http://localhost:3001');
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (isProduction
+    ? "https://propertystack.onrender.com"
+    : "http://localhost:3001");
 
 export interface ApiOptions extends RequestInit {
   silent?: boolean;
@@ -14,11 +19,11 @@ export interface ApiOptions extends RequestInit {
 export class ApiError extends Error {
   status: number;
   code?: string;
-  details?: any;
+  details?: unknown;
 
-  constructor(message: string, status: number, code?: string, details?: any) {
+  constructor(message: string, status: number, code?: string, details?: unknown) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.details = details;
@@ -28,67 +33,78 @@ export class ApiError extends Error {
 export async function apiFetch(url: string, options: ApiOptions = {}) {
   const { data } = await supabase.auth.getSession();
   const session = data?.session;
-  
+
   const headers = new Headers(options.headers || {});
   if (session?.access_token) {
-    headers.set('Authorization', `Bearer ${session.access_token}`);
+    headers.set("Authorization", `Bearer ${session.access_token}`);
   }
 
-  const method = options.method?.toUpperCase() || 'GET';
+  const method = options.method?.toUpperCase() || "GET";
 
   // Ensure Content-Type is set if body is present or if it's a mutation, and not form data
-  if (['POST', 'PUT', 'PATCH'].includes(method) && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
+  if (
+    ["POST", "PUT", "PATCH"].includes(method) &&
+    !(options.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
+    headers.set("Content-Type", "application/json");
   }
 
   let finalBody = options.body;
   // If no body is provided for a POST request that expects JSON, send an empty object
-  if (['POST', 'PUT', 'PATCH'].includes(method) && !finalBody && headers.get('Content-Type') === 'application/json') {
+  if (
+    ["POST", "PUT", "PATCH"].includes(method) &&
+    !finalBody &&
+    headers.get("Content-Type") === "application/json"
+  ) {
     finalBody = JSON.stringify({});
   }
 
-  const response = await fetch(url.startsWith('http') ? url : `${API_BASE_URL}${url}`, {
-    ...options,
-    body: finalBody,
-    headers,
-  });
+  const response = await fetch(
+    url.startsWith("http") ? url : `${API_BASE_URL}${url}`,
+    {
+      ...options,
+      body: finalBody,
+      headers,
+    },
+  );
 
   if (!response.ok) {
-    let errorMessage = 'API request failed';
+    let errorMessage = "API request failed";
     let errorCode = undefined;
     let errorDetails = undefined;
 
     try {
       const errorData = await response.json();
-      
+
       // Handle new standard format: { error: { message, code, details } }
-      if (errorData.error && typeof errorData.error === 'object') {
+      if (errorData.error && typeof errorData.error === "object") {
         errorMessage = errorData.error.message || errorMessage;
         errorCode = errorData.error.code;
         errorDetails = errorData.error.details;
-      } 
+      }
       // Handle legacy format: { error: "message" }
-      else if (typeof errorData.error === 'string') {
+      else if (typeof errorData.error === "string") {
         errorMessage = errorData.error;
       }
       // Fallback or some other shape
       else if (errorData.message) {
         errorMessage = errorData.message;
       }
-    } catch (e) {
+    } catch {
       // Not JSON or empty body
     }
 
     // Trigger automatic toast for mutations unless silent is requested
-    if (!options.silent && (options.method && options.method !== 'GET')) {
+    if (!options.silent && options.method && options.method !== "GET") {
       toast.error(errorMessage);
     }
 
     throw new ApiError(errorMessage, response.status, errorCode, errorDetails);
   }
 
-  const contentType = response.headers.get('content-type');
-  if (contentType?.includes('application/json')) {
+  const contentType = response.headers.get("content-type");
+  if (contentType?.includes("application/json")) {
     return await response.json();
   }
   return await response.text();

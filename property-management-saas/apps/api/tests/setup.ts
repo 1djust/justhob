@@ -9,7 +9,7 @@
  */
 
 // Ensure we're in test environment
-process.env.NODE_ENV = 'test';
+process.env.NODE_ENV = "test";
 
 // Suppress noisy logs during testing
-process.env.LOG_LEVEL = 'silent';
+process.env.LOG_LEVEL = "silent";

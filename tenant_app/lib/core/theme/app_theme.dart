@@ -1,43 +1,46 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const primaryColor = Color(0xFF18181B); // Brand primary (Zinc 900)
-  static const accentColor = Color(0xFF18181B);  // Monochromatic accent
-  static const backgroundColor = Color(0xFFFAFAFA); // Zinc 50
+  static const primaryColor = Color(0xFF0066FF); // Electric Blue
+  static const accentColor = Color(0xFF0A192F); // Deep Navy
+  static const backgroundColor = Color(0xFFF8FAFC); // Slate 50
   static const cardColor = Colors.white;
-  static const textPrimary = Color(0xFF09090B); // Zinc 950
-  static const textSecondary = Color(0xFF71717A); // Zinc 500
+  static const textPrimary = Color(0xFF0A192F); // Deep Navy text
+  static const textSecondary = Color(0xFF64748B); // Slate 500
+  static const borderColor = Color(0xFFE2E8F0); // Slate 200
 
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      fontFamily: 'Inter', // Assuming Inter if added later, defaults gracefully
+      fontFamily: 'Inter',
       colorScheme: ColorScheme.fromSeed(
-        seedColor: accentColor,
+        seedColor: primaryColor,
         primary: primaryColor,
         secondary: accentColor,
         surface: cardColor,
       ),
       scaffoldBackgroundColor: backgroundColor,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent, // Modern float look
+        backgroundColor: Colors.white, // Crisp white header
         elevation: 0,
         centerTitle: false,
-        scrolledUnderElevation: 0,
+        scrolledUnderElevation: 1, // Subtle shadow on scroll
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Color(0x0A000000), // Very light shadow
         titleTextStyle: TextStyle(
           color: textPrimary,
-          fontSize: 22,
+          fontSize: 20,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.5,
         ),
-        iconTheme: IconThemeData(color: primaryColor),
+        iconTheme: IconThemeData(color: accentColor),
       ),
       cardTheme: CardThemeData(
         color: cardColor,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Color(0xFFE4E4E7)), // border color from web
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: borderColor),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -48,7 +51,7 @@ class AppTheme {
           minimumSize: const Size.fromHeight(56),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
             fontSize: 16,
@@ -56,7 +59,7 @@ class AppTheme {
             letterSpacing: 0.2,
           ),
         ).copyWith(
-          overlayColor: MaterialStateProperty.all(Colors.white.withAlpha(25)),
+          overlayColor: WidgetStateProperty.all(Colors.white.withAlpha(25)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -70,18 +73,19 @@ class AppTheme {
         fillColor: cardColor,
         hintStyle: const TextStyle(color: textSecondary),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: primaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       ),
     );
   }

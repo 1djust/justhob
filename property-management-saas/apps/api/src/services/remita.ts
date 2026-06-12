@@ -1,9 +1,9 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
-const REMITA_BASE_URL = process.env.REMITA_BASE_URL || 'https://remitademo.net';
-const MERCHANT_ID = process.env.REMITA_MERCHANT_ID || '2547916'; // Demo Merchant
-const SERVICE_TYPE_ID = process.env.REMITA_SERVICE_TYPE_ID || '4430731'; // Demo Service
-const API_KEY = process.env.REMITA_API_KEY || '1946'; // Demo API Key
+const REMITA_BASE_URL = process.env.REMITA_BASE_URL || "https://remitademo.net";
+const MERCHANT_ID = process.env.REMITA_MERCHANT_ID || "2547916"; // Demo Merchant
+const SERVICE_TYPE_ID = process.env.REMITA_SERVICE_TYPE_ID || "4430731"; // Demo Service
+const API_KEY = process.env.REMITA_API_KEY || "1946"; // Demo API Key
 
 export class RemitaService {
   /**
@@ -19,7 +19,7 @@ export class RemitaService {
     description,
     landlordBankCode,
     landlordAccountNumber,
-    platformFeePercentage = 2.0 // 2% platform fee
+    platformFeePercentage = 2.0, // 2% platform fee
   }: {
     orderId: string;
     amount: number;
@@ -32,7 +32,7 @@ export class RemitaService {
     platformFeePercentage?: number;
   }) {
     // Commented out
-    throw new Error('Remita Service is currently disabled.');
+    throw new Error("Remita Service is currently disabled.");
   }
 
   /**

@@ -128,8 +128,52 @@ class ReceiptService {
                       ],
                     ),
                   ),
-                ],
+              ],
               ),
+
+              if (payment.transactions.isNotEmpty) ...[
+                pw.SizedBox(height: 40),
+                pw.Divider(color: PdfColors.grey300),
+                pw.SizedBox(height: 20),
+                pw.Text(
+                  'PAYMENT BREAKDOWN',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.grey600,
+                    letterSpacing: 1,
+                  ),
+                ),
+                pw.SizedBox(height: 12),
+                pw.Table.fromTextArray(
+                  border: null,
+                  headerStyle: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.grey600,
+                  ),
+                  cellStyle: const pw.TextStyle(
+                    fontSize: 10,
+                    color: PdfColors.black,
+                  ),
+                  headerDecoration: const pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                  ),
+                  headers: ['DATE', 'NOTE', 'AMOUNT'],
+                  data: payment.transactions.map((t) {
+                    return [
+                      DateFormat.yMMMMd().format(t.createdAt),
+                      t.note ?? 'Payment',
+                      NumberFormat.currency(symbol: 'N ', decimalDigits: 2).format(t.amount),
+                    ];
+                  }).toList(),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(2),
+                    1: const pw.FlexColumnWidth(4),
+                    2: const pw.FlexColumnWidth(2),
+                  },
+                ),
+              ],
 
               pw.Spacer(),
 

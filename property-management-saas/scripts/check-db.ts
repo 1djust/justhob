@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
@@ -7,15 +7,15 @@ async function main() {
       leases: {
         include: {
           payments: true,
-          property: true
-        }
-      }
-    }
+          property: true,
+        },
+      },
+    },
   });
-  
-  console.log('--- DATABASE DIAGNOSTIC ---');
-  console.log('Total Tenants:', tenants.length);
-  
+
+  console.log("--- DATABASE DIAGNOSTIC ---");
+  console.log("Total Tenants:", tenants.length);
+
   for (const tenant of tenants) {
     console.log(`\nTenant: ${tenant.name} (${tenant.email})`);
     console.log(`Leases: ${tenant.leases.length}`);
@@ -24,14 +24,16 @@ async function main() {
       console.log(`    - Property: ${lease.property?.name}`);
       console.log(`    - Payments: ${lease.payments.length}`);
       for (const payment of lease.payments) {
-        console.log(`      - [${payment.status}] ${payment.amount} - Due: ${payment.dueDate}`);
+        console.log(
+          `      - [${payment.status}] ${payment.amount} - Due: ${payment.dueDate}`,
+        );
       }
     }
   }
 }
 
 main()
-  .catch(e => {
+  .catch((e) => {
     console.error(e);
     process.exit(1);
   })

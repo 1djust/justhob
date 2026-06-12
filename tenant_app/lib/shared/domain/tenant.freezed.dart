@@ -25,6 +25,7 @@ mixin _$Tenant {
   String? get email => throw _privateConstructorUsedError;
   String? get phone => throw _privateConstructorUsedError;
   String get workspaceId => throw _privateConstructorUsedError;
+  bool? get allowPartialPayments => throw _privateConstructorUsedError;
   List<Lease>? get leases => throw _privateConstructorUsedError;
   List<MaintenanceRequest>? get maintenanceRequests =>
       throw _privateConstructorUsedError;
@@ -49,6 +50,7 @@ abstract class $TenantCopyWith<$Res> {
       String? email,
       String? phone,
       String workspaceId,
+      bool? allowPartialPayments,
       List<Lease>? leases,
       List<MaintenanceRequest>? maintenanceRequests});
 }
@@ -73,6 +75,7 @@ class _$TenantCopyWithImpl<$Res, $Val extends Tenant>
     Object? email = freezed,
     Object? phone = freezed,
     Object? workspaceId = null,
+    Object? allowPartialPayments = freezed,
     Object? leases = freezed,
     Object? maintenanceRequests = freezed,
   }) {
@@ -97,6 +100,10 @@ class _$TenantCopyWithImpl<$Res, $Val extends Tenant>
           ? _value.workspaceId
           : workspaceId // ignore: cast_nullable_to_non_nullable
               as String,
+      allowPartialPayments: freezed == allowPartialPayments
+          ? _value.allowPartialPayments
+          : allowPartialPayments // ignore: cast_nullable_to_non_nullable
+              as bool?,
       leases: freezed == leases
           ? _value.leases
           : leases // ignore: cast_nullable_to_non_nullable
@@ -122,6 +129,7 @@ abstract class _$$TenantImplCopyWith<$Res> implements $TenantCopyWith<$Res> {
       String? email,
       String? phone,
       String workspaceId,
+      bool? allowPartialPayments,
       List<Lease>? leases,
       List<MaintenanceRequest>? maintenanceRequests});
 }
@@ -144,6 +152,7 @@ class __$$TenantImplCopyWithImpl<$Res>
     Object? email = freezed,
     Object? phone = freezed,
     Object? workspaceId = null,
+    Object? allowPartialPayments = freezed,
     Object? leases = freezed,
     Object? maintenanceRequests = freezed,
   }) {
@@ -168,6 +177,10 @@ class __$$TenantImplCopyWithImpl<$Res>
           ? _value.workspaceId
           : workspaceId // ignore: cast_nullable_to_non_nullable
               as String,
+      allowPartialPayments: freezed == allowPartialPayments
+          ? _value.allowPartialPayments
+          : allowPartialPayments // ignore: cast_nullable_to_non_nullable
+              as bool?,
       leases: freezed == leases
           ? _value._leases
           : leases // ignore: cast_nullable_to_non_nullable
@@ -189,6 +202,7 @@ class _$TenantImpl implements _Tenant {
       this.email,
       this.phone,
       required this.workspaceId,
+      this.allowPartialPayments,
       final List<Lease>? leases,
       final List<MaintenanceRequest>? maintenanceRequests})
       : _leases = leases,
@@ -207,6 +221,8 @@ class _$TenantImpl implements _Tenant {
   final String? phone;
   @override
   final String workspaceId;
+  @override
+  final bool? allowPartialPayments;
   final List<Lease>? _leases;
   @override
   List<Lease>? get leases {
@@ -230,7 +246,7 @@ class _$TenantImpl implements _Tenant {
 
   @override
   String toString() {
-    return 'Tenant(id: $id, name: $name, email: $email, phone: $phone, workspaceId: $workspaceId, leases: $leases, maintenanceRequests: $maintenanceRequests)';
+    return 'Tenant(id: $id, name: $name, email: $email, phone: $phone, workspaceId: $workspaceId, allowPartialPayments: $allowPartialPayments, leases: $leases, maintenanceRequests: $maintenanceRequests)';
   }
 
   @override
@@ -244,6 +260,8 @@ class _$TenantImpl implements _Tenant {
             (identical(other.phone, phone) || other.phone == phone) &&
             (identical(other.workspaceId, workspaceId) ||
                 other.workspaceId == workspaceId) &&
+            (identical(other.allowPartialPayments, allowPartialPayments) ||
+                other.allowPartialPayments == allowPartialPayments) &&
             const DeepCollectionEquality().equals(other._leases, _leases) &&
             const DeepCollectionEquality()
                 .equals(other._maintenanceRequests, _maintenanceRequests));
@@ -258,6 +276,7 @@ class _$TenantImpl implements _Tenant {
       email,
       phone,
       workspaceId,
+      allowPartialPayments,
       const DeepCollectionEquality().hash(_leases),
       const DeepCollectionEquality().hash(_maintenanceRequests));
 
@@ -284,6 +303,7 @@ abstract class _Tenant implements Tenant {
       final String? email,
       final String? phone,
       required final String workspaceId,
+      final bool? allowPartialPayments,
       final List<Lease>? leases,
       final List<MaintenanceRequest>? maintenanceRequests}) = _$TenantImpl;
 
@@ -299,6 +319,8 @@ abstract class _Tenant implements Tenant {
   String? get phone;
   @override
   String get workspaceId;
+  @override
+  bool? get allowPartialPayments;
   @override
   List<Lease>? get leases;
   @override
