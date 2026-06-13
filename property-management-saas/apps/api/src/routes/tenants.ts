@@ -10,6 +10,7 @@ import { Prisma } from "@prisma/client";
 import { randomBytes } from "crypto";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
+import { tenantsCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 const WorkspaceQuery = Type.Object({
@@ -44,6 +45,7 @@ const EndTenancyBody = Type.Object({
   reason: Type.Optional(Type.String()),
 });
 
+
 export default async function tenantRoutes(fastify: FastifyInstance) {
   const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
   server.addHook("preHandler", authenticate);
@@ -66,9 +68,17 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
       const skip = (pageNum - 1) * limitNum;
 
+      const userId = request.userId!;
+      const cacheKey = `${userId}:${workspaceId}:${pageNum}:${limitNum}`;
+      const now = Date.now();
+      const cached = tenantsCache.get(cacheKey);
+      if (cached && cached.expiresAt > now) {
+        return reply.send(cached.response);
+      }
+
       const whereClause = { workspaceId, deletedAt: null };
 
-      const [tenants, total] = await prisma.$transaction([
+      const [tenants, total] = await Promise.all([
         prisma.tenant.findMany({
           where: whereClause,
           include: {
@@ -92,7 +102,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         prisma.tenant.count({ where: whereClause }),
       ]);
 
-      return reply.send({
+      const responseBody = {
         tenants,
         pagination: {
           total,
@@ -100,7 +110,14 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           pageSize: limitNum,
           totalPages: Math.ceil(total / limitNum),
         },
+      };
+
+      tenantsCache.set(cacheKey, {
+        response: responseBody,
+        expiresAt: Date.now() + CACHE_TTL,
       });
+
+      return reply.send(responseBody);
     },
   );
 
@@ -292,6 +309,8 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           message: "A new tenant has been created.",
         });
 
+      clearWorkspaceCache(workspaceId);
+
       return reply.status(201).send({
         tenant: (result as { tenant: unknown }).tenant,
         credentials: email
@@ -324,6 +343,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           where: { tenant_workspace_id: { id, workspaceId } },
           data: { name, email, phone, allowPartialPayments },
         });
+        clearWorkspaceCache(workspaceId);
         return reply.send({ tenant });
       } catch (e) {
         return reply.status(404).send({ error: "Tenant not found" });
@@ -381,6 +401,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
             message: "A tenant has been deleted.",
           });
 
+        clearWorkspaceCache(workspaceId);
         return reply.send({ success: true });
       } catch (e) {
         return reply
@@ -454,6 +475,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         });
       }
 
+      clearWorkspaceCache(workspaceId);
       return reply.status(201).send({ lease });
     },
   );
@@ -539,6 +561,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           message: "A tenancy has been ended.",
         });
 
+      clearWorkspaceCache(workspaceId);
       return reply.send({ success: true, lease: updatedLease });
     },
   );

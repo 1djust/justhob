@@ -9,6 +9,7 @@ import {
 } from "../lib/errors";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
+import { meCache } from "../lib/cache";
 
 const SyncBody = Type.Object({ name: Type.Optional(Type.String()) });
 const LoginBody = Type.Object({
@@ -24,6 +25,7 @@ const ChangePasswordBody = Type.Object({
 });
 const ResetPasswordBody = Type.Object({ email: Type.String() });
 const CheckEmailBody = Type.Object({ email: Type.String() });
+
 export default async function authRoutes(fastify: FastifyInstance) {
   const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
 
@@ -154,28 +156,33 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const token = request.headers.authorization?.replace("Bearer ", "");
     if (!token) throw new UnauthorizedError();
 
+    const tokenShort = token.substring(0, 15);
+    console.log(`[AUTH/ME DEBUG] Token: ${tokenShort}...`);
+    const now = Date.now();
+    const cached = meCache.get(token);
+    if (cached && cached.expiresAt > now) {
+      console.log(`[AUTH/ME DEBUG] CACHE HIT! returning cached profile`);
+      return reply.send(cached.response);
+    }
+    console.log(`[AUTH/ME DEBUG] CACHE MISS! performing user database fetch`);
+
     // First verify the token is valid
     const { data: supaData, error: supaError } =
       await supabaseAdmin.auth.getUser(token);
     const supaUser = supaData?.user;
     if (supaError || !supaUser) throw new UnauthorizedError("Invalid token");
 
-    // Run both the Prisma query and the Admin API query concurrently to save time
-    const [freshDataResponse, user] = await Promise.all([
-      supabaseAdmin.auth.admin.getUserById(supaUser.id),
-      prisma.user.findUnique({
-        where: { id: supaUser.id },
-        include: { workspaces: { include: { workspace: true } } },
-      }),
-    ]);
+    // Fetch profile from Prisma
+    const user = await prisma.user.findUnique({
+      where: { id: supaUser.id },
+      include: { workspaces: { include: { workspace: true } } },
+    });
 
-    const freshMeta =
-      freshDataResponse.data?.user?.user_metadata || supaUser.user_metadata;
-
+    const freshMeta = supaUser.user_metadata;
     const mustChange = freshMeta?.mustChangePassword === true;
     const role = user?.workspaces?.[0]?.role || freshMeta.role || "TENANT";
 
-    return reply.send({
+    const responseBody = {
       user: user
         ? {
             ...user,
@@ -184,7 +191,16 @@ export default async function authRoutes(fastify: FastifyInstance) {
             mustChangePassword: mustChange,
           }
         : null,
+    };
+
+    // Cache user profile response for 30 seconds
+    console.log(`[AUTH/ME DEBUG] Caching user profile for token ${tokenShort}`);
+    meCache.set(token, {
+      response: responseBody,
+      expiresAt: now + 30 * 1000,
     });
+
+    return reply.send(responseBody);
   });
 
   // Login (called by mobile app)

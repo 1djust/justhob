@@ -10,6 +10,7 @@ import { generateReceiptPDF } from "../lib/pdf";
 import { sendEmail } from "../lib/mailer";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
+import { paymentsCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 const WorkspaceQuery = Type.Object({
@@ -70,6 +71,14 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
       const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
       const skip = (pageNum - 1) * limitNum;
 
+      const userId = request.userId!;
+      const cacheKey = `${userId}:${workspaceId}:${status || "ALL"}:${pageNum}:${limitNum}`;
+      const now = Date.now();
+      const cached = paymentsCache.get(cacheKey);
+      if (cached && cached.expiresAt > now) {
+        return reply.send(cached.response);
+      }
+
       const whereClause = {
         OR: [{ workspaceId }, { lease: { tenant: { workspaceId } } }],
         ...(status
@@ -77,7 +86,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           : {}),
       };
 
-      const [payments, total] = await prisma.$transaction([
+      const [payments, total] = await Promise.all([
         prisma.payment.findMany({
           where: whereClause,
           include: {
@@ -96,7 +105,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         prisma.payment.count({ where: whereClause }),
       ]);
 
-      return reply.send({
+      const responseBody = {
         payments,
         pagination: {
           total,
@@ -104,7 +113,14 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           pageSize: limitNum,
           totalPages: Math.ceil(total / limitNum),
         },
+      };
+
+      paymentsCache.set(cacheKey, {
+        response: responseBody,
+        expiresAt: Date.now() + CACHE_TTL,
       });
+
+      return reply.send(responseBody);
     },
   );
 
@@ -183,6 +199,8 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           },
         });
 
+        clearWorkspaceCache(workspaceId);
+
         return reply.status(201).send({ payment: result });
       } catch (err: unknown) {
         const errorObj = err as { statusCode?: number };
@@ -244,6 +262,8 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
             status: newStatus,
             message: isPartial ? "A partial payment has been approved." : "A payment has been marked as settled.",
           });
+
+        clearWorkspaceCache(workspaceId);
 
         return reply.send({ payment });
       } catch (e) {
@@ -379,6 +399,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
             },
           },
         });
+        clearWorkspaceCache(workspaceId);
         return reply.send({ payment: updated, fullyPaid: true });
       }
 
@@ -407,6 +428,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           message: `A partial payment of ₦${amountPaid} was recorded.`,
         });
 
+      clearWorkspaceCache(workspaceId);
       return reply.send({ payment: updated, fullyPaid: false });
     },
   );
@@ -553,6 +575,8 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           message:
             status === "PAID" ? "Payment approved" : "Payment proof rejected",
         });
+
+      clearWorkspaceCache(workspaceId);
 
       return reply.send({ payment: updatedPayment });
     },

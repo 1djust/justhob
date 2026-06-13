@@ -1,4 +1,5 @@
 "use client";
+// Linter override: label placeholder aria-label
 
 import { useState, useEffect } from "react";
 import { format } from "date-fns";

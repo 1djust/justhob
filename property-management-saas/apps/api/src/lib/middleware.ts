@@ -2,6 +2,34 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "./database";
 import { supabaseAdmin } from "./supabase";
 
+// In-memory cache to store auth and workspace access checks over high-latency WAN connections
+interface CachedAuth {
+  userId: string;
+  globalUserRole: "SUPER_ADMIN" | "PROPERTY_MANAGER" | "LANDLORD" | "TENANT";
+  isAAL2: boolean;
+  expiresAt: number;
+}
+
+const authCache = new Map<string, CachedAuth>();
+
+interface CachedWorkspaceAccess {
+  role: string;
+  expiresAt: number;
+}
+
+const workspaceAccessCache = new Map<string, CachedWorkspaceAccess>();
+
+// Periodic garbage collection to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, entry] of authCache.entries()) {
+    if (entry.expiresAt < now) authCache.delete(token);
+  }
+  for (const [key, entry] of workspaceAccessCache.entries()) {
+    if (entry.expiresAt < now) workspaceAccessCache.delete(key);
+  }
+}, 5 * 60 * 1000).unref();
+
 // Shared authenticate middleware — verifies Supabase JWT and attaches userId and globalRole
 export const authenticate = async (
   request: FastifyRequest,
@@ -9,6 +37,15 @@ export const authenticate = async (
 ) => {
   const token = request.headers.authorization?.replace("Bearer ", "");
   if (!token) return reply.status(401).send({ error: "Unauthorized" });
+
+  const now = Date.now();
+  const cached = authCache.get(token);
+  if (cached && cached.expiresAt > now) {
+    request.userId = cached.userId;
+    request.globalUserRole = cached.globalUserRole;
+    request.isAAL2 = cached.isAAL2;
+    return;
+  }
 
   // Verify the token via Supabase Auth — fail closed if verification fails for any reason
   const { data, error } = await supabaseAdmin.auth.getUser(token);
@@ -35,15 +72,8 @@ export const authenticate = async (
       .send({ error: "Account has been deactivated. Contact support." });
   }
 
-  request.userId = dbUser.id;
-  request.globalUserRole = dbUser.role as
-    | "SUPER_ADMIN"
-    | "PROPERTY_MANAGER"
-    | "LANDLORD"
-    | "TENANT";
-
-  // Parse AAL status for Super Admins to use in requireSuperAdmin
-  request.isAAL2 = false;
+  // Parse AAL status for Super Admins
+  let isAAL2 = false;
   if (dbUser.role === "SUPER_ADMIN") {
     try {
       const payloadBase64Url = token.split(".")[1];
@@ -55,12 +85,24 @@ export const authenticate = async (
           "utf8",
         );
         const payload = JSON.parse(payloadStr);
-        request.isAAL2 = payload.aal === "aal2";
+        isAAL2 = payload.aal === "aal2";
       }
     } catch (e) {
       // Invalid token structure, leave as false
     }
   }
+
+  request.userId = dbUser.id;
+  request.globalUserRole = dbUser.role as any;
+  request.isAAL2 = isAAL2;
+
+  // Cache authentication for 60 seconds
+  authCache.set(token, {
+    userId: dbUser.id,
+    globalUserRole: dbUser.role as any,
+    isAAL2,
+    expiresAt: now + 60 * 1000,
+  });
 };
 
 // Middleware to require SUPER_ADMIN role platform-wide
@@ -94,12 +136,27 @@ export const verifyWorkspaceAccess = async (
   if (!workspaceId)
     return reply.status(400).send({ error: "Workspace ID required" });
 
+  const cacheKey = `${userId}:${workspaceId}`;
+  const now = Date.now();
+  const cached = workspaceAccessCache.get(cacheKey);
+
+  if (cached && cached.expiresAt > now) {
+    request.userRole = cached.role as any;
+    return;
+  }
+
   const member = await prisma.workspaceMember.findUnique({
     where: { userId_workspaceId: { userId, workspaceId } },
   });
 
   if (!member) return reply.status(403).send({ error: "Forbidden" });
-  request.userRole! = member.role;
+  request.userRole = member.role as any;
+
+  // Cache workspace access role for 60 seconds
+  workspaceAccessCache.set(cacheKey, {
+    role: member.role,
+    expiresAt: now + 60 * 1000,
+  });
 };
 
 // Middleware to require PROPERTY_MANAGER role

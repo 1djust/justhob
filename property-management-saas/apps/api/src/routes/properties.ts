@@ -8,6 +8,7 @@ import {
 import { Prisma, PropertyType } from "@prisma/client";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
+import { propertiesCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 const PropertyIdParams = Type.Object({
@@ -53,6 +54,13 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
       const userRole = request.userRole!;
       const userId = request.userId!;
 
+      const cacheKey = `${userId}:${workspaceId}`;
+      const now = Date.now();
+      const cached = propertiesCache.get(cacheKey);
+      if (cached && cached.expiresAt > now) {
+        return reply.send(cached.response);
+      }
+
       const whereClause: import("@prisma/client").Prisma.PropertyWhereInput = {
         workspaceId,
         deletedAt: null,
@@ -78,7 +86,14 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
           },
         },
       });
-      return reply.send({ properties });
+      
+      const responseBody = { properties };
+      propertiesCache.set(cacheKey, {
+        response: responseBody,
+        expiresAt: Date.now() + CACHE_TTL,
+      });
+
+      return reply.send(responseBody);
     },
   );
 
@@ -180,6 +195,8 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
           message: "A new property has been created.",
         });
 
+      clearWorkspaceCache(workspaceId);
+
       return reply.status(201).send({ property });
     },
   );
@@ -208,6 +225,8 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
             ...(ownerId !== undefined ? { ownerId: ownerId || null } : {}),
           },
         });
+        clearWorkspaceCache(workspaceId);
+
         return reply.send({ property });
       } catch (e) {
         return reply.status(404).send({ error: "Property not found" });
@@ -238,6 +257,8 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
             propertyId: id,
             message: "A property has been deleted.",
           });
+
+        clearWorkspaceCache(workspaceId);
 
         return reply.send({ success: true });
       } catch (e) {

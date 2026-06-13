@@ -9,6 +9,7 @@ import { sendEmail } from "../lib/mailer";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { MaintenanceStatus, MaintenancePriority } from "@prisma/client";
+import { maintenanceCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 const MaintenanceQuery = Type.Object({ status: Type.Optional(Type.String()) });
@@ -44,12 +45,20 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
       const limitNum = Math.max(1, Math.min(100, parseInt(limit as string, 10) || 20));
       const skip = (pageNum - 1) * limitNum;
 
+      const userId = request.userId!;
+      const cacheKey = `${userId}:${workspaceId}:${status || "ALL"}:${pageNum}:${limitNum}`;
+      const now = Date.now();
+      const cached = maintenanceCache.get(cacheKey);
+      if (cached && cached.expiresAt > now) {
+        return reply.send(cached.response);
+      }
+
       const whereClause = {
         workspaceId,
         ...(status ? { status: status as any } : {}),
       };
 
-      const [requests, total] = await prisma.$transaction([
+      const [requests, total] = await Promise.all([
         prisma.maintenanceRequest.findMany({
           where: whereClause,
           include: {
@@ -63,7 +72,7 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
         prisma.maintenanceRequest.count({ where: whereClause })
       ]);
 
-      return reply.send({ 
+      const responseBody = { 
         requests,
         pagination: {
           total,
@@ -71,7 +80,14 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
           pageSize: limitNum,
           totalPages: Math.ceil(total / limitNum),
         }
+      };
+
+      maintenanceCache.set(cacheKey, {
+        response: responseBody,
+        expiresAt: Date.now() + CACHE_TTL,
       });
+
+      return reply.send(responseBody);
     },
   );
 
@@ -140,6 +156,8 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
           message: content,
         });
 
+      clearWorkspaceCache(workspaceId);
+
       return reply.status(201).send({ message });
     },
   );
@@ -207,6 +225,8 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
         (fastify as unknown as { io?: import("socket.io").Server }).io
           ?.to(`workspace:${workspaceId}`)
           .emit("MAINTENANCE_UPDATED", maintenanceRequest);
+
+        clearWorkspaceCache(workspaceId);
 
         return reply.send({ request: maintenanceRequest });
       } catch (e) {

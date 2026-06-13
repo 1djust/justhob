@@ -3,14 +3,23 @@ import { toast } from "sonner";
 
 const isProduction =
   typeof window !== "undefined" &&
+  process.env.NODE_ENV !== "development" &&
   (window.location.hostname === "propertystack.vercel.app" ||
-    !window.location.hostname.includes("localhost"));
+    (!window.location.hostname.includes("localhost") &&
+      window.location.hostname !== "127.0.0.1" &&
+      !window.location.hostname.startsWith("192.168.") &&
+      !window.location.hostname.startsWith("10.") &&
+      !window.location.hostname.endsWith(".local") &&
+      window.location.hostname !== "BitachonAttorneys" &&
+      window.location.hostname.includes(".")));
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   (isProduction
     ? "https://propertystack.onrender.com"
-    : "http://localhost:3001");
+    : typeof window !== "undefined"
+      ? `http://${window.location.hostname}:3001`
+      : "http://localhost:3001");
 
 export interface ApiOptions extends RequestInit {
   silent?: boolean;

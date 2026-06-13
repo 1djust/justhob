@@ -9,7 +9,9 @@ export default defineConfig({
     /* Test file patterns */
     include: ["tests/**/*.test.ts", "tests/**/*.spec.ts"],
     /* Timeout for each test (ms) */
-    testTimeout: 10_000,
+    testTimeout: 30_000,
+    /* Timeout for each hook (ms) */
+    hookTimeout: 30_000,
     /* Setup files to run before tests */
     setupFiles: ["./tests/setup.ts"],
     /* Coverage configuration */

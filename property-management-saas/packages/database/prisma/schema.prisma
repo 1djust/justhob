@@ -79,6 +79,9 @@ model Property {
   units               Unit[]
 
   @@unique([id, workspaceId], name: "property_workspace_id")
+  @@index([workspaceId])
+  @@index([ownerId])
+  @@index([deletedAt])
 }
 
 model Unit {
@@ -96,6 +99,8 @@ model Unit {
 
   @@unique([propertyId, unitNumber])
   @@unique([id, workspaceId], name: "unit_workspace_id")
+  @@index([propertyId])
+  @@index([workspaceId])
 }
 
 model Tenant {
@@ -113,6 +118,8 @@ model Tenant {
   workspace            Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([id, workspaceId], name: "tenant_workspace_id")
+  @@index([workspaceId])
+  @@index([deletedAt])
 }
 
 model Lease {
@@ -131,6 +138,11 @@ model Lease {
   unit          Unit?               @relation(fields: [unitId], references: [id])
   renewalOffers LeaseRenewalOffer[]
   payments      Payment[]
+
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([status])
 }
 
 model Payment {
@@ -164,6 +176,8 @@ model Payment {
   reminders            RentReminder[]
 
   @@unique([id, workspaceId], name: "payment_workspace_id")
+  @@index([leaseId])
+  @@index([workspaceId])
 }
 
 model PaymentTransaction {
@@ -177,6 +191,8 @@ model PaymentTransaction {
   paidDate  DateTime @default(now())
   createdAt DateTime @default(now())
   payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
 }
 
 model MaintenanceRequest {
@@ -197,6 +213,9 @@ model MaintenanceRequest {
   workspace   Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([id, workspaceId], name: "maintenance_workspace_id")
+  @@index([workspaceId])
+  @@index([propertyId])
+  @@index([tenantId])
 }
 
 model Notification {
@@ -208,6 +227,8 @@ model Notification {
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model ErrorLog {
@@ -232,6 +253,8 @@ model MaintenanceMessage {
   request     MaintenanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
   sender      User?              @relation(fields: [senderId], references: [id], onDelete: Cascade)
   workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
 }
 
 model RentReminder {
@@ -241,6 +264,8 @@ model RentReminder {
   sentAt    DateTime @default(now())
   channel   String
   payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
 }
 
 model LeaseRenewalOffer {
@@ -254,6 +279,8 @@ model LeaseRenewalOffer {
   sentAt       DateTime  @default(now())
   respondedAt  DateTime?
   lease        Lease     @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  @@index([leaseId])
 }
 
 model WebhookEvent {

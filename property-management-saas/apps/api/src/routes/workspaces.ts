@@ -3,6 +3,7 @@ import { prisma } from "../lib/database";
 import { authenticate } from "../lib/middleware";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
+import { statsCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
 
 const CreateWorkspaceBody = Type.Object({ name: Type.String() });
 const UpdateWorkspaceParams = Type.Object({ id: Type.String() });
@@ -97,6 +98,8 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
         });
       }
 
+      clearWorkspaceCache(id);
+
       return reply.send({ workspace });
     },
   );
@@ -146,6 +149,13 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
       const userId = request.userId!;
       const { workspaceId } = request.params;
 
+      const cacheKey = `${userId}:${workspaceId}`;
+      const nowTime = Date.now();
+      const cached = statsCache.get(cacheKey);
+      if (cached && cached.expiresAt > nowTime) {
+        return reply.send(cached.response);
+      }
+
       const member = await prisma.workspaceMember.findUnique({
         where: { userId_workspaceId: { userId, workspaceId } },
       });
@@ -158,10 +168,6 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
         propertyWhere.ownerId = userId;
       }
 
-      const totalProperties = await prisma.property.count({
-        where: propertyWhere,
-      });
-
       let tenantWhere: import("@prisma/client").Prisma.TenantWhereInput = {
         workspaceId,
         deletedAt: null,
@@ -170,16 +176,12 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
         // Find tenants that have leases in this landlord's properties
         tenantWhere.leases = { some: { property: { ownerId: userId } } };
       }
-      const totalTenants = await prisma.tenant.count({ where: tenantWhere });
 
       let maintenanceWhere: import("@prisma/client").Prisma.MaintenanceRequestWhereInput =
         { workspaceId, status: "PENDING" };
       if (member.role === "LANDLORD") {
         maintenanceWhere.property = { ownerId: userId };
       }
-      const pendingMaintenance = await prisma.maintenanceRequest.count({
-        where: maintenanceWhere,
-      });
 
       let paymentWhere: import("@prisma/client").Prisma.PaymentWhereInput = {
         status: "PAID",
@@ -189,24 +191,11 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
         paymentWhere.lease = { property: { workspaceId, ownerId: userId } };
       }
 
-      const paidPayments = await prisma.payment.findMany({
-        where: paymentWhere,
-        select: { amount: true, paidDate: true },
-      });
-
-      const rentCollected = paidPayments.reduce(
-        (sum: number, p) => sum + p.amount,
-        0,
-      );
-
       let underReviewWhere: import("@prisma/client").Prisma.PaymentWhereInput =
         { workspaceId, status: "UNDER_REVIEW" };
       if (member.role === "LANDLORD") {
         underReviewWhere.lease = { property: { ownerId: userId } };
       }
-      const underReviewPayments = await prisma.payment.count({
-        where: underReviewWhere,
-      });
 
       let overdueWhere: import("@prisma/client").Prisma.PaymentWhereInput = {
         workspaceId,
@@ -215,9 +204,6 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
       if (member.role === "LANDLORD") {
         overdueWhere.lease = { property: { ownerId: userId } };
       }
-      const overduePaymentsCount = await prisma.payment.count({
-        where: overdueWhere,
-      });
 
       const now = new Date();
       const thirtyDaysFromNow = new Date();
@@ -232,9 +218,32 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
       if (member.role === "LANDLORD") {
         expiringLeaseWhere.property = { ownerId: userId };
       }
-      const expiringLeasesCount = await prisma.lease.count({
-        where: expiringLeaseWhere,
-      });
+
+      const [
+        totalProperties,
+        totalTenants,
+        pendingMaintenance,
+        paidPayments,
+        underReviewPayments,
+        overduePaymentsCount,
+        expiringLeasesCount,
+      ] = await Promise.all([
+        prisma.property.count({ where: propertyWhere }),
+        prisma.tenant.count({ where: tenantWhere }),
+        prisma.maintenanceRequest.count({ where: maintenanceWhere }),
+        prisma.payment.findMany({
+          where: paymentWhere,
+          select: { amount: true, paidDate: true },
+        }),
+        prisma.payment.count({ where: underReviewWhere }),
+        prisma.payment.count({ where: overdueWhere }),
+        prisma.lease.count({ where: expiringLeaseWhere }),
+      ]);
+
+      const rentCollected = paidPayments.reduce(
+        (sum: number, p) => sum + p.amount,
+        0,
+      );
 
       // Simple revenue chart data: last 6 months
       const revenueByMonth: Record<string, number> = {};
@@ -260,7 +269,7 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
         revenue: revenueByMonth[month],
       }));
 
-      return reply.send({
+      const responseBody = {
         stats: {
           totalProperties,
           totalTenants,
@@ -271,7 +280,15 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
           expiringLeasesCount,
         },
         chartData,
+      };
+
+      // Save stats to cache for 5 seconds
+      statsCache.set(cacheKey, {
+        response: responseBody,
+        expiresAt: Date.now() + CACHE_TTL,
       });
+
+      return reply.send(responseBody);
     },
   );
 }
