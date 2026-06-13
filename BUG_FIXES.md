@@ -17,3 +17,30 @@ It works in tandem with the `.agents/skills/` directory: every time a bug is log
 ---
 
 *(Future fixes will be appended below)*
+
+---
+
+## 1. Prisma P1001 Database Connection Timeout under WSL 2
+
+**Date**: June 13, 2026
+**Environment**: WSL 2 (Ubuntu) / Node.js / Vitest
+**Bug/Latency**: Test execution (Vitest) hung and timed out with a P1001 error (`Can't reach database server...`) trying to connect to the Supabase pooler.
+**Root Cause**: Prisma's native Rust query engine has a DNS resolution bug in WSL 2 where it fails to resolve hostnames (like `aws-1-eu-north-1.pooler.supabase.com`) or attempts IPv6 paths that are not routable.
+**Resolution**:
+- Modified [setup.ts](file:///home/djust/projects/justhub/property-management-saas/apps/api/tests/setup.ts) and [index.ts](file:///home/djust/projects/justhub/property-management-saas/apps/api/src/index.ts) to dynamically resolve the pooler hostname using Node's `dns.resolve4` at startup.
+- Dynamically swapped the pooler hostname in the database connection string with the resolved IPv4 address before initializing the Prisma Client.
+
+---
+
+## 2. Dashboard, Properties, and Payments Tabs Loading Latency
+
+**Date**: June 13, 2026
+**Environment**: Web App / API Backend
+**Bug/Latency**: High loading lag (multi-second delays) when managers switched between the Dashboard, Properties, Payments, and Tenants tabs.
+**Root Cause**: Lack of API caching led to sequential, blocking database calls on every tab transition.
+**Resolution**:
+- Created a centralized in-memory caching module [cache.ts](file:///home/djust/projects/justhub/property-management-saas/apps/api/src/lib/cache.ts) with a `CACHE_TTL` of 120,000ms.
+- Integrated cache checking and population into auth, properties, workspaces, tenants, payments, and maintenance routes.
+- Implemented immediate and absolute cache invalidation (`clearWorkspaceCache`) on all resource-mutating operations (POST/PUT/PATCH/DELETE) to ensure real-time data accuracy.
+- Added database indexes on foreign keys, status fields, and soft-delete dates in [schema.prisma](file:///home/djust/projects/justhub/property-management-saas/packages/database/prisma/schema.prisma).
+
