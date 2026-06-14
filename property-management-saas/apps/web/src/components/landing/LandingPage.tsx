@@ -17,7 +17,9 @@ import {
   Sparkles,
   Mail,
   CheckCircle2,
-  MessageSquare
+  MessageSquare,
+  Lock,
+  Zap
 } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
 import { DashboardCarousel } from "./DashboardCarousel";
@@ -447,6 +449,60 @@ export function LandingPage() {
                   No more manual invoicing. Automatically generate formal,
                   printable PDF receipts the second a rental payment is approved
                   online or offline.
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={{
+                hidden: { opacity: 0, x: -20 },
+                visible: {
+                  opacity: 1,
+                  x: 0,
+                  transition: { duration: 0.5, delay: 0.2 },
+                },
+              }}
+              className="bg-white dark:bg-[#0A192F] rounded-3xl p-8 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-6 items-start hover:border-primary/30 transition-colors shadow-sm"
+            >
+              <div className="p-4 rounded-2xl bg-primary/10 dark:bg-primary/20 text-primary">
+                <Lock className="h-8 w-8" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-2">
+                  MFA & Biometric Security
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Protect manager and tenant accounts with Two-Factor Authentication (MFA) and log in seamlessly using native biometrics (FaceID/Fingerprint).
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={{
+                hidden: { opacity: 0, x: 20 },
+                visible: {
+                  opacity: 1,
+                  x: 0,
+                  transition: { duration: 0.5, delay: 0.3 },
+                },
+              }}
+              className="bg-white dark:bg-[#0A192F] rounded-3xl p-8 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-6 items-start hover:border-primary/30 transition-colors shadow-sm"
+            >
+              <div className="p-4 rounded-2xl bg-primary/10 dark:bg-primary/20 text-primary">
+                <Zap className="h-8 w-8" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-2">
+                  Real-Time Sync & Caching
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Enjoy sub-second navigation between properties, payments, and invoices. Centralized high-performance API caching and websockets ensure instant synchronization.
                 </p>
               </div>
             </motion.div>
