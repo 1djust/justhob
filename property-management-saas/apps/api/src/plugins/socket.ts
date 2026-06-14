@@ -15,6 +15,7 @@ const socketPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   const allowedOrigins = [
     "http://localhost:3000",
     "https://justhob.vercel.app",
+    "https://propertystack.vercel.app",
     process.env.FRONTEND_URL,
   ].filter(Boolean) as string[];
 

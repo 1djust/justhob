@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { API_BASE_URL } from "@/lib/api";
 import {
   Building2,
   Users,
@@ -44,8 +45,7 @@ export function LandingPage() {
     if (!email) return;
     setLoading(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-      const res = await fetch(`${apiUrl}/api/auth/check-email`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/check-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email })

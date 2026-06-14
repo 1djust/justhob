@@ -4,9 +4,6 @@ import { X, Save, Shield } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Button } from "../shared/Button";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
 interface Tenant {
   id: string;
   name: string;
@@ -30,7 +27,7 @@ export function TenantSettingsModal({
   );
 
   React.useEffect(() => {
-    apiFetch(`${API_BASE_URL}/api/workspaces`, { credentials: "include" }).then(
+    apiFetch("/api/workspaces", { credentials: "include" }).then(
       (data) => {
         const wsMember = data.workspaces?.find(
           (w: { workspace?: { id: string; allowPartialPayments?: boolean } }) => w.workspace?.id === workspaceId
@@ -50,7 +47,7 @@ export function TenantSettingsModal({
   const updateMutation = useMutation({
     mutationFn: async () => {
       await apiFetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/tenants/${tenant.id}`,
+        `/api/workspaces/${workspaceId}/tenants/${tenant.id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
