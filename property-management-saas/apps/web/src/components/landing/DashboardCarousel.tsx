@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 
 interface CarouselSlide {
   src: string;
@@ -126,11 +127,14 @@ export function DashboardCarousel(): React.ReactElement {
               onClick={() => goToSlide(index)}
             >
               <div className="w-full h-full rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-                <img
+                <Image
                   src={slide.src}
                   alt={slide.alt}
+                  width={600}
+                  height={400}
                   className="w-full h-full object-cover object-top"
                   draggable={false}
+                  priority={index === 0}
                 />
               </div>
             </motion.div>

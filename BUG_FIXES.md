@@ -39,8 +39,37 @@ It works in tandem with the `.agents/skills/` directory: every time a bug is log
 **Bug/Latency**: High loading lag (multi-second delays) when managers switched between the Dashboard, Properties, Payments, and Tenants tabs.
 **Root Cause**: Lack of API caching led to sequential, blocking database calls on every tab transition.
 **Resolution**:
-- Created a centralized in-memory caching module [cache.ts](file:///home/djust/projects/justhub/property-management-saas/apps/api/src/lib/cache.ts) with a `CACHE_TTL` of 120,000ms.
+- Centralized in-memory caching module [cache.ts](file:///home/djust/projects/justhub/property-management-saas/apps/api/src/lib/cache.ts) with a `CACHE_TTL` of 120,000ms.
 - Integrated cache checking and population into auth, properties, workspaces, tenants, payments, and maintenance routes.
 - Implemented immediate and absolute cache invalidation (`clearWorkspaceCache`) on all resource-mutating operations (POST/PUT/PATCH/DELETE) to ensure real-time data accuracy.
 - Added database indexes on foreign keys, status fields, and soft-delete dates in [schema.prisma](file:///home/djust/projects/justhub/property-management-saas/packages/database/prisma/schema.prisma).
+
+---
+
+## 3. Landing Page Loading Latency (propertystack.vercel.app)
+
+**Date**: June 14, 2026
+**Environment**: Web App / Vercel Production
+**Bug/Latency**: High initial page load latency on the public landing page.
+**Root Cause**: Unoptimized HTML `<img>` elements loaded large raw assets (including a 2.13 MB logo and 1.7 MB of preview screenshots) immediately on startup, without scaling, modern formats, or lazy-loading.
+**Resolution**:
+- Compressed the repository `logo.png` from **2.13 MB** to **35 KB** (resizing to 256x256 pixels).
+- Migrated all landing page and dashboard carousel image tags in [LandingPage.tsx](file:///home/djust/projects/justhub/property-management-saas/apps/web/src/components/landing/LandingPage.tsx) and [DashboardCarousel.tsx](file:///home/djust/projects/justhub/property-management-saas/apps/web/src/components/landing/DashboardCarousel.tsx) to Next.js's `<Image>` component, enabling automatic responsive optimization (WebP/AVIF), proper layout dimensions, above-the-fold priority loading, and below-the-fold lazy-loading.
+
+---
+
+## 4. Missing Release Keystore and Landing Page Download 404 Error
+
+**Date**: June 14, 2026
+**Environment**: Mobile App / Web Public Assets
+**Bug/Latency**: The mobile app lacked a release keystore configuration (which prevented signing the release build), and the download button on the landing page returned a 404 error because `propertystack-tenant.apk` did not exist in the public asset downloads.
+**Resolution**:
+- Generated a custom Java Keystore (`key.jks`) inside the [android/app/](file:///home/djust/projects/justhub/tenant_app/android/app/) directory configured with the release credentials defined in [build.gradle.kts](file:///home/djust/projects/justhub/tenant_app/android/app/build.gradle.kts).
+- Compiled a signed production release APK using `flutter build apk --release`.
+- Copied and deployed the compiled APK to the web app's public assets folder under:
+  - [propertystack-tenant.apk](file:///home/djust/projects/justhub/property-management-saas/apps/web/public/downloads/propertystack-tenant.apk) (resolves landing page 404).
+  - [justhub-tenant.apk](file:///home/djust/projects/justhub/property-management-saas/apps/web/public/downloads/justhub-tenant.apk) (updates update URL target).
+  - [estateos-tenant.apk](file:///home/djust/projects/justhub/property-management-saas/apps/web/public/downloads/estateos-tenant.apk) (updates legacy target).
+
+
 

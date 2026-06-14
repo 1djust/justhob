@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Building2,
   Users,
@@ -98,7 +99,7 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
-              <img src="/images/assets/logo.png" alt="PropertyStack Logo" className="h-10 w-auto" />
+              <Image src="/images/assets/logo.png" alt="PropertyStack Logo" width={160} height={40} className="h-10 w-auto" priority />
               <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
                 PropertyStack
               </span>
@@ -602,7 +603,7 @@ export function LandingPage() {
       <footer className="bg-white dark:bg-[#060B19] border-t border-slate-200 dark:border-slate-800 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
           <div className="flex items-center space-x-2 mb-4 md:mb-0">
-            <img src="/images/assets/logo.png" alt="PropertyStack Logo" className="h-8 w-auto" />
+            <Image src="/images/assets/logo.png" alt="PropertyStack Logo" width={128} height={32} className="h-8 w-auto" />
             <span className="font-bold text-xl tracking-tight">
               PropertyStack
             </span>
