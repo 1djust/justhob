@@ -151,8 +151,17 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+        <div className="relative flex flex-col items-center gap-4 animate-in fade-in duration-500">
+          <img
+            src="/images/assets/logo-loading.webp"
+            alt="PropertyStack Loading..."
+            className="w-20 h-20 object-contain"
+          />
+          <span className="text-muted-foreground font-bold tracking-widest uppercase text-[10px] animate-pulse">
+            PropertyStack
+          </span>
+        </div>
       </div>
     );
   }

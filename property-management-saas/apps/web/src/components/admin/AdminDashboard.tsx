@@ -1120,8 +1120,15 @@ function PaymentsTab() {
 // ===========================
 function LoadingSpinner() {
   return (
-    <div className="flex items-center justify-center min-h-[300px]">
-      <div className="animate-spin h-8 w-8 border-4 border-rose-500 border-t-transparent rounded-full" />
+    <div className="flex flex-col items-center justify-center min-h-[300px] gap-2 animate-in fade-in duration-300">
+      <img
+        src="/images/assets/logo-loading.webp"
+        alt="Loading..."
+        className="w-12 h-12 object-contain"
+      />
+      <span className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase animate-pulse">
+        Loading...
+      </span>
     </div>
   );
 }
