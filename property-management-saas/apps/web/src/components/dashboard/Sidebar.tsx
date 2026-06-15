@@ -240,9 +240,9 @@ export function Sidebar({
     { id: "settings", label: "Settings", icon: Settings, managerOnly: true },
   ];
 
-  const filteredItems = navItems.filter(
-    (item) => !item.managerOnly || isPropertyManager,
-  );
+  const filteredItems = isSuperAdmin
+    ? []
+    : navItems.filter((item) => !item.managerOnly || isPropertyManager);
 
   const adminItems = [
     {
@@ -404,10 +404,11 @@ export function Sidebar({
           )}
 
           {/* Notification Bell */}
-          <div
-            ref={notifRef}
-            className="relative mt-4 pt-4 border-t border-border"
-          >
+          {!isSuperAdmin && (
+            <div
+              ref={notifRef}
+              className="relative mt-4 pt-4 border-t border-border"
+            >
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className={cn(
@@ -521,6 +522,7 @@ export function Sidebar({
               </div>
             )}
           </div>
+          )}
         </nav>
 
         {/* Bottom Actions/Footer */}

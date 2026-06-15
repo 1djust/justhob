@@ -477,7 +477,16 @@ export function TenantsList({
                     <div className="grid grid-cols-2 gap-y-5 gap-x-2 mb-6">
                       <div>
                         <p className="text-[11px] text-zinc-500 font-medium mb-1">Location</p>
-                        <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-200 line-clamp-1">{primary?.property?.name || "Unassigned"}</p>
+                        {primary?.property?.name ? (
+                          <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-200 line-clamp-1">{primary.property.name}</p>
+                        ) : (
+                          <button
+                            onClick={() => setAssigningTenantId(t.id)}
+                            className="text-xs font-bold text-primary hover:underline text-left block"
+                          >
+                            Assign Unit
+                          </button>
+                        )}
                       </div>
                       <div>
                         <p className="text-[11px] text-zinc-500 font-medium mb-1">Tenant ID</p>
@@ -512,9 +521,18 @@ export function TenantsList({
                       <a href={`/dashboard/tenants/${t.id}?workspaceId=${workspaceId}`} className="flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-primary dark:hover:text-primary/80 transition-colors">
                         <Users className="w-3.5 h-3.5" /> View Profile
                       </a>
-                      <button onClick={() => alert("Messaging feature coming soon!")} className="flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-primary dark:hover:text-primary/80 transition-colors">
-                        <MessageSquare className="w-3.5 h-3.5" /> Message
-                      </button>
+                      {!primary ? (
+                        <button
+                          onClick={() => setAssigningTenantId(t.id)}
+                          className="flex items-center gap-1 text-xs font-bold text-primary hover:text-primary/80 transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Assign Unit
+                        </button>
+                      ) : (
+                        <button onClick={() => alert("Messaging feature coming soon!")} className="flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-primary dark:hover:text-primary/80 transition-colors">
+                          <MessageSquare className="w-3.5 h-3.5" /> Message
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -554,7 +572,18 @@ export function TenantsList({
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300 font-medium">{primary?.property?.name || "Unassigned"}</td>
+                          <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300 font-medium">
+                            {primary?.property?.name ? (
+                              primary.property.name
+                            ) : (
+                              <button
+                                onClick={() => setAssigningTenantId(t.id)}
+                                className="text-xs font-bold text-primary hover:underline text-left"
+                              >
+                                Assign Unit
+                              </button>
+                            )}
+                          </td>
                           <td className="px-6 py-4 text-primary dark:text-primary/80 font-medium">
                             {primary ? <span className="flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5" /> {attachmentName}</span> : <span className="text-zinc-400">None</span>}
                           </td>

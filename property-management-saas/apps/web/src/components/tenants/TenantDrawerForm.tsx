@@ -292,7 +292,7 @@ export function TenantDrawerForm({
                           {createdTenantId ? (
                             <button
                               onClick={() => setStep("assigning")}
-                              className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
+                              className="w-full bg-primary text-white hover:bg-primary/90 py-3 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all"
                             >
                               Assign Unit
                             </button>

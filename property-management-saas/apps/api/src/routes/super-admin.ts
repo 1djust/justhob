@@ -24,6 +24,26 @@ const ToggleUserAccessBody = Type.Object({
   isActive: Type.Boolean(),
 });
 
+const UpgradeRequestsQuery = Type.Object({
+  page: Type.Optional(Type.Number({ minimum: 1 })),
+  limit: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
+  status: Type.Optional(
+    Type.Union([
+      Type.Literal("PENDING"),
+      Type.Literal("APPROVED"),
+      Type.Literal("REJECTED"),
+    ]),
+  ),
+});
+
+const RejectUpgradeBody = Type.Object({
+  reason: Type.String({ minLength: 1, maxLength: 500 }),
+});
+
+const ApproveUpgradeBody = Type.Object({
+  durationMonths: Type.Optional(Type.Number({ minimum: 1, maximum: 60 })),
+});
+
 // Security: All string inputs are bounded to prevent ReDoS and DB performance attacks
 const PaginationQuery = Type.Object({
   page: Type.Optional(Type.Number({ minimum: 1 })),
@@ -568,6 +588,147 @@ export default async function superAdminRoutes(
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+      };
+    },
+  );
+
+  // =====================================================================
+  // GET /upgrade-requests — List manual upgrade requests
+  // =====================================================================
+  server.get<{ Querystring: Static<typeof UpgradeRequestsQuery> }>(
+    "/upgrade-requests",
+    {
+      schema: { querystring: UpgradeRequestsQuery },
+    },
+    async (request) => {
+      const { page = 1, limit = 20, status } = request.query;
+      const skip = (page - 1) * limit;
+
+      const where: Record<string, unknown> = {};
+      if (status) where.status = status;
+
+      const [requests, total] = await Promise.all([
+        prisma.upgradeRequest.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: "desc" },
+          include: {
+            workspace: {
+              select: {
+                id: true,
+                name: true,
+                plan: true,
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+              },
+            },
+          },
+        }),
+        prisma.upgradeRequest.count({ where }),
+      ]);
+
+      return {
+        requests,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    },
+  );
+
+  // =====================================================================
+  // POST /upgrade-requests/:id/approve — Approve manual upgrade request
+  // =====================================================================
+  server.post<{
+    Params: { id: string };
+    Body: Static<typeof ApproveUpgradeBody>;
+  }>(
+    "/upgrade-requests/:id/approve",
+    {
+      schema: { body: ApproveUpgradeBody },
+    },
+    async (request) => {
+      const { id } = request.params;
+      const { durationMonths = 12 } = request.body;
+
+      const upgradeRequest = await prisma.upgradeRequest.findUnique({
+        where: { id },
+      });
+
+      if (!upgradeRequest) throw new NotFoundError("Upgrade request not found");
+      if (upgradeRequest.status !== "PENDING") {
+        throw new ValidationError("Upgrade request is already processed");
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
+
+      // Upgrade the workspace and request status in a transaction
+      const [updatedRequest, updatedWorkspace] = await prisma.$transaction([
+        prisma.upgradeRequest.update({
+          where: { id },
+          data: { status: "APPROVED" },
+        }),
+        prisma.workspace.update({
+          where: { id: upgradeRequest.workspaceId },
+          data: {
+            plan: upgradeRequest.requestedPlan,
+            subscriptionExpiresAt: expiresAt,
+            status: "ACTIVE",
+          },
+        }),
+      ]);
+
+      return {
+        success: true,
+        upgradeRequest: updatedRequest,
+        workspace: updatedWorkspace,
+      };
+    },
+  );
+
+  // =====================================================================
+  // POST /upgrade-requests/:id/reject — Reject manual upgrade request
+  // =====================================================================
+  server.post<{
+    Params: { id: string };
+    Body: Static<typeof RejectUpgradeBody>;
+  }>(
+    "/upgrade-requests/:id/reject",
+    {
+      schema: { body: RejectUpgradeBody },
+    },
+    async (request) => {
+      const { id } = request.params;
+      const { reason } = request.body;
+
+      const upgradeRequest = await prisma.upgradeRequest.findUnique({
+        where: { id },
+      });
+
+      if (!upgradeRequest) throw new NotFoundError("Upgrade request not found");
+      if (upgradeRequest.status !== "PENDING") {
+        throw new ValidationError("Upgrade request is already processed");
+      }
+
+      const updatedRequest = await prisma.upgradeRequest.update({
+        where: { id },
+        data: {
+          status: "REJECTED",
+          rejectionReason: reason,
+        },
+      });
+
+      return {
+        success: true,
+        upgradeRequest: updatedRequest,
       };
     },
   );

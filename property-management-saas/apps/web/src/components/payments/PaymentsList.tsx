@@ -1274,7 +1274,7 @@ function ReceiptModal({
           </Button>
           <Button
             onClick={printReceipt}
-            className="flex-1 py-3.5 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-sm font-black hover:scale-[1.02] transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2"
+            className="flex-1 py-3.5 rounded-2xl bg-primary text-white hover:bg-primary/90 text-sm font-black hover:scale-[1.02] transition-all active:scale-[0.98] shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
           >
             <FileText className="w-4 h-4" /> Print PDF
           </Button>
@@ -1413,7 +1413,7 @@ function InvoiceModal({
           </Button>
           <Button
             onClick={printInvoice}
-            className="flex-1 py-3.5 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-sm font-black hover:scale-[1.02] transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2"
+            className="flex-1 py-3.5 rounded-2xl bg-primary text-white hover:bg-primary/90 text-sm font-black hover:scale-[1.02] transition-all active:scale-[0.98] shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
           >
             <FileText className="w-4 h-4" /> Print PDF
           </Button>

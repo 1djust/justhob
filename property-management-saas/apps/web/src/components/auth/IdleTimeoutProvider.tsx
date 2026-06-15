@@ -129,7 +129,7 @@ export function IdleTimeoutProvider({
               </button>
               <button
                 onClick={stayLoggedIn}
-                className="px-6 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-lg transition-colors shadow-lg"
+                className="px-6 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors shadow-lg shadow-primary/20"
               >
                 I&apos;m still here
               </button>

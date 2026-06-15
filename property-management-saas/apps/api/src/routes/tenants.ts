@@ -190,13 +190,14 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
 
           // If email is provided, create a Supabase Auth account for the mobile app
           if (email) {
+            const frontendUrl = process.env.FRONTEND_URL || "https://justhob.vercel.app";
             const { data: linkData, error: linkError } =
               await supabaseAdmin.auth.admin.generateLink({
                 type: "invite",
                 email,
                 options: {
                   data: { name, role: "TENANT", mustChangePassword: true },
-                  redirectTo: "https://justhob.vercel.app/login",
+                  redirectTo: `${frontendUrl}/login`,
                 },
               });
 
@@ -250,11 +251,11 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
                 });
                 await tx.user.delete({ where: { id: existingDbUser.id } });
                 await tx.user.create({
-                  data: { id: supabaseUserId, email, name },
+                  data: { id: supabaseUserId, email, name, role: "TENANT" },
                 });
               } else if (!existingDbUser) {
                 await tx.user.create({
-                  data: { id: supabaseUserId, email, name },
+                  data: { id: supabaseUserId, email, name, role: "TENANT" },
                 });
               } else {
                 await tx.user.update({
@@ -400,6 +401,12 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
             tenantId: id,
             message: "A tenant has been deleted.",
           });
+
+        // Notify the deleted tenant directly to trigger a dashboard/app reload
+        (fastify as any).io.to(`user:${id}`).emit("WORKSPACE_MEMBER_REMOVED", {
+          workspaceId,
+          message: "You have been removed from this workspace.",
+        });
 
         clearWorkspaceCache(workspaceId);
         return reply.send({ success: true });

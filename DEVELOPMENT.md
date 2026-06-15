@@ -102,7 +102,29 @@ We have provided helper scripts to generate fresh database scenarios or to quick
 
 ---
 
-## Troubleshooting
+## 4. Super Admin Management
+We have provided helper scripts to manage Super Admin accounts (God Mode privileges) on the platform. These scripts should be run from the `property-management-saas/apps/api/` directory:
+
+| Action | Command | Description |
+| :--- | :--- | :--- |
+| **Create / Promote Super Admin** | `npx tsx src/promote-admin.ts <email_or_id> [password]` | Promotes an existing user, or creates a new Super Admin from scratch in both Supabase Auth and Prisma database. Password defaults to `Test1234!`. |
+| **Permanently Delete User** | `npx tsx src/remove-user.ts <email_or_id>` | Permanently purges a user profile and credentials from both Supabase Auth and the Prisma database. |
+
+### Examples:
+* **Create a new Super Admin account**:
+  ```bash
+  cd property-management-saas/apps/api
+  npx tsx src/promote-admin.ts admin@example.com MyPass123!
+  ```
+* **Permanently delete an admin or user account**:
+  ```bash
+  cd property-management-saas/apps/api
+  npx tsx src/remove-user.ts admin@example.com
+  ```
+
+---
+
+## 5. Troubleshooting
 - **Port Conflicts**: If a port is already in use, you can find the process with `lsof -i :PORT_NUMBER`.
 - **Flutter Keyring**: If `run.sh` fails, ensure `dbus-run-session` and `gnome-keyring` are installed in your WSL environment.
 - **Database**: If the backend fails to start, verify your `.env` file in the `property-management-saas` folder.

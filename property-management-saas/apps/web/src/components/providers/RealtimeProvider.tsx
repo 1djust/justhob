@@ -108,6 +108,14 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({
         router.refresh();
       });
 
+      s.on("WORKSPACE_MEMBER_REMOVED", (data: RealtimeEventData) => {
+        console.log("[Realtime] Workspace member removed:", data);
+        toast.warning(data.message || "Your workspace membership was updated.");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      });
+
       setSocket(s);
     };
 

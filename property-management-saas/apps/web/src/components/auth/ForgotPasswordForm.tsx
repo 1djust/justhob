@@ -115,7 +115,7 @@ export function ForgotPasswordForm() {
         <button
           type="submit"
           disabled={loading || !email}
-          className="w-full flex items-center justify-center py-3.5 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-sm font-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center py-3.5 rounded-2xl bg-primary text-white hover:bg-primary/90 text-sm font-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
         >
           {loading ? "Sending link..." : "Send reset link"}
         </button>

@@ -14,6 +14,10 @@ const UpdateWorkspaceBody = Type.Object({
   allowPartialPayments: Type.Optional(Type.Boolean()),
 });
 const WorkspaceIdParams = Type.Object({ workspaceId: Type.String() });
+const UpgradeRequestBody = Type.Object({
+  requestedPlan: Type.Union([Type.Literal("PRO"), Type.Literal("ENTERPRISE")]),
+  proofUrl: Type.String(),
+});
 
 export default async function workspaceRoutes(fastify: FastifyInstance) {
   const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
@@ -289,6 +293,103 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
       });
 
       return reply.send(responseBody);
+    },
+  );
+
+  // Submit manual workspace plan upgrade request
+  server.post<{
+    Params: Static<typeof WorkspaceIdParams>;
+    Body: Static<typeof UpgradeRequestBody>;
+  }>(
+    "/:workspaceId/upgrade-requests",
+    {
+      schema: {
+        params: WorkspaceIdParams,
+        body: UpgradeRequestBody,
+      },
+    },
+    async (request, reply) => {
+      const userId = request.userId!;
+      const { workspaceId } = request.params;
+      const { requestedPlan, proofUrl } = request.body;
+
+      // Security: Check workspace membership + role = PROPERTY_MANAGER
+      const membership = await prisma.workspaceMember.findFirst({
+        where: {
+          workspaceId,
+          userId,
+          role: "PROPERTY_MANAGER",
+        },
+      });
+
+      if (!membership) {
+        return reply.status(403).send({
+          error: "Only workspace managers can request subscription upgrades.",
+        });
+      }
+
+      // Check if there is already a PENDING upgrade request
+      const existingPending = await prisma.upgradeRequest.findFirst({
+        where: {
+          workspaceId,
+          status: "PENDING",
+        },
+      });
+
+      if (existingPending) {
+        return reply.status(400).send({
+          error: "You already have a pending upgrade request. Please wait for the admin to verify it.",
+        });
+      }
+
+      const upgradeRequest = await prisma.upgradeRequest.create({
+        data: {
+          workspaceId,
+          userId,
+          requestedPlan,
+          proofUrl,
+          status: "PENDING",
+        },
+      });
+
+      return reply.status(201).send({ upgradeRequest });
+    },
+  );
+
+  // Fetch upgrade request logs/status for a workspace
+  server.get<{
+    Params: Static<typeof WorkspaceIdParams>;
+  }>(
+    "/:workspaceId/upgrade-requests",
+    {
+      schema: {
+        params: WorkspaceIdParams,
+      },
+    },
+    async (request, reply) => {
+      const userId = request.userId!;
+      const { workspaceId } = request.params;
+
+      // Security: Check workspace membership
+      const membership = await prisma.workspaceMember.findFirst({
+        where: {
+          workspaceId,
+          userId,
+        },
+      });
+
+      if (!membership) {
+        return reply.status(403).send({
+          error: "Unauthorized access to workspace information.",
+        });
+      }
+
+      const upgradeRequests = await prisma.upgradeRequest.findMany({
+        where: { workspaceId },
+        orderBy: { createdAt: "desc" },
+      });
+
+      return reply.send({ upgradeRequests });
     },
   );
 }

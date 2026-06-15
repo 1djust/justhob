@@ -22,6 +22,7 @@ model User {
   notifications       Notification[]
   propertiesOwned     Property[]
   workspaces          WorkspaceMember[]
+  upgradeRequests     UpgradeRequest[]
 }
 
 model Workspace {
@@ -43,6 +44,7 @@ model Workspace {
   tenants               Tenant[]
   units                 Unit[]
   members               WorkspaceMember[]
+  upgradeRequests       UpgradeRequest[]
 }
 
 model WorkspaceMember {
@@ -370,4 +372,28 @@ enum MaintenancePriority {
   LOW
   MEDIUM
   HIGH
+}
+
+enum UpgradeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model UpgradeRequest {
+  id              String           @id @default(uuid())
+  workspaceId     String
+  userId          String
+  proofUrl        String
+  requestedPlan   SubscriptionPlan
+  status          UpgradeStatus    @default(PENDING)
+  rejectionReason String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([status])
 }

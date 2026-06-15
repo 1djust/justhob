@@ -35,6 +35,7 @@ interface User {
   role: string;
   globalRole?: string;
   workspaces?: WorkspaceMember[];
+  mustChangePassword?: boolean;
 }
 
 type DashboardView =
@@ -72,10 +73,28 @@ export default function DashboardPage() {
   React.useEffect(() => {
     apiFetch(`${API_BASE_URL}/api/auth/me`)
       .then((data) => {
+        if (data.user?.mustChangePassword && data.user?.role !== "PROPERTY_MANAGER") {
+          router.push("/login");
+          return;
+        }
         setUser(data.user);
+        if (data.user?.globalRole === "SUPER_ADMIN") {
+          setActiveView("admin");
+        }
         if (data.user?.workspaces?.length > 0) {
+          const priority: Record<string, number> = {
+            PROPERTY_MANAGER: 1,
+            LANDLORD: 2,
+            TENANT: 3,
+            SUPER_ADMIN: 4,
+          };
+          const sortedWorkspaces = [...data.user.workspaces].sort((a, b) => {
+            const pA = priority[a.role] ?? 99;
+            const pB = priority[b.role] ?? 99;
+            return pA - pB;
+          });
           setSelectedWorkspaceId(
-            (prev) => prev || data.user.workspaces[0]?.workspace?.id || null,
+            (prev) => prev || sortedWorkspaces[0]?.workspace?.id || null,
           );
         }
         setLoading(false);
@@ -139,6 +158,10 @@ export default function DashboardPage() {
   }
 
   const renderActiveView = () => {
+    if (activeView === "admin" && user?.globalRole === "SUPER_ADMIN") {
+      return <AdminDashboard />;
+    }
+
     if (!selectedWorkspaceId) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">

@@ -59,6 +59,7 @@ interface Owner {
 export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = React.useState(false);
+  const [ownerToDelete, setOwnerToDelete] = React.useState<Owner | null>(null);
   const payoutStrategyLabels: Record<string, string> = {
     DIRECT_TO_LANDLORD: "Landlord Receives Directly",
     MANAGER_COLLECTS: "Manager Collects First",
@@ -90,18 +91,14 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["owners", workspaceId] });
+      setOwnerToDelete(null);
     },
     onError: (e: Error) => {
       console.error(e);
       alert("Failed to remove owner.");
+      setOwnerToDelete(null);
     },
   });
-
-  const handleRemove = (ownerId: string) => {
-    if (!confirm("Remove this owner? Their properties will become unassigned."))
-      return;
-    removeOwnerMutation.mutate(ownerId);
-  };
 
   if (loading) {
     return (
@@ -134,6 +131,17 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
         <AddOwnerForm
           workspaceId={workspaceId}
           onComplete={() => setShowForm(false)}
+        />
+      )}
+
+      {ownerToDelete && (
+        <ConfirmDeleteModal
+          ownerName={ownerToDelete.name}
+          onConfirm={() => {
+            removeOwnerMutation.mutate(ownerToDelete.id);
+          }}
+          onCancel={() => setOwnerToDelete(null)}
+          isPending={removeOwnerMutation.isPending}
         />
       )}
 
@@ -222,7 +230,7 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleRemove(o.id)}
+                          onClick={() => setOwnerToDelete(o)}
                           className="hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-zinc-400"
                           title="Remove Owner"
                         >
@@ -252,6 +260,7 @@ function AddOwnerForm({
   onComplete: () => void;
 }) {
   const queryClient = useQueryClient();
+  const [copied, setCopied] = React.useState(false);
   const [formData, setFormData] = React.useState({
     name: "",
     email: "",
@@ -323,14 +332,23 @@ function AddOwnerForm({
           </code>
           <Button
             type="button"
-            variant="success"
+            variant={copied ? "success" : "accent"}
             size="sm"
             onClick={() => {
               navigator.clipboard.writeText(successLink);
-              alert("Copied to clipboard!");
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
             }}
+            className="transition-all duration-300 gap-1.5 shrink-0"
           >
-            Copy Link
+            {copied ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Copied!
+              </>
+            ) : (
+              "Copy Link"
+            )}
           </Button>
         </div>
         <Button
@@ -546,6 +564,70 @@ function AddOwnerForm({
         </Button>
       </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+interface ConfirmDeleteModalProps {
+  ownerName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}
+
+function ConfirmDeleteModal({
+  ownerName,
+  onConfirm,
+  onCancel,
+  isPending,
+}: ConfirmDeleteModalProps) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onCancel}
+    >
+      <div
+        className="relative bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] shadow-2xl max-w-md w-full p-8 space-y-6 text-center animate-in zoom-in-95 duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 flex items-center justify-center mx-auto animate-bounce duration-1000">
+          <Trash2 className="w-8 h-8 text-rose-600 dark:text-rose-400" />
+        </div>
+
+        <div className="space-y-2">
+          <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50 tracking-tight">
+            Remove Landlord
+          </h4>
+          <p className="text-sm text-zinc-500 leading-relaxed font-medium">
+            Are you sure you want to remove <span className="font-bold text-zinc-900 dark:text-zinc-100">{ownerName}</span>?
+          </p>
+          <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100/50 dark:border-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-bold text-left flex items-start gap-2.5 mt-2">
+            <AlertCircle className="w-4.5 h-4.5 mt-0.5 shrink-0" />
+            <span>This action is permanent. All associated properties will become unassigned.</span>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-2">
+          <Button
+            onClick={onCancel}
+            type="button"
+            variant="ghost"
+            className="w-full"
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={onConfirm}
+            type="button"
+            variant="danger"
+            className="w-full font-black uppercase tracking-wider"
+            isLoading={isPending}
+          >
+            Confirm
+          </Button>
+        </div>
       </div>
     </div>
   );

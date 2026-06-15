@@ -26,6 +26,25 @@ const ChangePasswordBody = Type.Object({
 const ResetPasswordBody = Type.Object({ email: Type.String() });
 const CheckEmailBody = Type.Object({ email: Type.String() });
 
+function getPrimaryWorkspace(workspaces?: Array<{ role: string; workspaceId: string }>) {
+  if (!workspaces || workspaces.length === 0) return null;
+  
+  const priority: Record<string, number> = {
+    PROPERTY_MANAGER: 1,
+    LANDLORD: 2,
+    TENANT: 3,
+    SUPER_ADMIN: 4,
+  };
+
+  const sorted = [...workspaces].sort((a, b) => {
+    const pA = priority[a.role] ?? 99;
+    const pB = priority[b.role] ?? 99;
+    return pA - pB;
+  });
+
+  return sorted[0];
+}
+
 export default async function authRoutes(fastify: FastifyInstance) {
   const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
 
@@ -67,21 +86,54 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // Auto-Healing: Check if email already exists with different ID
         const existingByEmail = await prisma.user.findUnique({
           where: { email: supaUser.email || "" },
+          include: {
+            workspaces: {
+              include: { workspace: true },
+            },
+          },
         });
 
         if (existingByEmail) {
-          // Security: Do NOT delete existing users. This prevents account takeover
-          // via duplicate email registration.
-          throw new AppError(
-            "An account with this email already exists. Please contact support if you believe this is an error.",
-            409,
-            "DUPLICATE_EMAIL",
-          );
+          const isEmailVerified =
+            !!supaUser.email_confirmed_at ||
+            supaUser.user_metadata?.email_verified === true;
+
+          if (isEmailVerified) {
+            // Auto-Heal: The user exists in Prisma with a different ID (e.g. desynced local db).
+            // Since the Supabase token is verified, this email is owned by the current request.
+            // We safely update their User ID in Prisma to the new Supabase ID.
+            console.log(
+              `[AUTH/SYNC] Mismatch detected: email ${supaUser.email} has Prisma ID ${existingByEmail.id} but Supabase ID ${supaUser.id}. Healing...`,
+            );
+            await prisma.$executeRaw`UPDATE "User" SET id = ${supaUser.id} WHERE email = ${supaUser.email || ""}`;
+
+            // Fetch the updated user
+            user = await prisma.user.findUnique({
+              where: { id: supaUser.id },
+              include: {
+                workspaces: {
+                  include: { workspace: true },
+                },
+              },
+            });
+          } else {
+            // Security: Do NOT delete or update existing users if email is not verified.
+            // This prevents account takeover via duplicate email registration.
+            throw new AppError(
+              "An account with this email already exists. Please contact support if you believe this is an error.",
+              409,
+              "DUPLICATE_EMAIL",
+            );
+          }
         }
 
         try {
           const userMetadata: any = supaUser.user_metadata || {};
           const userName = name || userMetadata.name || null;
+          let userRole = userMetadata.role || "PROPERTY_MANAGER";
+          if (userRole === "SUPER_ADMIN") {
+            userRole = "PROPERTY_MANAGER";
+          }
 
           // Check if this user already has workspace memberships (e.g. created as tenant by manager)
           const existingMemberships = await prisma.workspaceMember.findMany({
@@ -95,6 +147,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 id: supaUser.id,
                 email: supaUser.email || "",
                 name: userName,
+                role: userRole,
               },
               include: {
                 workspaces: {
@@ -109,9 +162,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 id: supaUser.id,
                 email: supaUser.email || "",
                 name: userName,
+                role: userRole,
                 workspaces: {
                   create: {
-                    role: "PROPERTY_MANAGER",
+                    role: userRole,
                     workspace: { create: { name: "My Properties" } },
                   },
                 },
@@ -139,11 +193,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
       };
 
       const mustChange = supaUser?.user_metadata?.mustChangePassword === true;
+      const primaryWS = getPrimaryWorkspace(u.workspaces);
       const userWithWorkspaces = {
         ...user,
-        role: u.workspaces?.[0]?.role || "USER",
+        role: primaryWS?.role || "USER",
         globalRole: u.role,
-        workspaceId: u.workspaces?.[0]?.workspaceId || null,
+        workspaceId: primaryWS?.workspaceId || null,
         mustChangePassword: mustChange,
       };
 
@@ -180,7 +235,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     const freshMeta = supaUser.user_metadata;
     const mustChange = freshMeta?.mustChangePassword === true;
-    const role = user?.workspaces?.[0]?.role || freshMeta.role || "TENANT";
+    const primaryWS = getPrimaryWorkspace(user?.workspaces as any);
+    let role = primaryWS?.role || freshMeta.role || "TENANT";
+    if (role === "SUPER_ADMIN" && user?.role !== "SUPER_ADMIN") {
+      role = "TENANT";
+    }
+    const workspaceId = primaryWS?.workspaceId || null;
 
     const responseBody = {
       user: user
@@ -188,6 +248,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             ...user,
             role,
             globalRole: user.role,
+            workspaceId,
             mustChangePassword: mustChange,
           }
         : null,
@@ -235,11 +296,16 @@ export default async function authRoutes(fastify: FastifyInstance) {
       if (!user) {
         // If the user exists in Supabase but not Prisma, sync it now
         // This can happen if they were invited/created via admin but never synced
+        let role = data.user.user_metadata.role || "TENANT";
+        if (role === "SUPER_ADMIN") {
+          role = "TENANT";
+        }
         const newUser = await prisma.user.create({
           data: {
             id: data.user.id,
             email: data.user.email!,
             name: data.user.user_metadata.name || null,
+            role: role,
           },
           include: {
             workspaces: {
@@ -248,7 +314,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
           },
         });
 
-        const role = data.user.user_metadata.role || "TENANT";
         const mustChange = data.user.user_metadata?.mustChangePassword === true;
         return reply.send({
           access_token: data.session.access_token,
@@ -262,8 +327,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       const mustChange = data.user.user_metadata?.mustChangePassword === true;
-      const role =
-        user.workspaces?.[0]?.role || data.user.user_metadata.role || "USER";
+      const primaryWS = getPrimaryWorkspace(user.workspaces as any);
+      let role = primaryWS?.role || data.user.user_metadata.role || "USER";
+      if (role === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN") {
+        role = "USER";
+      }
+      const workspaceId = primaryWS?.workspaceId || null;
 
       return reply.send({
         access_token: data.session.access_token,
@@ -271,6 +340,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           ...user,
           role,
           globalRole: user.role,
+          workspaceId,
           mustChangePassword: mustChange,
         },
       });
@@ -331,10 +401,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
         include: { workspaces: { include: { workspace: true } } },
       });
 
-      const role =
-        user?.workspaces?.[0]?.role ||
+      const primaryWS = getPrimaryWorkspace(user?.workspaces as any);
+      let role =
+        primaryWS?.role ||
         supaData.user.user_metadata.role ||
         "TENANT";
+      if (role === "SUPER_ADMIN" && user?.role !== "SUPER_ADMIN") {
+        role = "TENANT";
+      }
+      const workspaceId = primaryWS?.workspaceId || null;
 
       return reply.send({
         success: true,
@@ -343,6 +418,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           ...user,
           role,
           globalRole: user?.role,
+          workspaceId,
           mustChangePassword: false,
         },
       });

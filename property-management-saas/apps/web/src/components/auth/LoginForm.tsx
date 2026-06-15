@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { apiFetch } from "@/lib/api";
 
@@ -22,9 +22,23 @@ export function LoginForm() {
   const [mfaCode, setMfaCode] = React.useState("");
   const [factorId, setFactorId] = React.useState<string | null>(null);
 
+  const [tempPassword, setTempPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [showTempPassword, setShowTempPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+
   const router = useRouter();
 
   const isManualLogin = React.useRef(false);
+
+  const hasMinLength = password.length >= 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
+  const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
+
+  const strengthScore = password ? [hasMinLength, hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length : 0;
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -32,6 +46,16 @@ export function LoginForm() {
       const urlEmail = params.get("email");
       if (urlEmail) {
         setEmail(urlEmail);
+      }
+
+      if (window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const errorMsg = hashParams.get("error_description");
+        if (errorMsg) {
+          setError(errorMsg.replace(/\+/g, " "));
+          // Clean hash to prevent showing it again on reload
+          window.history.replaceState(null, "", window.location.pathname);
+        }
       }
     }
   }, []);
@@ -51,6 +75,14 @@ export function LoginForm() {
         data: { session },
       } = await supabase.auth.getSession();
       if (session?.user) {
+        // Fetch fresh profile from sync/me to see if they must change password
+        const meData = await apiFetch("/api/auth/me").catch(() => null) as { user?: { role?: string; mustChangePassword?: boolean } };
+        if (meData?.user?.mustChangePassword && meData?.user?.role !== "PROPERTY_MANAGER") {
+          setIsInviteFlow(true);
+          setEmail(session.user.email || "");
+          return;
+        }
+
         if (isRecoveryOrInviteViaUrl) {
           setIsInviteFlow(true);
           setEmail(session.user.email || "");
@@ -131,11 +163,19 @@ export function LoginForm() {
       }
 
       // If no MFA required, proceed normally
-      await apiFetch("/api/auth/sync", {
+      const syncData = await apiFetch("/api/auth/sync", {
         method: "POST",
-      });
+      }) as { user?: { role?: string; mustChangePassword?: boolean } };
 
-      router.push("/dashboard");
+      if (syncData?.user?.mustChangePassword === true && syncData?.user?.role !== "PROPERTY_MANAGER") {
+        setTempPassword(password); // Pre-fill temporary password with the password they typed to log in
+        setPassword(""); // Clear password field for new password entry
+        setConfirmPassword("");
+        setIsInviteFlow(true);
+        setLoading(false);
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: unknown) {
       const errorObj = err as Error & { details?: string | Record<string, unknown> };
       console.error("Login error:", errorObj);
@@ -187,17 +227,40 @@ export function LoginForm() {
     setLoading(true);
     setError("");
 
+    if (!isPasswordValid) {
+      setError("Please ensure your password meets all strength requirements.");
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("New passwords do not match.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // They are already authenticated via the magic link, so we just update their user profile
+      // 1. Verify the temporary password by attempting a sign in with it
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email,
+        password: tempPassword,
+      });
+
+      if (verifyError) {
+        throw new Error("The temporary password you entered is incorrect.");
+      }
+
+      // 2. Set the permanent password and clear the mustChangePassword flag in user metadata
       const { error: updateError } = await supabase.auth.updateUser({
         password: password,
+        data: { mustChangePassword: false },
       });
 
       if (updateError) {
         throw new Error(updateError.message || "Failed to set password");
       }
 
-      // Sync with Prisma backend
+      // 3. Sync with Prisma backend
       await apiFetch("/api/auth/sync", {
         method: "POST",
       });
@@ -207,6 +270,25 @@ export function LoginForm() {
       const errorObj = err as Error;
       console.error("Password setup error:", errorObj);
       setError(errorObj.message || "An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelInviteFlow = async () => {
+    setLoading(true);
+    try {
+      await supabase.auth.signOut();
+      setIsInviteFlow(false);
+      setEmail("");
+      setTempPassword("");
+      setPassword("");
+      setConfirmPassword("");
+      setShowTempPassword(false);
+      setShowConfirmPassword(false);
+      setError("");
+    } catch (err) {
+      console.error("Logout failed during cancel flow:", err);
     } finally {
       setLoading(false);
     }
@@ -238,8 +320,7 @@ export function LoginForm() {
         <div className="bg-emerald-500/10 border-l-4 border-emerald-500 text-emerald-700 dark:text-emerald-400 p-4 rounded-r-sm text-sm mb-6">
           <p className="font-bold tracking-tight">Email Verified Successfully! 🎉</p>
           <p className="mt-1 opacity-90">
-            Please set a permanent password for your account to complete your
-            setup.
+            Please verify your temporary password and set a new permanent password to complete your setup.
           </p>
         </div>
 
@@ -263,7 +344,35 @@ export function LoginForm() {
 
         <div className="space-y-2">
           <label className="text-sm font-bold tracking-tight text-zinc-800 dark:text-zinc-200">
-            Create a Password
+            Temporary Password
+          </label>
+          <div className="relative">
+            <input
+              type={showTempPassword ? "text" : "password"}
+              value={tempPassword}
+              onChange={(e) => setTempPassword(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 pr-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+              placeholder="Enter the password assigned to you"
+              required
+              disabled={loading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowTempPassword(!showTempPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-emerald-600 transition-colors"
+            >
+              {showTempPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-bold tracking-tight text-zinc-800 dark:text-zinc-200">
+            Create a New Password
           </label>
           <div className="relative">
             <input
@@ -271,9 +380,9 @@ export function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 pr-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-              placeholder="Minimum 6 characters"
+              placeholder="Minimum 8 characters"
               required
-              minLength={6}
+              minLength={8}
               disabled={loading}
             />
             <button
@@ -288,14 +397,111 @@ export function LoginForm() {
               )}
             </button>
           </div>
+
+          {password && (
+            <div className="space-y-2.5 mt-2 animate-in fade-in duration-300">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-500 font-medium dark:text-zinc-400">Password Strength:</span>
+                <span className={`font-bold ${
+                  strengthScore <= 2 ? "text-red-500" :
+                  strengthScore === 3 ? "text-amber-500" :
+                  strengthScore === 4 ? "text-emerald-500/80" : "text-emerald-500"
+                }`}>
+                  {strengthScore <= 2 ? "Weak" :
+                   strengthScore === 3 ? "Fair" :
+                   strengthScore === 4 ? "Good" : "Strong"}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-5 gap-1">
+                {[1, 2, 3, 4, 5].map((index) => (
+                  <div
+                    key={index}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      index <= strengthScore
+                        ? strengthScore <= 2
+                          ? "bg-red-500"
+                          : strengthScore === 3
+                          ? "bg-amber-500"
+                          : strengthScore === 4
+                          ? "bg-emerald-500/80"
+                          : "bg-emerald-500"
+                        : "bg-zinc-200 dark:bg-zinc-800"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-1.5 text-xs text-zinc-500 dark:text-zinc-400 border-t border-zinc-100 dark:border-zinc-900 mt-2">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${hasMinLength ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`} />
+                  <span className={hasMinLength ? "text-zinc-800 dark:text-zinc-200 font-medium" : ""}>8+ chars</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${hasUppercase ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`} />
+                  <span className={hasUppercase ? "text-zinc-800 dark:text-zinc-200 font-medium" : ""}>1 Uppercase</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${hasLowercase ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`} />
+                  <span className={hasLowercase ? "text-zinc-800 dark:text-zinc-200 font-medium" : ""}>1 Lowercase</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${hasNumber ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`} />
+                  <span className={hasNumber ? "text-zinc-800 dark:text-zinc-200 font-medium" : ""}>1 Number</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${hasSpecial ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`} />
+                  <span className={hasSpecial ? "text-zinc-800 dark:text-zinc-200 font-medium" : ""}>1 Special char</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-bold tracking-tight text-zinc-800 dark:text-zinc-200">
+            Confirm New Password
+          </label>
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 pr-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+              placeholder="Re-enter your new password"
+              required
+              minLength={8}
+              disabled={loading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-emerald-600 transition-colors"
+            >
+              {showConfirmPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         <button
           type="submit"
-          disabled={loading || password.length < 6}
+          disabled={loading || !isPasswordValid || !tempPassword || !confirmPassword || password !== confirmPassword}
           className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-4 w-full mt-6 shadow-sm"
         >
           {loading ? "Setting Password..." : "Save Password & Continue"}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleCancelInviteFlow}
+          disabled={loading}
+          className="w-full text-sm text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium transition-colors mt-4 text-center block"
+        >
+          Sign Out / Use another account
         </button>
       </form>
     );

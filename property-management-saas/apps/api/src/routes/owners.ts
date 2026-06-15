@@ -169,13 +169,14 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           // User doesn't exist, need to create in Supabase then Prisma
           // Note: We do this outside the transaction to avoid long locks during network calls
           const tempPassword = password || "TempPass123!";
+          const frontendUrl = process.env.FRONTEND_URL || "https://justhob.vercel.app";
           const { data: linkData, error: linkError } =
             await supabaseAdmin.auth.admin.generateLink({
               type: "invite",
               email,
               options: {
-                data: { name },
-                redirectTo: "https://justhob.vercel.app/login",
+                data: { name, role: "LANDLORD", mustChangePassword: true },
+                redirectTo: `${frontendUrl}/login`,
               },
             });
 
@@ -195,8 +196,14 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
               });
           }
 
+          // Actually set the temp password on the Supabase account so the landlord can log in
+          await supabaseAdmin.auth.admin.updateUserById(linkDataAny.user.id, {
+            password: tempPassword,
+            email_confirm: true,
+          });
+
           user = await prisma.user.create({
-            data: { id: linkDataAny.user.id, email, name },
+            data: { id: linkDataAny.user.id, email, name, role: "LANDLORD" },
           });
 
           inviteLink = linkDataAny.properties.action_link;
@@ -220,11 +227,12 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         } else {
           // User already exists — generate a magic link so they can log in
           try {
+            const frontendUrl = process.env.FRONTEND_URL || "https://justhob.vercel.app";
             const { data: mlData } =
               await supabaseAdmin.auth.admin.generateLink({
                 type: "magiclink",
                 email,
-                options: { redirectTo: "https://justhob.vercel.app/login" },
+                options: { redirectTo: `${frontendUrl}/login` },
               });
             const mlAny = mlData as unknown as {
               properties?: { action_link?: string };
@@ -268,6 +276,19 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           where: { workspaceId, ownerId },
           data: { ownerId: null },
         });
+
+        // Notify workspace members of the change
+        (fastify as any).io.to(`workspace:${workspaceId}`).emit("OWNER_DELETED", {
+          ownerId,
+          workspaceId,
+        });
+
+        // Notify the deleted owner directly to trigger a dashboard reload
+        (fastify as any).io.to(`user:${ownerId}`).emit("WORKSPACE_MEMBER_REMOVED", {
+          workspaceId,
+          message: "You have been removed from this workspace.",
+        });
+
         return reply.send({ success: true });
       } catch (e) {
         return reply.status(404).send({ error: "Owner not found" });

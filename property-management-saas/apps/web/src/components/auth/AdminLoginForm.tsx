@@ -144,7 +144,7 @@ export function AdminLoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="flex items-center justify-center gap-2 rounded-2xl text-sm font-black transition-all bg-zinc-900 dark:bg-white text-white dark:text-black hover:scale-[1.02] h-14 w-full mt-6 shadow-xl active:scale-[0.98] disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-2xl text-sm font-black transition-all bg-primary text-white hover:bg-primary/90 hover:scale-[1.02] h-14 w-full mt-6 shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-50"
         >
           {loading ? (
             <div className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" />
