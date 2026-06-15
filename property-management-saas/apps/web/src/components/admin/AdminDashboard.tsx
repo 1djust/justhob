@@ -31,8 +31,10 @@ import {
   ShieldCheck,
   Smartphone,
   Copy,
+  Info,
 } from "lucide-react";
 import { SecurityLogs } from "./SecurityLogs";
+import { Button } from "../shared/Button";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "@/lib/supabase";
 import { clsx, type ClassValue } from "clsx";
@@ -42,7 +44,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type AdminTab = "overview" | "workspaces" | "errors" | "payments" | "security";
+type AdminTab = "overview" | "workspaces" | "upgrades" | "errors" | "payments" | "security";
 
 interface AdminStats {
   totalUsers: number;
@@ -112,6 +114,7 @@ interface PaymentEntry {
 const tabs: Array<{ id: AdminTab; label: string; icon: React.ElementType }> = [
   { id: "overview", label: "Overview", icon: Activity },
   { id: "workspaces", label: "Workspaces & Users", icon: Building2 },
+  { id: "upgrades", label: "Upgrade Requests", icon: TrendingUp },
   { id: "errors", label: "System Logs", icon: AlertOctagon },
   { id: "payments", label: "Global Payments", icon: DollarSign },
   { id: "security", label: "Security & Audits", icon: ShieldCheck },
@@ -208,9 +211,19 @@ export function AdminDashboard() {
       {/* Tab Content */}
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "workspaces" && <WorkspacesTab />}
+      {activeTab === "upgrades" && <UpgradeRequestsTab />}
       {activeTab === "errors" && <ErrorsTab />}
       {activeTab === "payments" && <PaymentsTab />}
-      {activeTab === "security" && <SecurityLogs />}
+      {activeTab === "security" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="lg:col-span-2">
+            <SecurityLogs />
+          </div>
+          <div className="lg:col-span-1">
+            <SecurityTab />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -388,6 +401,15 @@ function WorkspacesTab() {
     buttonText: string;
     bgClass: string;
   } | null>(null);
+  const [upgradePlanWorkspace, setUpgradePlanWorkspace] = React.useState<WorkspaceAudit | null>(null);
+  const [selectedPlan, setSelectedPlan] = React.useState<"FREE" | "PRO" | "ENTERPRISE">("PRO");
+  const [selectedDuration, setSelectedDuration] = React.useState<number>(12);
+
+  const handleOpenUpgradeModal = (ws: WorkspaceAudit) => {
+    setUpgradePlanWorkspace(ws);
+    setSelectedPlan(ws.plan as "FREE" | "PRO" | "ENTERPRISE");
+    setSelectedDuration(12);
+  };
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -412,18 +434,27 @@ function WorkspacesTab() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({
+      id,
+      plan,
+      durationMonths,
+    }: {
+      id: string;
+      plan: string;
+      durationMonths: number;
+    }) => {
       return apiFetch(
         `${API_BASE_URL}/api/super-admin/workspaces/${id}/approve`,
         {
           method: "POST",
-          body: JSON.stringify({ plan: "PRO", durationMonths: 12 }),
+          body: JSON.stringify({ plan, durationMonths }),
         },
       );
     },
     onSuccess: () => {
-      toast.success("Workspace approved and activated");
+      toast.success("Workspace plan updated successfully");
       queryClient.invalidateQueries({ queryKey: ["super-admin-workspaces"] });
+      setUpgradePlanWorkspace(null);
     },
   });
 
@@ -618,7 +649,13 @@ function WorkspacesTab() {
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {ws.status !== "ACTIVE" && (
                       <button
-                        onClick={() => approveMutation.mutate(ws.id)}
+                        onClick={() =>
+                          approveMutation.mutate({
+                            id: ws.id,
+                            plan: "PRO",
+                            durationMonths: 12,
+                          })
+                        }
                         disabled={approveMutation.isPending}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold shadow hover:bg-emerald-600 active:scale-[0.97] transition-all disabled:opacity-50"
                         title="Approve & Activate (PRO, 12 months)"
@@ -627,23 +664,32 @@ function WorkspacesTab() {
                       </button>
                     )}
                     {ws.status === "ACTIVE" && (
-                      <button
-                        onClick={() =>
-                          setConfirmAction({
-                            type: "deactivate",
-                            targetId: ws.id,
-                            title: "Deactivate Workspace?",
-                            desc: "Are you absolutely sure you want to deactivate this workspace? All associated users will instantly lose access to properties and data within it.",
-                            buttonText: "Yes, Deactivate",
-                            bgClass: "bg-destructive hover:bg-rose-600",
-                          })
-                        }
-                        disabled={deactivateMutation.isPending}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-foreground text-xs font-bold shadow hover:bg-zinc-300 dark:hover:bg-zinc-700 active:scale-[0.97] transition-all disabled:opacity-50"
-                        title="Deactivate Workspace"
-                      >
-                        <XCircle className="w-3.5 h-3.5" /> Deactivate
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleOpenUpgradeModal(ws)}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow hover:bg-primary/90 active:scale-[0.97] transition-all"
+                          title="Change / Manage Plan"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" /> Plan
+                        </button>
+                        <button
+                          onClick={() =>
+                            setConfirmAction({
+                              type: "deactivate",
+                              targetId: ws.id,
+                              title: "Deactivate Workspace?",
+                              desc: "Are you absolutely sure you want to deactivate this workspace? All associated users will instantly lose access to properties and data within it.",
+                              buttonText: "Yes, Deactivate",
+                              bgClass: "bg-destructive hover:bg-rose-600",
+                            })
+                          }
+                          disabled={deactivateMutation.isPending}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-foreground text-xs font-bold shadow hover:bg-zinc-300 dark:hover:bg-zinc-700 active:scale-[0.97] transition-all disabled:opacity-50"
+                          title="Deactivate Workspace"
+                        >
+                          <XCircle className="w-3.5 h-3.5" /> Deactivate
+                        </button>
+                      </>
                     )}
                     {ws.status !== "REJECTED" && ws.status !== "ACTIVE" && (
                       <button
@@ -1355,7 +1401,7 @@ function SecurityTab() {
             <button
               onClick={handleEnroll}
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-foreground font-bold shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white hover:bg-primary/90 font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
             >
               <ShieldCheck className="w-5 h-5" />
               Setup Authenticator App
@@ -1395,6 +1441,395 @@ function SecurityTab() {
                 className="px-6 py-2 bg-destructive hover:bg-rose-600 text-white rounded-lg transition-colors shadow-lg disabled:opacity-50"
               >
                 {loading ? "Disabling..." : "Yes, Disable 2FA"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface UpgradeRequestAudit {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  proofUrl: string;
+  requestedPlan: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  workspace: {
+    id: string;
+    name: string;
+    plan: string;
+  };
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
+}
+
+function UpgradeRequestsTab() {
+  const [statusFilter, setStatusFilter] = React.useState<string>("PENDING");
+  const [page, setPage] = React.useState(1);
+  const [selectedRequest, setSelectedRequest] = React.useState<UpgradeRequestAudit | null>(null);
+  const [actionType, setActionType] = React.useState<"approve" | "reject" | null>(null);
+  const [durationMonths, setDurationMonths] = React.useState<number>(12);
+  const [rejectionReason, setRejectionReason] = React.useState<string>("");
+  const [previewProofUrl, setPreviewProofUrl] = React.useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["super-admin-upgrade-requests", page, statusFilter],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("limit", "15");
+      if (statusFilter) params.set("status", statusFilter);
+      return apiFetch(
+        `${API_BASE_URL}/api/super-admin/upgrade-requests?${params.toString()}`,
+      );
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async ({ id, durationMonths }: { id: string; durationMonths: number }) => {
+      return apiFetch(
+        `${API_BASE_URL}/api/super-admin/upgrade-requests/${id}/approve`,
+        {
+          method: "POST",
+          body: JSON.stringify({ durationMonths }),
+        },
+      );
+    },
+    onSuccess: () => {
+      toast.success("Upgrade request approved successfully!");
+      queryClient.invalidateQueries({ queryKey: ["super-admin-upgrade-requests"] });
+      setSelectedRequest(null);
+      setActionType(null);
+    },
+    onError: (err: unknown) => {
+      toast.error((err as Error).message || "Failed to approve request");
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      return apiFetch(
+        `${API_BASE_URL}/api/super-admin/upgrade-requests/${id}/reject`,
+        {
+          method: "POST",
+          body: JSON.stringify({ reason }),
+        },
+      );
+    },
+    onSuccess: () => {
+      toast.success("Upgrade request rejected");
+      queryClient.invalidateQueries({ queryKey: ["super-admin-upgrade-requests"] });
+      setSelectedRequest(null);
+      setActionType(null);
+      setRejectionReason("");
+    },
+    onError: (err: unknown) => {
+      toast.error((err as Error).message || "Failed to reject request");
+    },
+  });
+
+  const requests: UpgradeRequestAudit[] = data?.requests || [];
+  const totalPages = data?.totalPages || 1;
+
+  const handleOpenAction = (req: UpgradeRequestAudit, type: "approve" | "reject") => {
+    setSelectedRequest(req);
+    setActionType(type);
+    if (type === "approve") {
+      setDurationMonths(12);
+    } else {
+      setRejectionReason("");
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="flex justify-between items-center bg-card p-4 rounded-2xl border border-border">
+        <div className="flex gap-2">
+          {["PENDING", "APPROVED", "REJECTED", ""].map((status) => (
+            <button
+              key={status}
+              onClick={() => {
+                setStatusFilter(status);
+                setPage(1);
+              }}
+              className={cn(
+                "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+                (statusFilter === status)
+                  ? "bg-destructive text-white shadow-md shadow-rose-500/10"
+                  : "bg-transparent text-muted-foreground hover:bg-muted/50"
+              )}
+            >
+              {status || "All"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : (
+        <div className="space-y-4">
+          {requests.length === 0 ? (
+            <div className="text-center py-16 bg-card rounded-3xl border border-border">
+              <AlertTriangle className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
+              <h4 className="text-base font-bold text-foreground">No upgrade requests found</h4>
+              <p className="text-xs text-muted-foreground mt-1">There are no manual upgrade requests matching this filter.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto bg-card rounded-3xl border border-border shadow-sm">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted/20">
+                    <th className="p-5">Workspace</th>
+                    <th className="p-5">Requested By</th>
+                    <th className="p-5">Requested Tier</th>
+                    <th className="p-5">Proof Of Payment</th>
+                    <th className="p-5">Date Submitted</th>
+                    <th className="p-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-xs">
+                  {requests.map((req) => (
+                    <tr key={req.id} className="hover:bg-muted/10 transition-colors">
+                      <td className="p-5">
+                        <div className="font-bold text-foreground">{req.workspace?.name}</div>
+                        <div className="text-[10px] font-semibold text-muted-foreground mt-0.5">Current Plan: {req.workspace?.plan}</div>
+                      </td>
+                      <td className="p-5">
+                        <div className="font-bold text-foreground">{req.user?.name || "N/A"}</div>
+                        <div className="text-[10px] font-semibold text-muted-foreground mt-0.5">{req.user?.email}</div>
+                      </td>
+                      <td className="p-5">
+                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-primary/10 text-primary">
+                          {req.requestedPlan}
+                        </span>
+                      </td>
+                      <td className="p-5">
+                        <button
+                          onClick={() => setPreviewProofUrl(req.proofUrl)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 hover:bg-muted text-foreground rounded-lg border border-border transition-colors font-bold text-[10px] uppercase"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View Receipt
+                        </button>
+                      </td>
+                      <td className="p-5 font-semibold text-muted-foreground">
+                        {new Date(req.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="p-5 text-right">
+                        {req.status === "PENDING" ? (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => handleOpenAction(req, "approve")}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors shadow-sm"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleOpenAction(req, "reject")}
+                              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors shadow-sm"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end items-center gap-1">
+                            <StatusBadge status={req.status} />
+                            {req.status === "REJECTED" && req.rejectionReason && (
+                              <div className="group relative">
+                                <Info className="w-4 h-4 text-rose-500 cursor-pointer ml-1" />
+                                <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block w-48 bg-zinc-950 text-white text-[10px] p-2 rounded-lg shadow-xl border border-zinc-800 z-[100] text-left font-medium">
+                                  {req.rejectionReason}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center pt-4">
+              <span className="text-xs text-muted-foreground font-semibold">
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Proof Preview Modal */}
+      {previewProofUrl && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border w-full max-w-4xl rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h3 className="font-bold text-base">Proof of Payment Receipt</h3>
+              <button
+                onClick={() => setPreviewProofUrl(null)}
+                className="p-1 hover:bg-muted text-muted-foreground rounded-lg transition-colors font-bold text-xs"
+              >
+                Close
+              </button>
+            </div>
+            <div className="flex-1 bg-zinc-100 dark:bg-zinc-900 p-6 overflow-auto flex items-center justify-center min-h-[40vh]">
+              {previewProofUrl.toLowerCase().endsWith(".pdf") ? (
+                <iframe
+                  src={previewProofUrl}
+                  className="w-full h-[60vh] rounded-xl border border-border bg-white"
+                  title="PDF Proof"
+                />
+              ) : (
+                <img
+                  src={previewProofUrl}
+                  alt="Payment Proof"
+                  className="max-h-[60vh] object-contain rounded-xl shadow-md border border-border"
+                />
+              )}
+            </div>
+            <div className="p-6 border-t border-border flex justify-end gap-3">
+              <a
+                href={previewProofUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 border border-border hover:bg-muted text-foreground text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors"
+              >
+                Open Original Tab
+              </a>
+              <button
+                onClick={() => setPreviewProofUrl(null)}
+                className="px-4 py-2 bg-primary hover:opacity-90 text-white text-xs font-bold rounded-xl transition-all"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approve Modal */}
+      {actionType === "approve" && selectedRequest && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border w-full max-w-md rounded-[2rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
+            <div>
+              <h3 className="text-xl font-bold tracking-tight">Approve Upgrade Request</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upgrade <strong className="text-foreground">{selectedRequest.workspace?.name}</strong> to the <strong className="uppercase text-primary">{selectedRequest.requestedPlan}</strong> plan.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Subscription Duration (Months)</label>
+              <select
+                value={durationMonths}
+                onChange={(e) => setDurationMonths(Number(e.target.value))}
+                className="w-full px-4 py-3 border border-border rounded-xl bg-card font-bold text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value={1}>1 Month</option>
+                <option value={3}>3 Months</option>
+                <option value={6}>6 Months</option>
+                <option value={12}>12 Months (Recommended)</option>
+                <option value={24}>24 Months</option>
+                <option value={36}>36 Months</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <button
+                onClick={() => {
+                  setSelectedRequest(null);
+                  setActionType(null);
+                }}
+                className="px-4 py-2 border border-border hover:bg-muted text-foreground text-xs font-bold rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => approveMutation.mutate({ id: selectedRequest.id, durationMonths })}
+                disabled={approveMutation.isPending}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-md shadow-emerald-500/10"
+              >
+                {approveMutation.isPending ? "Approving..." : "Confirm Upgrade"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {actionType === "reject" && selectedRequest && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border w-full max-w-md rounded-[2rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
+            <div>
+              <h3 className="text-xl font-bold tracking-tight">Decline Upgrade Request</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Decline the upgrade request for <strong className="text-foreground">{selectedRequest.workspace?.name}</strong>.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Rejection Explanation</label>
+              <textarea
+                required
+                placeholder="Specify details, e.g., 'Bank receipt number not matching transfer ledger' or 'Amount paid is incomplete'..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+                className="w-full px-4 py-3 border border-border rounded-xl bg-card font-medium text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <button
+                onClick={() => {
+                  setSelectedRequest(null);
+                  setActionType(null);
+                  setRejectionReason("");
+                }}
+                className="px-4 py-2 border border-border hover:bg-muted text-foreground text-xs font-bold rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => rejectMutation.mutate({ id: selectedRequest.id, reason: rejectionReason })}
+                disabled={rejectMutation.isPending || !rejectionReason.trim()}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-colors shadow-md shadow-rose-500/10 disabled:opacity-50"
+              >
+                {rejectMutation.isPending ? "Declining..." : "Decline Request"}
               </button>
             </div>
           </div>
