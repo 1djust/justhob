@@ -165,7 +165,12 @@ export function LoginForm() {
       // If no MFA required, proceed normally
       const syncData = await apiFetch("/api/auth/sync", {
         method: "POST",
-      }) as { user?: { role?: string; mustChangePassword?: boolean } };
+      }) as { user?: { role?: string; globalRole?: string; mustChangePassword?: boolean } };
+
+      if (syncData?.user?.globalRole === "SUPER_ADMIN") {
+        await supabase.auth.signOut();
+        throw new Error("Super Admin accounts must sign in through the Admin Portal.");
+      }
 
       if (syncData?.user?.mustChangePassword === true && syncData?.user?.role !== "PROPERTY_MANAGER") {
         setTempPassword(password); // Pre-fill temporary password with the password they typed to log in
@@ -179,6 +184,14 @@ export function LoginForm() {
     } catch (err: unknown) {
       const errorObj = err as Error & { details?: string | Record<string, unknown> };
       console.error("Login error:", errorObj);
+      
+      // Make sure we are signed out of Supabase local session on failure
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        // ignore
+      }
+
       setError(errorObj.message || "An unexpected error occurred");
       if (errorObj.details) {
         setErrorDetails(
@@ -208,14 +221,27 @@ export function LoginForm() {
       }
 
       // Sync with Prisma backend
-      await apiFetch("/api/auth/sync", {
+      const syncData = await apiFetch("/api/auth/sync", {
         method: "POST",
-      });
+      }) as { user?: { role?: string; globalRole?: string; mustChangePassword?: boolean } };
+
+      if (syncData?.user?.globalRole === "SUPER_ADMIN") {
+        await supabase.auth.signOut();
+        throw new Error("Super Admin accounts must sign in through the Admin Portal.");
+      }
 
       router.push("/dashboard");
     } catch (err: unknown) {
       const errorObj = err as Error;
       console.error("MFA error:", errorObj);
+      
+      // Make sure we are signed out of Supabase local session on failure
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        // ignore
+      }
+
       setError(errorObj.message || "Invalid code");
     } finally {
       setLoading(false);

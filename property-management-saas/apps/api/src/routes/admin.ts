@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/database";
-import { authenticate, requireSuperAdmin } from "../lib/middleware";
+import { authenticate, requireSuperAdmin, verifiedAdminTokens, authCache } from "../lib/middleware";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { timingSafeEqual } from "crypto";
@@ -44,6 +44,17 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         return reply
           .status(403)
           .send({ error: "Forbidden: Admin role required" });
+      }
+
+      // Save verified state for this session token
+      const token = request.headers.authorization?.replace("Bearer ", "");
+      if (token) {
+        verifiedAdminTokens.set(token, Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+        // Force update of in-memory authCache
+        const cached = authCache.get(token);
+        if (cached) {
+          cached.isAdminVerified = true;
+        }
       }
 
       return { success: true };

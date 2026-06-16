@@ -7,10 +7,12 @@ interface CachedAuth {
   userId: string;
   globalUserRole: "SUPER_ADMIN" | "PROPERTY_MANAGER" | "LANDLORD" | "TENANT";
   isAAL2: boolean;
+  isAdminVerified?: boolean;
   expiresAt: number;
 }
 
-const authCache = new Map<string, CachedAuth>();
+export const authCache = new Map<string, CachedAuth>();
+export const verifiedAdminTokens = new Map<string, number>();
 
 interface CachedWorkspaceAccess {
   role: string;
@@ -28,6 +30,9 @@ setInterval(() => {
   for (const [key, entry] of workspaceAccessCache.entries()) {
     if (entry.expiresAt < now) workspaceAccessCache.delete(key);
   }
+  for (const [token, expiresAt] of verifiedAdminTokens.entries()) {
+    if (expiresAt < now) verifiedAdminTokens.delete(token);
+  }
 }, 5 * 60 * 1000).unref();
 
 // Shared authenticate middleware — verifies Supabase JWT and attaches userId and globalRole
@@ -41,6 +46,15 @@ export const authenticate = async (
   const now = Date.now();
   const cached = authCache.get(token);
   if (cached && cached.expiresAt > now) {
+    if (cached.globalUserRole === "SUPER_ADMIN" && !cached.isAdminVerified) {
+      const isVerifyRoute = request.raw.url?.endsWith("/verify");
+      if (!isVerifyRoute) {
+        return reply.status(401).send({
+          error: "Admin Security Key verification required.",
+          code: "ADMIN_KEY_REQUIRED",
+        });
+      }
+    }
     request.userId = cached.userId;
     request.globalUserRole = cached.globalUserRole;
     request.isAAL2 = cached.isAAL2;
@@ -74,7 +88,17 @@ export const authenticate = async (
 
   // Parse AAL status for Super Admins
   let isAAL2 = false;
+  let isAdminVerified = false;
   if (dbUser.role === "SUPER_ADMIN") {
+    isAdminVerified = verifiedAdminTokens.has(token);
+    const isVerifyRoute = request.raw.url?.endsWith("/verify");
+    if (!isAdminVerified && !isVerifyRoute) {
+      return reply.status(401).send({
+        error: "Admin Security Key verification required.",
+        code: "ADMIN_KEY_REQUIRED",
+      });
+    }
+
     try {
       const payloadBase64Url = token.split(".")[1];
       if (payloadBase64Url) {
@@ -101,6 +125,7 @@ export const authenticate = async (
     userId: dbUser.id,
     globalUserRole: dbUser.role as any,
     isAAL2,
+    isAdminVerified,
     expiresAt: now + 60 * 1000,
   });
 };
