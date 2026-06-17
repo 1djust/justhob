@@ -82,7 +82,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
         },
       });
 
+      let isNewUser = false;
       if (!user) {
+        isNewUser = true;
         // Auto-Healing: Check if email already exists with different ID
         const existingByEmail = await prisma.user.findUnique({
           where: { email: supaUser.email || "" },
@@ -141,13 +143,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
           });
 
           if (existingMemberships.length > 0) {
-            // User was pre-created (e.g. as a tenant) — just create the User record, don't add a new workspace
+            // User was pre-created (e.g. as a tenant) — use the role from their existing membership
+            const memberRole = existingMemberships[0].role;
             user = await prisma.user.create({
               data: {
                 id: supaUser.id,
                 email: supaUser.email || "",
                 name: userName,
-                role: userRole,
+                role: memberRole,
               },
               include: {
                 workspaces: {
@@ -184,6 +187,21 @@ export default async function authRoutes(fastify: FastifyInstance) {
             "SYNC_DB_ERROR",
             createErr.message,
           );
+        }
+
+        if (isNewUser && user) {
+          try {
+            if ((fastify as any).io) {
+              (fastify as any).io.emit("USER_REGISTERED", {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+              });
+              console.log(`[AUTH/SYNC] Broadcasted USER_REGISTERED event for user ${user.id}`);
+            }
+          } catch (ioErr) {
+            console.error("[AUTH/SYNC] Failed to emit USER_REGISTERED socket event:", ioErr);
+          }
         }
       }
 
@@ -296,7 +314,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       if (!user) {
         // If the user exists in Supabase but not Prisma, sync it now
         // This can happen if they were invited/created via admin but never synced
-        let role = data.user.user_metadata.role || "TENANT";
+        let role = data.user.user_metadata.role;
+        if (!role) {
+          const membership = await prisma.workspaceMember.findFirst({
+            where: { userId: data.user.id },
+            select: { role: true },
+          });
+          role = membership?.role || "TENANT";
+        }
         if (role === "SUPER_ADMIN") {
           role = "TENANT";
         }

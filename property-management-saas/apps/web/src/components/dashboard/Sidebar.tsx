@@ -20,6 +20,11 @@ import {
   AlertCircle,
   ShieldAlert,
   CalendarRange,
+  Activity,
+  TrendingUp,
+  AlertOctagon,
+  DollarSign,
+  ShieldCheck,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
@@ -43,7 +48,14 @@ type DashboardView =
   | "payments"
   | "maintenance"
   | "settings"
-  | "admin";
+  | "admin"
+  | "admin-overview"
+  | "admin-users"
+  | "admin-workspaces"
+  | "admin-upgrades"
+  | "admin-errors"
+  | "admin-payments"
+  | "admin-security";
 
 interface SidebarProps {
   activeView: string;
@@ -245,12 +257,13 @@ export function Sidebar({
     : navItems.filter((item) => !item.managerOnly || isPropertyManager);
 
   const adminItems = [
-    {
-      id: "admin",
-      label: "Platform Admin",
-      icon: ShieldAlert,
-      color: "text-destructive hover:text-destructive",
-    },
+    { id: "admin-overview", label: "Overview", icon: Activity },
+    { id: "admin-users", label: "Users", icon: Users },
+    { id: "admin-workspaces", label: "Workspaces", icon: Building2 },
+    { id: "admin-upgrades", label: "Upgrade Requests", icon: TrendingUp },
+    { id: "admin-errors", label: "System Logs", icon: AlertOctagon },
+    { id: "admin-payments", label: "Payments", icon: DollarSign },
+    { id: "admin-security", label: "Security & MFA", icon: ShieldCheck },
   ];
 
   return (
@@ -361,9 +374,9 @@ export function Sidebar({
           })}
 
           {isSuperAdmin && (
-            <div className="mt-8 pt-4 border-t border-border">
-              <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-destructive opacity-70">
-                Platform
+            <div className="mt-6 pt-4 border-t border-border/80">
+              <p className="px-3 mb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground/80">
+                Super Admin Console
               </p>
               {adminItems.map((item) => {
                 const Icon = item.icon;
@@ -377,25 +390,25 @@ export function Sidebar({
                       if (isMobileOpen) setIsMobileOpen(false);
                     }}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative text-sm",
                       isActive
-                        ? "bg-destructive text-white shadow-sm shadow-rose-500/20"
-                        : "text-muted-foreground hover:text-destructive hover:bg-rose-50 dark:hover:bg-rose-950/10",
+                        ? "bg-primary/10 text-primary font-bold shadow-sm"
+                        : "text-muted-foreground hover:text-foreground dark:hover:text-zinc-200 hover:bg-muted/50 dark:hover:bg-zinc-800/30",
                     )}
                   >
                     <Icon
                       className={cn(
                         "h-5 w-5 flex-shrink-0 transition-transform duration-200",
-                        isActive ? "scale-100" : "group-hover:scale-110",
+                        isActive ? "scale-100" : "group-hover:scale-115",
                       )}
                     />
                     {!isCollapsed && (
-                      <span className="font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+                      <span className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
                         {item.label}
                       </span>
                     )}
-                    {isCollapsed && isActive && (
-                      <div className="absolute left-0 w-1 h-6 bg-destructive rounded-r-full" />
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-primary rounded-r-full" />
                     )}
                   </button>
                 );

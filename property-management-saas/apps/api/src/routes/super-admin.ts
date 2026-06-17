@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/database";
 import { authenticate, requireSuperAdmin } from "../lib/middleware";
 import { supabaseAdmin } from "../lib/supabase";
-import { ForbiddenError, NotFoundError, ValidationError } from "../lib/errors";
+import { AppError, ForbiddenError, NotFoundError, ValidationError } from "../lib/errors";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 
@@ -107,10 +107,24 @@ export default async function superAdminRoutes(
   // GET /stats — Platform-wide aggregated metrics
   // =====================================================================
   server.get("/stats", { schema: {} }, async () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    // Batch 1: Basic dashboard counts & aggregates (16 queries)
     const [
       totalUsers,
       activeUsers,
-      inactiveUsers,
       totalWorkspaces,
       activeWorkspaces,
       pendingWorkspaces,
@@ -128,7 +142,6 @@ export default async function superAdminRoutes(
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { isActive: true } }),
-      prisma.user.count({ where: { isActive: false } }),
       prisma.workspace.count(),
       prisma.workspace.count({ where: { status: "ACTIVE" } }),
       prisma.workspace.count({ where: { status: "PENDING" } }),
@@ -158,6 +171,140 @@ export default async function superAdminRoutes(
       prisma.errorLog.count(),
     ]);
 
+    const inactiveUsers = totalUsers - activeUsers;
+
+    // Batch 2: Advanced target, charts YTD data and sparkline lists (8 queries to prevent pool exhaustion)
+    const [
+      monthlyTargetPayments,
+      recentOverduePaymentsList,
+      recentWorkspacesList,
+      recentPropertiesList,
+      recentLeasesList,
+      recentErrorsList,
+      paidPaymentsInYear,
+      usersInYear,
+    ] = await Promise.all([
+      prisma.payment.findMany({
+        where: {
+          dueDate: {
+            gte: startOfMonth,
+            lte: endOfMonth,
+          },
+        },
+        select: { amount: true },
+      }),
+      prisma.payment.findMany({
+        where: { status: "OVERDUE", updatedAt: { gte: sevenDaysAgo } },
+        select: { updatedAt: true },
+      }),
+      prisma.workspace.findMany({
+        where: { createdAt: { gte: sevenDaysAgo } },
+        select: { createdAt: true },
+      }),
+      prisma.property.findMany({
+        where: { createdAt: { gte: sevenDaysAgo }, deletedAt: null },
+        select: { createdAt: true },
+      }),
+      prisma.lease.findMany({
+        where: { createdAt: { gte: sevenDaysAgo } },
+        select: { createdAt: true },
+      }),
+      prisma.errorLog.findMany({
+        where: { createdAt: { gte: sevenDaysAgo } },
+        select: { createdAt: true },
+      }),
+      prisma.payment.findMany({
+        where: { status: "PAID", paidDate: { gte: startOfYear } },
+        select: { paidDate: true, amount: true },
+      }),
+      prisma.user.findMany({
+        where: { createdAt: { gte: startOfYear } },
+        select: { createdAt: true, isActive: true, updatedAt: true },
+      }),
+    ]);
+
+    // Calculate monthly target and collected metrics
+    const monthlyTarget = monthlyTargetPayments.reduce((sum, p) => sum + p.amount, 0);
+    
+    // In-memory filters to reduce query count and prevent database pool timeouts
+    const monthlyCollectedPayments = paidPaymentsInYear.filter(
+      p => p.paidDate && p.paidDate >= startOfMonth && p.paidDate <= endOfMonth
+    );
+    const todayPayments = paidPaymentsInYear.filter(
+      p => p.paidDate && p.paidDate >= startOfToday && p.paidDate <= endOfToday
+    );
+    const recentPaidPaymentsList = paidPaymentsInYear.filter(
+      p => p.paidDate && p.paidDate >= sevenDaysAgo
+    );
+    const recentUsersList = usersInYear.filter(
+      u => u.createdAt >= sevenDaysAgo
+    );
+    const recentBannedUsersList = usersInYear.filter(
+      u => !u.isActive && u.updatedAt >= sevenDaysAgo
+    );
+
+    const monthlyRevenueCollected = monthlyCollectedPayments.reduce((sum, p) => sum + p.amount, 0);
+    const todayRevenue = todayPayments.reduce((sum, p) => sum + p.amount, 0);
+
+    // Helper to bucket dates into 7 days (index 0 is 6 days ago, index 6 is today)
+    const getDailyBuckets = (dates: Date[], values?: number[]) => {
+      const buckets = Array(7).fill(0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      dates.forEach((date, i) => {
+        if (!date) return;
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        const diffTime = today.getTime() - d.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0 && diffDays < 7) {
+          const index = 6 - diffDays;
+          buckets[index] += values ? values[i] : 1;
+        }
+      });
+      return buckets;
+    };
+
+    const trends = {
+      users: getDailyBuckets(recentUsersList.map(u => u.createdAt)),
+      workspaces: getDailyBuckets(recentWorkspacesList.map(w => w.createdAt)),
+      properties: getDailyBuckets(recentPropertiesList.map(p => p.createdAt)),
+      leases: getDailyBuckets(recentLeasesList.map(l => l.createdAt)),
+      revenue: getDailyBuckets(
+        recentPaidPaymentsList.filter(p => p.paidDate !== null).map(p => p.paidDate as Date),
+        recentPaidPaymentsList.filter(p => p.paidDate !== null).map(p => p.amount)
+      ),
+      overdue: getDailyBuckets(recentOverduePaymentsList.map(p => p.updatedAt)),
+      banned: getDailyBuckets(recentBannedUsersList.map(u => u.updatedAt)),
+      errors: getDailyBuckets(recentErrorsList.map(e => e.createdAt)),
+    };
+
+    // Monthly aggregation
+    const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    
+    const monthlyRevenueArr = Array(12).fill(0);
+    paidPaymentsInYear.forEach(p => {
+      if (p.paidDate) {
+        const month = p.paidDate.getMonth();
+        monthlyRevenueArr[month] += p.amount;
+      }
+    });
+    const monthlyRevenueData = MONTH_NAMES.map((name, index) => ({
+      month: name,
+      revenue: monthlyRevenueArr[index],
+    }));
+
+    const monthlySignups = Array(12).fill(0);
+    usersInYear.forEach(u => {
+      const month = u.createdAt.getMonth();
+      monthlySignups[month]++;
+    });
+    const monthlySignupsData = MONTH_NAMES.map((name, index) => ({
+      month: name,
+      count: monthlySignups[index],
+    }));
+
     return {
       stats: {
         totalUsers,
@@ -176,6 +323,12 @@ export default async function superAdminRoutes(
         pendingPayments,
         overduePayments,
         recentErrors,
+        monthlyTarget,
+        monthlyRevenueCollected,
+        todayRevenue,
+        trends,
+        monthlyRevenue: monthlyRevenueData,
+        monthlySignups: monthlySignupsData,
       },
       recentUsers,
     };
@@ -347,11 +500,22 @@ export default async function superAdminRoutes(
       const { page = 1, limit = 20, search } = request.query;
       const skip = (page - 1) * limit;
 
-      const where: Record<string, unknown> = {};
+      const where: Record<string, any> = {
+        role: "PROPERTY_MANAGER",
+        workspaces: {
+          some: {
+            role: "PROPERTY_MANAGER",
+          },
+        },
+      };
       if (search) {
-        where.OR = [
-          { email: { contains: search, mode: "insensitive" } },
-          { name: { contains: search, mode: "insensitive" } },
+        where.AND = [
+          {
+            OR: [
+              { email: { contains: search, mode: "insensitive" } },
+              { name: { contains: search, mode: "insensitive" } },
+            ],
+          },
         ];
       }
 
@@ -394,6 +558,111 @@ export default async function superAdminRoutes(
         limit,
         totalPages: Math.ceil(total / limit),
       };
+    },
+  );
+
+  // =====================================================================
+  // GET /users/:id/hierarchy — Get Landlords and Tenants hierarchy for a manager
+  // =====================================================================
+  server.get<{ Params: { id: string } }>(
+    "/users/:id/hierarchy",
+    { schema: {} },
+    async (request) => {
+      const { id } = request.params;
+
+      const manager = await prisma.user.findUnique({
+        where: { id },
+        include: {
+          workspaces: {
+            where: { role: "PROPERTY_MANAGER" },
+            select: { workspaceId: true },
+          },
+        },
+      });
+
+      if (!manager) {
+        throw new NotFoundError("Manager user not found");
+      }
+
+      const workspaceIds = manager.workspaces.map((w) => w.workspaceId);
+
+      // 1. Fetch all landlords in these workspaces
+      const landlordMembers = await prisma.workspaceMember.findMany({
+        where: {
+          workspaceId: { in: workspaceIds },
+          role: "LANDLORD",
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
+
+      // 2. Fetch all properties owned by these landlords in these workspaces
+      const properties = await prisma.property.findMany({
+        where: {
+          workspaceId: { in: workspaceIds },
+          ownerId: { in: landlordMembers.map((lm) => lm.userId) },
+          deletedAt: null,
+        },
+        include: {
+          leases: {
+            where: { status: "ACTIVE" },
+            include: {
+              tenant: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // 3. Construct the response hierarchy: Landlord -> Tenants
+      const hierarchy = landlordMembers.map((lm) => {
+        const landlordUser = lm.user;
+        const landlordProperties = properties.filter((p) => p.ownerId === landlordUser.id);
+        
+        // Extract unique tenants across all properties owned by this landlord
+        const tenantMap = new Map<string, any>();
+        for (const prop of landlordProperties) {
+          for (const lease of prop.leases) {
+            if (lease.tenant) {
+              tenantMap.set(lease.tenant.id, {
+                id: lease.tenant.id,
+                name: lease.tenant.name,
+                email: lease.tenant.email,
+                phone: lease.tenant.phone,
+                propertyName: prop.name,
+                unitNumber: lease.unitId,
+              });
+            }
+          }
+        }
+
+        return {
+          landlord: {
+            id: landlordUser.id,
+            name: landlordUser.name,
+            email: landlordUser.email,
+            createdAt: landlordUser.createdAt,
+          },
+          propertiesCount: landlordProperties.length,
+          tenants: Array.from(tenantMap.values()),
+        };
+      });
+
+      return { hierarchy };
     },
   );
 
@@ -455,6 +724,8 @@ export default async function superAdminRoutes(
       };
     },
   );
+
+
 
 
 

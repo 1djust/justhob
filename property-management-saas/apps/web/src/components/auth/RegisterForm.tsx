@@ -33,8 +33,9 @@ export function RegisterForm() {
   const hasMinLength = password.length >= 8;
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
-  const hasNumberOrSpecial = /[0-9!@#$%^&*()_+\[\]{};':"\\|,.<>\/?]/.test(password);
-  const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumberOrSpecial;
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*()_+\[\]{};':"\\|,.<>\/?]/.test(password);
+  const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -247,8 +248,12 @@ export function RegisterForm() {
               <span className={cn(hasLowercase ? "text-foreground font-medium" : "text-muted-foreground")}>One lowercase letter</span>
             </div>
             <div className="flex items-center gap-2.5 text-sm">
-              <CheckCircle2 className={cn("w-4 h-4", hasNumberOrSpecial ? "text-emerald-500" : "text-muted-foreground/40")} />
-              <span className={cn(hasNumberOrSpecial ? "text-foreground font-medium" : "text-muted-foreground")}>One number or special character</span>
+              <CheckCircle2 className={cn("w-4 h-4", hasNumber ? "text-emerald-500" : "text-muted-foreground/40")} />
+              <span className={cn(hasNumber ? "text-foreground font-medium" : "text-muted-foreground")}>One number</span>
+            </div>
+            <div className="flex items-center gap-2.5 text-sm">
+              <CheckCircle2 className={cn("w-4 h-4", hasSpecial ? "text-emerald-500" : "text-muted-foreground/40")} />
+              <span className={cn(hasSpecial ? "text-foreground font-medium" : "text-muted-foreground")}>One special character</span>
             </div>
           </div>
 

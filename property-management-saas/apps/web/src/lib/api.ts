@@ -104,6 +104,14 @@ export async function apiFetch(url: string, options: ApiOptions = {}) {
       // Not JSON or empty body
     }
 
+    if (errorCode === "ADMIN_KEY_REQUIRED") {
+      supabase.auth.signOut().then(() => {
+        if (typeof window !== "undefined") {
+          window.location.href = "/admin/login";
+        }
+      });
+    }
+
     // Trigger automatic toast for mutations unless silent is requested
     if (!options.silent && options.method && options.method !== "GET") {
       toast.error(errorMessage);

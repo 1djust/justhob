@@ -12,7 +12,7 @@ import { OverdueTenantsWidget } from "@/components/dashboard/OverdueTenantsWidge
 import { WorkspaceSettings } from "@/components/settings/WorkspaceSettings";
 import { OwnerManagement } from "@/components/owners/OwnerManagement";
 import { Sidebar } from "@/components/dashboard/Sidebar";
-import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { AdminDashboard, type AdminTab } from "@/components/admin/AdminDashboard";
 import { OccupancyTimeline } from "@/components/occupancy/OccupancyTimeline";
 import { IdleTimeoutProvider } from "@/components/auth/IdleTimeoutProvider";
 import { Plus, ShieldCheck } from "lucide-react";
@@ -47,7 +47,14 @@ type DashboardView =
   | "occupancy"
   | "maintenance"
   | "settings"
-  | "admin";
+  | "admin"
+  | "admin-overview"
+  | "admin-users"
+  | "admin-workspaces"
+  | "admin-upgrades"
+  | "admin-errors"
+  | "admin-payments"
+  | "admin-security";
 
 export default function DashboardPage() {
   const [user, setUser] = React.useState<User | null>(null);
@@ -79,7 +86,7 @@ export default function DashboardPage() {
         }
         setUser(data.user);
         if (data.user?.globalRole === "SUPER_ADMIN") {
-          setActiveView("admin");
+          setActiveView("admin-overview");
         }
         if (data.user?.workspaces?.length > 0) {
           const priority: Record<string, number> = {
@@ -167,8 +174,13 @@ export default function DashboardPage() {
   }
 
   const renderActiveView = () => {
-    if (activeView === "admin" && user?.globalRole === "SUPER_ADMIN") {
-      return <AdminDashboard />;
+    if (activeView.startsWith("admin-") && user?.globalRole === "SUPER_ADMIN") {
+      return (
+        <AdminDashboard
+          activeTab={activeView.replace("admin-", "") as AdminTab}
+          setActiveTab={(tab) => setActiveView(`admin-${tab}` as DashboardView)}
+        />
+      );
     }
 
     if (!selectedWorkspaceId) {
@@ -347,8 +359,18 @@ export default function DashboardPage() {
         return isPropertyManager ? (
           <WorkspaceSettings workspaceId={selectedWorkspaceId} />
         ) : null;
-      case "admin":
-        return user?.globalRole === "SUPER_ADMIN" ? <AdminDashboard /> : null;
+      case "admin-overview":
+      case "admin-workspaces":
+      case "admin-upgrades":
+      case "admin-errors":
+      case "admin-payments":
+      case "admin-security":
+        return user?.globalRole === "SUPER_ADMIN" ? (
+          <AdminDashboard
+            activeTab={activeView.replace("admin-", "") as AdminTab}
+            setActiveTab={(tab) => setActiveView(`admin-${tab}` as DashboardView)}
+          />
+        ) : null;
       default:
         return null;
     }

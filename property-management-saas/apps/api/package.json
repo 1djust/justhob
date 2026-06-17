@@ -4,7 +4,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "NODE_OPTIONS=--dns-result-order=ipv4first NODE_TLS_REJECT_UNAUTHORIZED=0 tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
