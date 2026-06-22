@@ -3,18 +3,22 @@ import dns from "dns/promises";
 
 const start = async () => {
   try {
-    const host = "aws-1-eu-north-1.pooler.supabase.com";
-    console.log(`[DNS] Resolving database host ${host} to IPv4...`);
-    const ips = await dns.resolve4(host);
-    if (ips && ips.length > 0) {
-      const ip = ips[0];
-      console.log(`[DNS] Success: resolved to ${ip}`);
-      if (process.env.DATABASE_URL) {
-        process.env.DATABASE_URL = process.env.DATABASE_URL.replace(host, ip);
+    if (process.env.RENDER !== "true") {
+      const host = "aws-1-eu-north-1.pooler.supabase.com";
+      console.log(`[DNS] Resolving database host ${host} to IPv4...`);
+      const ips = await dns.resolve4(host);
+      if (ips && ips.length > 0) {
+        const ip = ips[0];
+        console.log(`[DNS] Success: resolved to ${ip}`);
+        if (process.env.DATABASE_URL) {
+          process.env.DATABASE_URL = process.env.DATABASE_URL.replace(host, ip);
+        }
+        if (process.env.DIRECT_URL) {
+          process.env.DIRECT_URL = process.env.DIRECT_URL.replace(host, ip);
+        }
       }
-      if (process.env.DIRECT_URL) {
-        process.env.DIRECT_URL = process.env.DIRECT_URL.replace(host, ip);
-      }
+    } else {
+      console.log(`[DNS] Skipping manual hostname resolution on Render production`);
     }
   } catch (err) {
     console.error("[DNS] Hostname IPv4 resolution failed, falling back to default env URL:", err);
