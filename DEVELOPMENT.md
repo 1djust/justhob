@@ -1,6 +1,6 @@
 # Development Guide
 
-This document explains how to start and run the local development environment for the PropertyStack project.
+This document explains how to start and run the local development environment for the PropertyStack project. For tracking live deployments and rollback instructions, refer to the [RELEASE_LOG.md](file:///home/djust/projects/justhub/RELEASE_LOG.md) guide.
 
 ## Prerequisites
 - **WSL 2 (Ubuntu)**: All commands should be run within the WSL environment.
@@ -99,6 +99,7 @@ We have provided helper scripts to generate fresh database scenarios or to quick
 | :--- | :--- | :--- |
 | **Mega Test Scenario** | `npx tsx setup-mega-test.ts 30` | Generates a complex test scenario (change `30` to `90`, `60`, or `7` to simulate different lease expiration timelines). |
 | **Reset Tenant Payments** | `npx tsx scripts/test-seeds/reset-tenant-payments.ts <email>` | Wipes all previous payments for the given tenant and creates exactly one clean **OVERDUE** invoice for UI and payment testing. Example: `npx tsx scripts/test-seeds/reset-tenant-payments.ts djokn@gmail.com` |
+| **Reset Tenant Lease** | `npx tsx scratch/reset_tenant_lease.ts` | Deletes all leases for tenant Olawole John and sets the associated unit 'A1' status back to VACANT. |
 
 ---
 
@@ -124,8 +125,60 @@ We have provided helper scripts to manage Super Admin accounts (God Mode privile
 
 ---
 
-## 5. Troubleshooting
-- **Port Conflicts**: If a port is already in use, you can find the process with `lsof -i :PORT_NUMBER`.
+## 5. Production Readiness & Pre-deployment Checklist
+Before deploying the application to production, you should run the master checklist script to verify security, linting, database schema integrity, tests, SEO, and performance:
+
+* **Core Checks** (Security, Lint, Schema, Tests, UX, SEO):
+  ```bash
+  python3 .agent/scripts/checklist.py .
+  ```
+* **Full Production Checks** (Including Performance Lighthouse & Playwright E2E audits):
+  ```bash
+  python3 .agent/scripts/checklist.py . --url https://propertystack.vercel.app
+  ```
+
+---
+
+## 6. Troubleshooting
+- **Port Conflicts & "Failed to Fetch" Errors**: Next.js automatically falls back to port 3001 if port 3000 is occupied by a dangling process. This collides with the API backend port (3001) and crashes both services. If you encounter this, kill dangling processes and restart the dev server:
+  ```bash
+  # Check ports
+  ss -lnt
+  # Kill dangling node/next-server processes
+  kill -9 $(pgrep -f "next-server|tsx")
+  # Restart dev environment
+  bash wsl_start_dev.sh
+  ```
 - **Flutter Keyring**: If `run.sh` fails, ensure `dbus-run-session` and `gnome-keyring` are installed in your WSL environment.
 - **Database**: If the backend fails to start, verify your `.env` file in the `property-management-saas` folder.
+- **Scratch Scripts / Prisma Resolution**: If executing Node.js scratch scripts throws `Cannot find module '@prisma/client'`, ensure you are executing them from the `property-management-saas` directory using `npx tsx scratch/<script>.ts`. Running raw `.js` scripts from directories outside the workspace blocks Node's resolution path.
 - **Known Bugs & Fixes**: For a detailed log of past issues (e.g., Prisma IPv6 database connection timeouts) and their resolutions, please check the [KNOWN_ISSUES.md](./KNOWN_ISSUES.md) file.
+
+---
+
+## 7. Super Admin Security Incident Response & Log Operations
+The Super Admin dashboard provides real-time oversight over system crashes, unauthorized access attempts, and property manager audit trails.
+
+### A. How to Act on System & Security Telemetry
+1. **System Errors (`Errors` Tab)**:
+   - Contains unhandled API exceptions and performance warnings (`>3000ms`).
+   - All sensitive data (passwords, JWTs, connection strings) is automatically scrubbed (`[REDACTED]`).
+   - Click **Show Details** and **Copy Log** to send exact stack traces to developers for hotfixes.
+2. **Security Telemetry (`Security & MFA` Tab)**:
+   - Tracks `UNAUTHORIZED_API_ACCESS`, `FAILED_LOGIN`, and `RATE_LIMIT_EXCEEDED` events.
+   - **Automated Alerts**: Triggers an alert email to `ADMIN_EMAIL` if an IP address generates 10 failures in 5 minutes.
+3. **Manager Audit Trail (`Manager Audit Trail` Tab)**:
+   - Full legal traceability for property manager operations (creations, lease approvals, bank payout edits). Use the search bar to resolve landlord/tenant disputes.
+
+### B. Blocking Malicious IP Addresses
+- **Cloudflare / Hosting WAF (Production)**: Copy the malicious IP address from the security feed $\rightarrow$ Cloudflare / Hosting Security Dashboard $\rightarrow$ WAF $\rightarrow$ Create Custom Rule $\rightarrow$ Set Action to **Block**.
+- **Linux / VPS Firewall**: Block directly via terminal:
+  ```bash
+  sudo ufw deny from <MALICIOUS_IP> to any
+  ```
+
+### C. Securing Compromised Manager Accounts
+1. Search for the manager's email under **Users Management**.
+2. Verify if Multi-Factor Authentication (2FA) is enabled on their profile.
+3. Temporarily click **Deactivate** or trigger a password reset if credentials are compromised.
+
