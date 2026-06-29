@@ -2,7 +2,15 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, UserPlus, Mail, Phone, User, CheckCircle2, Home } from "lucide-react";
+import {
+  X,
+  UserPlus,
+  Mail,
+  Phone,
+  User,
+  CheckCircle2,
+  Home,
+} from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
 import { LeaseForm } from "./LeaseForm";
@@ -68,7 +76,7 @@ export function TenantDrawerForm({
       // The API should return the created tenant's ID inside the response
       // For this implementation, let's assume `data.tenant.id` exists. If not, it just won't render the assign flow.
       setCreatedTenantId(data.tenant?.id || data.id || null);
-      
+
       if (data.credentials) {
         setCredentials(data.credentials);
         setStep("success");
@@ -128,10 +136,18 @@ export function TenantDrawerForm({
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-                    {step === "form" ? "Add New Tenant" : step === "success" ? "Tenant Created" : "Assign Unit"}
+                    {step === "form"
+                      ? "Add New Tenant"
+                      : step === "success"
+                        ? "Tenant Created"
+                        : "Assign Unit"}
                   </h2>
                   <p className="text-xs text-zinc-500 font-medium">
-                    {step === "form" ? "Enter their details below" : step === "success" ? "Share access credentials" : "Setup their lease agreement"}
+                    {step === "form"
+                      ? "Enter their details below"
+                      : step === "success"
+                        ? "Share access credentials"
+                        : "Setup their lease agreement"}
                   </p>
                 </div>
               </div>
@@ -146,7 +162,6 @@ export function TenantDrawerForm({
             {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto">
               <div className="p-6">
-                
                 {/* STEP 1: ADD TENANT FORM */}
                 {step === "form" && (
                   <form onSubmit={handleSubmit} className="space-y-6">
@@ -168,9 +183,11 @@ export function TenantDrawerForm({
                             required
                             autoFocus
                             value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            onChange={(e) =>
+                              setFormData({ ...formData, name: e.target.value })
+                            }
                             className="w-full pl-10 pr-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400"
-                            placeholder="tenant&apos;s active property..."
+                            placeholder="tenant's active property..."
                           />
                         </div>
                       </div>
@@ -186,13 +203,19 @@ export function TenantDrawerForm({
                             type="email"
                             required
                             value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                email: e.target.value,
+                              })
+                            }
                             className="w-full pl-10 pr-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400"
                             placeholder="john@example.com"
                           />
                         </div>
                         <p className="text-[10px] text-zinc-500 font-medium ml-1">
-                          Required to auto-generate app credentials and invite link.
+                          Required to auto-generate app credentials and invite
+                          link.
                         </p>
                       </div>
 
@@ -206,7 +229,12 @@ export function TenantDrawerForm({
                           <input
                             type="tel"
                             value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                phone: e.target.value,
+                              })
+                            }
                             className="w-full pl-10 pr-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400"
                             placeholder="+1 (555) 000-0000"
                           />
@@ -224,7 +252,8 @@ export function TenantDrawerForm({
                           "Creating Profile..."
                         ) : (
                           <>
-                            Continue to Credentials <CheckCircle2 className="w-4 h-4" />
+                            Continue to Credentials{" "}
+                            <CheckCircle2 className="w-4 h-4" />
                           </>
                         )}
                       </button>
@@ -243,22 +272,36 @@ export function TenantDrawerForm({
                     <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 space-y-4">
                       <div className="flex items-center gap-3 mb-2">
                         <CheckCircle2 className="w-5 h-5 text-primary" />
-                        <h3 className="font-bold text-primary">Login Details Generated</h3>
+                        <h3 className="font-bold text-primary">
+                          Login Details Generated
+                        </h3>
                       </div>
-                      
+
                       <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-4">
                         <div>
-                          <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest mb-1">Email</p>
-                          <p className="font-semibold text-zinc-900 dark:text-zinc-100">{credentials.email}</p>
+                          <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest mb-1">
+                            Email
+                          </p>
+                          <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                            {credentials.email}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest mb-1">Temporary Password</p>
-                          <p className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{credentials.tempPassword}</p>
+                          <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest mb-1">
+                            Temporary Password
+                          </p>
+                          <p className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                            {credentials.tempPassword}
+                          </p>
                         </div>
                         {credentials.inviteLink && (
                           <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                             <p className="text-[10px] uppercase font-bold text-primary/80 tracking-widest mb-1">Invite Link</p>
-                             <p className="font-mono text-xs font-bold text-zinc-600 dark:text-zinc-400 truncate">{credentials.inviteLink}</p>
+                            <p className="text-[10px] uppercase font-bold text-primary/80 tracking-widest mb-1">
+                              Invite Link
+                            </p>
+                            <p className="font-mono text-xs font-bold text-zinc-600 dark:text-zinc-400 truncate">
+                              {credentials.inviteLink}
+                            </p>
                           </div>
                         )}
                       </div>
@@ -266,8 +309,8 @@ export function TenantDrawerForm({
                       <button
                         onClick={handleCopy}
                         className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                          copied 
-                            ? "bg-primary text-white" 
+                          copied
+                            ? "bg-primary text-white"
                             : "bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900"
                         }`}
                       >
@@ -282,12 +325,15 @@ export function TenantDrawerForm({
                           <Home className="w-6 h-6 text-zinc-400" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Assign a Unit Now?</h3>
+                          <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">
+                            Assign a Unit Now?
+                          </h3>
                           <p className="text-sm text-zinc-500">
-                            The tenant profile is ready. You can close this window, or immediately assign them to a property.
+                            The tenant profile is ready. You can close this
+                            window, or immediately assign them to a property.
                           </p>
                         </div>
-                        
+
                         <div className="flex flex-col gap-3 pt-2">
                           {createdTenantId ? (
                             <button
@@ -297,7 +343,9 @@ export function TenantDrawerForm({
                               Assign Unit
                             </button>
                           ) : (
-                            <p className="text-xs text-amber-600">Please refresh to assign unit.</p>
+                            <p className="text-xs text-amber-600">
+                              Please refresh to assign unit.
+                            </p>
                           )}
                           <button
                             onClick={onClose}
@@ -318,22 +366,25 @@ export function TenantDrawerForm({
                     animate={{ opacity: 1, x: 0 }}
                     className="space-y-6"
                   >
-                     <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-primary">Creating lease for:</p>
-                          <p className="font-bold text-zinc-900 dark:text-white">{formData.name}</p>
-                        </div>
-                     </div>
-                     
-                     <LeaseForm 
-                        workspaceId={workspaceId} 
-                        tenantId={createdTenantId} 
-                        properties={properties} 
-                        onComplete={onClose} 
-                     />
+                    <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-primary">
+                          Creating lease for:
+                        </p>
+                        <p className="font-bold text-zinc-900 dark:text-white">
+                          {formData.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <LeaseForm
+                      workspaceId={workspaceId}
+                      tenantId={createdTenantId}
+                      properties={properties}
+                      onComplete={onClose}
+                    />
                   </motion.div>
                 )}
-
               </div>
             </div>
           </motion.div>

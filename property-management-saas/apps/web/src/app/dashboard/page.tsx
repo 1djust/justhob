@@ -12,7 +12,10 @@ import { OverdueTenantsWidget } from "@/components/dashboard/OverdueTenantsWidge
 import { WorkspaceSettings } from "@/components/settings/WorkspaceSettings";
 import { OwnerManagement } from "@/components/owners/OwnerManagement";
 import { Sidebar } from "@/components/dashboard/Sidebar";
-import { AdminDashboard, type AdminTab } from "@/components/admin/AdminDashboard";
+import {
+  AdminDashboard,
+  type AdminTab,
+} from "@/components/admin/AdminDashboard";
 import { OccupancyTimeline } from "@/components/occupancy/OccupancyTimeline";
 import { IdleTimeoutProvider } from "@/components/auth/IdleTimeoutProvider";
 import { Plus, ShieldCheck } from "lucide-react";
@@ -54,7 +57,9 @@ type DashboardView =
   | "admin-upgrades"
   | "admin-errors"
   | "admin-payments"
-  | "admin-security";
+  | "admin-security"
+  | "admin-legal-leases"
+  | "admin-audit-trail";
 
 export default function DashboardPage() {
   const [user, setUser] = React.useState<User | null>(null);
@@ -79,8 +84,22 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     apiFetch(`${API_BASE_URL}/api/auth/me`)
-      .then((data) => {
-        if (data.user?.mustChangePassword && data.user?.role !== "PROPERTY_MANAGER") {
+      .then(async (data) => {
+        if (
+          data.user?.mustChangePassword &&
+          data.user?.role !== "PROPERTY_MANAGER"
+        ) {
+          router.push("/login");
+          return;
+        }
+        // Block tenant users from accessing the web dashboard
+        if (data.user?.globalRole === "TENANT") {
+          try {
+            const { supabase } = await import("@/lib/supabase");
+            await supabase.auth.signOut();
+          } catch (e) {
+            console.error("Signout failed", e);
+          }
           router.push("/login");
           return;
         }
@@ -223,7 +242,11 @@ export default function DashboardPage() {
 
             <DashboardStats
               workspaceId={selectedWorkspaceId}
-              userName={user?.name?.split(' ')[0] || user?.email?.split('@')[0] || "there"}
+              userName={
+                user?.name?.split(" ")[0] ||
+                user?.email?.split("@")[0] ||
+                "there"
+              }
               plan={
                 user?.workspaces?.find(
                   (w) => w?.workspace?.id === selectedWorkspaceId,
@@ -265,7 +288,11 @@ export default function DashboardPage() {
                           <div
                             className={`p-3 rounded-xl ${selectedWorkspaceId === member.workspace?.id ? "bg-white/10 text-white" : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 shadow-sm border border-zinc-200 dark:border-zinc-700"}`}
                           >
-                            <img src="/images/assets/logo.png" alt="PropertyStack" className="w-5 h-5 object-contain" />
+                            <img
+                              src="/images/assets/logo.png"
+                              alt="PropertyStack"
+                              className="w-5 h-5 object-contain"
+                            />
                           </div>
                           <div
                             className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
@@ -323,6 +350,7 @@ export default function DashboardPage() {
             workspaceId={selectedWorkspaceId}
             properties={properties}
             onLeasesLoaded={setLeases}
+            managerName={user?.name}
           />
         ) : null;
       case "owners":
@@ -365,10 +393,13 @@ export default function DashboardPage() {
       case "admin-errors":
       case "admin-payments":
       case "admin-security":
+      case "admin-legal-leases":
         return user?.globalRole === "SUPER_ADMIN" ? (
           <AdminDashboard
             activeTab={activeView.replace("admin-", "") as AdminTab}
-            setActiveTab={(tab) => setActiveView(`admin-${tab}` as DashboardView)}
+            setActiveTab={(tab) =>
+              setActiveView(`admin-${tab}` as DashboardView)
+            }
           />
         ) : null;
       default:

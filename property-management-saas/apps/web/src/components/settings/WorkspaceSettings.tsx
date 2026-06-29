@@ -19,7 +19,6 @@ import { apiFetch, API_BASE_URL } from "@/lib/api";
 import { Button } from "../shared/Button";
 import { toast } from "sonner";
 
-// Common Nigerian Banks and their NIBSS codes
 const NIGERIAN_BANKS = [
   { code: "044", name: "Access Bank" },
   { code: "058", name: "Guaranty Trust Bank (GTB)" },
@@ -38,6 +37,13 @@ const NIGERIAN_BANKS = [
   { code: "212", name: "Wema Bank" },
   { code: "035", name: "ALAT by WEMA" },
   { code: "068", name: "Standard Chartered Bank" },
+  { code: "999992", name: "OPay (PayCom)" },
+  { code: "50515", name: "Moniepoint Microfinance Bank" },
+  { code: "999991", name: "PalmPay" },
+  { code: "50211", name: "Kuda Microfinance Bank" },
+  { code: "565", name: "Carbon" },
+  { code: "090110", name: "VFD Microfinance Bank" },
+  { code: "51318", name: "FairMoney Microfinance Bank" },
 ];
 
 interface WorkspaceData {
@@ -72,7 +78,9 @@ interface UpgradeRequestData {
 }
 
 export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
-  const [activeTab, setActiveTab] = React.useState<"payout" | "billing">("payout");
+  const [activeTab, setActiveTab] = React.useState<"payout" | "billing">(
+    "payout",
+  );
 
   // Payout Settings State
   const [bankCode, setBankCode] = React.useState("");
@@ -83,9 +91,15 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
 
   // Billing / Subscription State
   const [currentPlan, setCurrentPlan] = React.useState("FREE");
-  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = React.useState<string | null>(null);
-  const [upgradeRequests, setUpgradeRequests] = React.useState<UpgradeRequestData[]>([]);
-  const [selectedUpgradePlan, setSelectedUpgradePlan] = React.useState<"PRO" | "ENTERPRISE">("PRO");
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = React.useState<
+    string | null
+  >(null);
+  const [upgradeRequests, setUpgradeRequests] = React.useState<
+    UpgradeRequestData[]
+  >([]);
+  const [selectedUpgradePlan, setSelectedUpgradePlan] = React.useState<
+    "PRO" | "ENTERPRISE"
+  >("PRO");
   const [proofUrl, setProofUrl] = React.useState("");
   const [uploadingProof, setUploadingProof] = React.useState(false);
   const [submittingUpgrade, setSubmittingUpgrade] = React.useState(false);
@@ -98,9 +112,13 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
   };
 
   const fetchUpgradeRequests = React.useCallback(() => {
-    apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/upgrade-requests`, { credentials: "include" })
+    apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/upgrade-requests`, {
+      credentials: "include",
+    })
       .then((data) => {
-        setUpgradeRequests((data.upgradeRequests || []) as UpgradeRequestData[]);
+        setUpgradeRequests(
+          (data.upgradeRequests || []) as UpgradeRequestData[],
+        );
       })
       .catch((err) => console.error("Failed to fetch upgrade requests:", err));
   }, [workspaceId]);
@@ -110,7 +128,8 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
     apiFetch(`${API_BASE_URL}/api/workspaces`, { credentials: "include" }).then(
       (data) => {
         const ws = (data.workspaces as WorkspaceMemberData[] | undefined)?.find(
-          (w: WorkspaceMemberData) => w.workspaceId === workspaceId || w.workspace?.id === workspaceId,
+          (w: WorkspaceMemberData) =>
+            w.workspaceId === workspaceId || w.workspace?.id === workspaceId,
         );
         if (ws) {
           const targetWs = ws.workspace;
@@ -153,12 +172,15 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
 
     setUploadingProof(true);
     try {
-      const { signedUrl, publicUrl } = await apiFetch(`${API_BASE_URL}/api/uploads/presigned-url`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, contentType: file.type }),
-        credentials: "include",
-      });
+      const { signedUrl, publicUrl } = await apiFetch(
+        `${API_BASE_URL}/api/uploads/presigned-url`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+          credentials: "include",
+        },
+      );
 
       await fetch(signedUrl, {
         method: "PUT",
@@ -185,22 +207,26 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
 
     setSubmittingUpgrade(true);
     try {
-      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/upgrade-requests`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestedPlan: selectedUpgradePlan,
-          proofUrl,
-        }),
-        credentials: "include",
-      });
+      await apiFetch(
+        `${API_BASE_URL}/api/workspaces/${workspaceId}/upgrade-requests`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requestedPlan: selectedUpgradePlan,
+            proofUrl,
+          }),
+          credentials: "include",
+        },
+      );
 
       toast.success("Upgrade request submitted for verification");
       setProofUrl("");
       fetchUpgradeRequests();
     } catch (err: unknown) {
       console.error(err);
-      const errMsg = (err as Error).message || "Failed to submit upgrade request";
+      const errMsg =
+        (err as Error).message || "Failed to submit upgrade request";
       toast.error(errMsg);
     } finally {
       setSubmittingUpgrade(false);
@@ -251,7 +277,8 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                 Payout Settings
               </h3>
               <p className="text-sm text-zinc-500 mt-2 font-medium">
-                Configure where management fees and direct rent should be settled.
+                Configure where management fees and direct rent should be
+                settled.
               </p>
             </div>
 
@@ -316,7 +343,9 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                         placeholder="0123456789"
                         value={accountNumber}
                         onChange={(e) =>
-                          setAccountNumber(e.target.value.replace(/[^0-9]/g, ""))
+                          setAccountNumber(
+                            e.target.value.replace(/[^0-9]/g, ""),
+                          )
                         }
                         className="w-full px-5 py-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all font-black tracking-[0.2em] placeholder:tracking-normal placeholder:font-normal text-foreground"
                       />
@@ -346,9 +375,10 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                     <ShieldCheck className="w-4 h-4 text-emerald-500" />
                   </div>
                   <p className="text-xs font-medium text-zinc-500 leading-relaxed">
-                    By clicking save, you authorize the platform to route automated
-                    settlements to this account. Payouts are typically processed
-                    within 24 hours of successful tenant payment clearance.
+                    By clicking save, you authorize the platform to route
+                    automated settlements to this account. Payouts are typically
+                    processed within 24 hours of successful tenant payment
+                    clearance.
                   </p>
                 </div>
 
@@ -405,7 +435,8 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                 Billing & Subscription
               </h3>
               <p className="text-sm text-zinc-500 mt-2 font-medium">
-                Manage your workspace workspace billing tiers and manual transfer upgrades.
+                Manage your workspace workspace billing tiers and manual
+                transfer upgrades.
               </p>
             </div>
 
@@ -416,12 +447,20 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                   <Clock className="w-5 h-5 animate-pulse" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400">Upgrade Verification Pending</h4>
+                  <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400">
+                    Upgrade Verification Pending
+                  </h4>
                   <p className="text-xs font-medium text-amber-600 dark:text-amber-500 mt-1">
-                    Your request to upgrade to the <strong className="uppercase">{pendingRequest.requestedPlan}</strong> plan is under review. Our team will verify your uploaded proof of payment shortly.
+                    Your request to upgrade to the{" "}
+                    <strong className="uppercase">
+                      {pendingRequest.requestedPlan}
+                    </strong>{" "}
+                    plan is under review. Our team will verify your uploaded
+                    proof of payment shortly.
                   </p>
                   <p className="text-[10px] text-amber-400 mt-2 font-semibold">
-                    Submitted: {new Date(pendingRequest.createdAt).toLocaleDateString()}
+                    Submitted:{" "}
+                    {new Date(pendingRequest.createdAt).toLocaleDateString()}
                   </p>
                 </div>
               </div>
@@ -434,15 +473,26 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                   <AlertCircle className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-bold text-rose-800 dark:text-rose-400">Upgrade Request Declined</h4>
+                  <h4 className="text-sm font-bold text-rose-800 dark:text-rose-400">
+                    Upgrade Request Declined
+                  </h4>
                   <p className="text-xs font-medium text-rose-600 dark:text-rose-500 mt-1">
-                    Your request to upgrade to <strong className="uppercase">{rejectedRequest.requestedPlan}</strong> was declined.
+                    Your request to upgrade to{" "}
+                    <strong className="uppercase">
+                      {rejectedRequest.requestedPlan}
+                    </strong>{" "}
+                    was declined.
                   </p>
                   <div className="p-3 bg-white dark:bg-zinc-900/50 rounded-xl mt-3 border border-rose-100 dark:border-rose-900/30">
-                    <p className="text-xs font-bold text-rose-700 dark:text-rose-400">Reason: {rejectedRequest.rejectionReason || "No explanation provided"}</p>
+                    <p className="text-xs font-bold text-rose-700 dark:text-rose-400">
+                      Reason:{" "}
+                      {rejectedRequest.rejectionReason ||
+                        "No explanation provided"}
+                    </p>
                   </div>
                   <p className="text-xs font-medium text-rose-600 dark:text-rose-500 mt-3">
-                    Please correct your payment or bank details and upload a new proof of payment below.
+                    Please correct your payment or bank details and upload a new
+                    proof of payment below.
                   </p>
                 </div>
               </div>
@@ -451,7 +501,9 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
             {/* Current plan details card */}
             <div className="p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-white dark:bg-zinc-950 flex flex-col md:flex-row justify-between md:items-center gap-6 shadow-sm">
               <div className="space-y-2">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Workspace Subscription</p>
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                  Workspace Subscription
+                </p>
                 <div className="flex items-center gap-3">
                   <h4 className="text-2xl font-black text-foreground tracking-tight uppercase">
                     {currentPlan} PLAN
@@ -464,14 +516,17 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                 </div>
                 {subscriptionExpiresAt && (
                   <p className="text-xs font-bold text-zinc-400">
-                    Expires: {new Date(subscriptionExpiresAt).toLocaleDateString()}
+                    Expires:{" "}
+                    {new Date(subscriptionExpiresAt).toLocaleDateString()}
                   </p>
                 )}
               </div>
 
               {currentPlan === "FREE" && !pendingRequest && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-zinc-500">Need more features?</span>
+                  <span className="text-xs font-bold text-zinc-500">
+                    Need more features?
+                  </span>
                   <div className="w-2.5 h-2.5 rounded-full bg-primary animate-ping" />
                 </div>
               )}
@@ -482,17 +537,27 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
               <div className="grid gap-8 md:grid-cols-5 animate-in fade-in duration-500">
                 {/* Manual Bank details */}
                 <div className="md:col-span-2 space-y-4">
-                  <h4 className="text-xs font-black uppercase text-zinc-400 tracking-wider">Manual Bank Transfer</h4>
+                  <h4 className="text-xs font-black uppercase text-zinc-400 tracking-wider">
+                    Manual Bank Transfer
+                  </h4>
                   <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 space-y-4 relative group overflow-hidden">
                     <div className="absolute right-0 top-0 -translate-y-1/3 translate-x-1/3 w-32 h-32 bg-primary/5 rounded-full blur-xl pointer-events-none" />
                     <div>
-                      <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block">Financial Institution</span>
-                      <strong className="text-sm font-bold text-foreground block mt-0.5">{PLATFORM_BANK_DETAILS.bankName}</strong>
+                      <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block">
+                        Financial Institution
+                      </span>
+                      <strong className="text-sm font-bold text-foreground block mt-0.5">
+                        {PLATFORM_BANK_DETAILS.bankName}
+                      </strong>
                     </div>
                     <div>
-                      <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block">Account Number</span>
+                      <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block">
+                        Account Number
+                      </span>
                       <div className="flex items-center justify-between gap-2 mt-0.5">
-                        <strong className="text-base font-black text-primary tracking-widest block">{PLATFORM_BANK_DETAILS.accountNumber}</strong>
+                        <strong className="text-base font-black text-primary tracking-widest block">
+                          {PLATFORM_BANK_DETAILS.accountNumber}
+                        </strong>
                         <button
                           onClick={copyToClipboard}
                           className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg transition-colors"
@@ -507,24 +572,36 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                       </div>
                     </div>
                     <div>
-                      <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block">Beneficiary Name</span>
-                      <strong className="text-xs font-bold text-foreground block mt-0.5">{PLATFORM_BANK_DETAILS.accountName}</strong>
+                      <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block">
+                        Beneficiary Name
+                      </span>
+                      <strong className="text-xs font-bold text-foreground block mt-0.5">
+                        {PLATFORM_BANK_DETAILS.accountName}
+                      </strong>
                     </div>
                   </div>
 
                   <div className="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 text-[11px] font-medium text-zinc-500 leading-relaxed border border-zinc-200/50 dark:border-zinc-800/50">
                     <Info className="w-3.5 h-3.5 inline mr-1 text-zinc-400 -translate-y-0.5" />
-                    Transfer the pricing fee of your target plan to the bank details above and upload the transaction receipt.
+                    Transfer the pricing fee of your target plan to the bank
+                    details above and upload the transaction receipt.
                   </div>
                 </div>
 
                 {/* Upload proof form */}
-                <form onSubmit={handleRequestUpgrade} className="md:col-span-3 p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-white dark:bg-zinc-950 space-y-6">
-                  <h4 className="text-xs font-black uppercase text-zinc-400 tracking-wider">Request Workspace Upgrade</h4>
+                <form
+                  onSubmit={handleRequestUpgrade}
+                  className="md:col-span-3 p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-white dark:bg-zinc-950 space-y-6"
+                >
+                  <h4 className="text-xs font-black uppercase text-zinc-400 tracking-wider">
+                    Request Workspace Upgrade
+                  </h4>
 
                   {/* Plan Selector */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Select Target Tier</label>
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                      Select Target Tier
+                    </label>
                     <div className="grid grid-cols-2 gap-4">
                       <button
                         type="button"
@@ -539,7 +616,9 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                           <span className="text-sm font-black">PRO</span>
                           <TrendingUp className="w-4 h-4 text-primary" />
                         </div>
-                        <span className="text-[10px] font-semibold text-zinc-400 mt-2 block">₦50,000 / Year</span>
+                        <span className="text-[10px] font-semibold text-zinc-400 mt-2 block">
+                          ₦50,000 / Year
+                        </span>
                       </button>
                       <button
                         type="button"
@@ -551,17 +630,23 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-black font-sans">ENTERPRISE</span>
+                          <span className="text-sm font-black font-sans">
+                            ENTERPRISE
+                          </span>
                           <Sparkles className="w-4 h-4 text-primary" />
                         </div>
-                        <span className="text-[10px] font-semibold text-zinc-400 mt-2 block">₦120,000 / Year</span>
+                        <span className="text-[10px] font-semibold text-zinc-400 mt-2 block">
+                          ₦120,000 / Year
+                        </span>
                       </button>
                     </div>
                   </div>
 
                   {/* Proof Uploader */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Proof of Payment (Image/PDF)</label>
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                      Proof of Payment (Image/PDF)
+                    </label>
                     <div className="relative border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 bg-zinc-50/50 dark:bg-zinc-900/20 text-center hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40 transition-colors group">
                       <input
                         type="file"
@@ -573,14 +658,18 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                       {uploadingProof ? (
                         <div className="flex flex-col items-center gap-2 py-4">
                           <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                          <p className="text-xs font-semibold text-zinc-500">Uploading proof...</p>
+                          <p className="text-xs font-semibold text-zinc-500">
+                            Uploading proof...
+                          </p>
                         </div>
                       ) : proofUrl ? (
                         <div className="flex flex-col items-center gap-2">
                           <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                             <CheckCircle2 className="w-5 h-5" />
                           </div>
-                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Proof Attached Successfully</p>
+                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            Proof Attached Successfully
+                          </p>
                           <a
                             href={proofUrl}
                             target="_blank"
@@ -594,8 +683,12 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                       ) : (
                         <div className="flex flex-col items-center gap-2 py-2">
                           <UploadCloud className="w-8 h-8 text-zinc-400 group-hover:scale-110 transition-transform duration-200" />
-                          <p className="text-xs font-bold text-zinc-500">Click or drag receipt here</p>
-                          <span className="text-[10px] text-zinc-400 font-medium">JPEG, PNG, or PDF files</span>
+                          <p className="text-xs font-bold text-zinc-500">
+                            Click or drag receipt here
+                          </p>
+                          <span className="text-[10px] text-zinc-400 font-medium">
+                            JPEG, PNG, or PDF files
+                          </span>
                         </div>
                       )}
                     </div>
@@ -609,7 +702,9 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                     size="lg"
                     className="w-full text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20"
                   >
-                    {submittingUpgrade ? "Submitting Request..." : "Request Subscription Upgrade"}
+                    {submittingUpgrade
+                      ? "Submitting Request..."
+                      : "Request Subscription Upgrade"}
                   </Button>
                 </form>
               </div>

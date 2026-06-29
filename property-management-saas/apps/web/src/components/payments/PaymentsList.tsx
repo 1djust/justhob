@@ -101,7 +101,9 @@ export function PaymentsList({
     React.useState<Payment | null>(null);
   const [partialPaymentView, setPartialPaymentView] =
     React.useState<Payment | null>(null);
-  const [selectedPayments, setSelectedPayments] = React.useState<Set<string>>(new Set());
+  const [selectedPayments, setSelectedPayments] = React.useState<Set<string>>(
+    new Set(),
+  );
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc" | null>(null);
 
   const { data: paymentsData, isLoading: loading } = useQuery({
@@ -169,12 +171,13 @@ export function PaymentsList({
     let result = [...payments];
     if (searchQuery) {
       const lower = searchQuery.toLowerCase();
-      result = result.filter(p => 
-        p.lease?.tenant?.name.toLowerCase().includes(lower) ||
-        p.lease?.property?.name.toLowerCase().includes(lower)
+      result = result.filter(
+        (p) =>
+          p.lease?.tenant?.name.toLowerCase().includes(lower) ||
+          p.lease?.property?.name.toLowerCase().includes(lower),
       );
     }
-    
+
     if (sortOrder) {
       result.sort((a, b) => {
         const idA = a.id.slice(0, 5).toUpperCase();
@@ -186,14 +189,16 @@ export function PaymentsList({
         }
       });
     }
-    
+
     return result;
   }, [payments, searchQuery, sortOrder]);
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       // Select all currently visible regular payments
-      const regularIds = filteredPayments.filter(p => p.status !== "UNDER_REVIEW").map(p => p.id);
+      const regularIds = filteredPayments
+        .filter((p) => p.status !== "UNDER_REVIEW")
+        .map((p) => p.id);
       setSelectedPayments(new Set(regularIds));
     } else {
       setSelectedPayments(new Set());
@@ -219,7 +224,9 @@ export function PaymentsList({
   const underReviewPayments = filteredPayments.filter(
     (p) => p.status === "UNDER_REVIEW",
   );
-  const regularPayments = filteredPayments.filter((p) => p.status !== "UNDER_REVIEW");
+  const regularPayments = filteredPayments.filter(
+    (p) => p.status !== "UNDER_REVIEW",
+  );
   const totalPending = filteredPayments
     .filter((p) => p.status === "PENDING" || p.status === "OVERDUE")
     .reduce((sum, p) => sum + p.amount, 0);
@@ -232,28 +239,33 @@ export function PaymentsList({
     switch (status) {
       case "PAID":
         return {
-          className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
+          className:
+            "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
           label: "Paid",
         };
       case "UNDER_REVIEW":
         return {
-          className: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
+          className:
+            "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
           label: "Under Review",
         };
       case "PARTIALLY_PAID":
         return {
-          className: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400",
+          className:
+            "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400",
           label: "Partially Paid",
         };
 
       case "OVERDUE":
         return {
-          className: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400",
+          className:
+            "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400",
           label: "Overdue",
         };
       default:
         return {
-          className: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
+          className:
+            "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
           label: "Pending",
         };
     }
@@ -295,9 +307,7 @@ export function PaymentsList({
           </select>
           <ExportButton workspaceId={workspaceId} type="payments" plan={plan} />
           {isPropertyManager && (
-            <Button
-              onClick={() => setShowForm(true)}
-            >
+            <Button onClick={() => setShowForm(true)}>
               <CreditCard className="w-4 h-4" /> Record Offline Payment
             </Button>
           )}
@@ -319,85 +329,113 @@ export function PaymentsList({
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {underReviewPayments.map((p) => {
-              const pendingTx = p.transactions?.find((t: PaymentTransaction) => t.status === "PENDING");
+              const pendingTx = p.transactions?.find(
+                (t: PaymentTransaction) => t.status === "PENDING",
+              );
               return (
-              <div
-                key={p.id}
-                className="p-5 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 hover:shadow-md transition-shadow relative overflow-hidden group"
-              >
-                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-2xl -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700" />
+                <div
+                  key={p.id}
+                  className="p-5 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 hover:shadow-md transition-shadow relative overflow-hidden group"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-2xl -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700" />
 
-                <div className="flex justify-between items-start mb-4 relative">
-                  <div>
-                    <h5 className="font-bold text-zinc-900 dark:text-zinc-100">
-                      {p.lease?.tenant?.name}
-                    </h5>
-                    <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5">
-                      <Building className="w-3 h-3" /> {p.lease?.property?.name}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-0.5 block">
-                      Total Invoice
-                    </span>
-                    <span className="font-black text-blue-700 dark:text-blue-300 block leading-tight">
-                      ₦{p.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                    </span>
-                    {pendingTx ? (
-                      <div className="mt-1.5 flex flex-col items-end gap-1">
-                        {p.amountPaid && p.amountPaid > 0 ? (
-                           <span className="text-[10px] text-emerald-600 font-bold">
-                             Already Paid: ₦{p.amountPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                           </span>
-                        ) : null}
-                        <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
-                          Claiming: ₦{pendingTx.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                        </span>
-                        {p.amountPaid && p.amountPaid > 0 && pendingTx.amount + p.amountPaid === p.amount ? (
-                           <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase tracking-wider">
-                             Completes Balance
-                           </span>
-                        ) : p.balancePromise && (
-                          <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">
-                            Promise: {new Date(p.balancePromise).toLocaleDateString()}
+                  <div className="flex justify-between items-start mb-4 relative">
+                    <div>
+                      <h5 className="font-bold text-zinc-900 dark:text-zinc-100">
+                        {p.lease?.tenant?.name}
+                      </h5>
+                      <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5">
+                        <Building className="w-3 h-3" />{" "}
+                        {p.lease?.property?.name}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-0.5 block">
+                        Total Invoice
+                      </span>
+                      <span className="font-black text-blue-700 dark:text-blue-300 block leading-tight">
+                        ₦
+                        {p.amount.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                      {pendingTx ? (
+                        <div className="mt-1.5 flex flex-col items-end gap-1">
+                          {p.amountPaid && p.amountPaid > 0 ? (
+                            <span className="text-[10px] text-emerald-600 font-bold">
+                              Already Paid: ₦
+                              {p.amountPaid.toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          ) : null}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
+                            Claiming: ₦
+                            {pendingTx.amount.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                            })}
                           </span>
-                        )}
-                      </div>
-                    ) : p.amountPaid && p.amountPaid > 0 && p.amountPaid < p.amount ? (
-                      <div className="mt-1.5 flex flex-col items-end gap-1">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
-                          Partial Paid: ₦{p.amountPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                        </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold uppercase tracking-wider">
-                          Balance: ₦{(p.amount - p.amountPaid).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                        </span>
-                        {p.balancePromise && (
-                          <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">
-                            Promise: {new Date(p.balancePromise).toLocaleDateString()}
+                          {p.amountPaid &&
+                          p.amountPaid > 0 &&
+                          pendingTx.amount + p.amountPaid === p.amount ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase tracking-wider">
+                              Completes Balance
+                            </span>
+                          ) : (
+                            p.balancePromise && (
+                              <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">
+                                Promise:{" "}
+                                {new Date(
+                                  p.balancePromise,
+                                ).toLocaleDateString()}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      ) : p.amountPaid &&
+                        p.amountPaid > 0 &&
+                        p.amountPaid < p.amount ? (
+                        <div className="mt-1.5 flex flex-col items-end gap-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
+                            Partial Paid: ₦
+                            {p.amountPaid.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                            })}
                           </span>
-                        )}
-                      </div>
-                    ) : null}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold uppercase tracking-wider">
+                            Balance: ₦
+                            {(p.amount - p.amountPaid).toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                          {p.balancePromise && (
+                            <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">
+                              Promise:{" "}
+                              {new Date(p.balancePromise).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2 relative mt-4">
-                  {p.proofUrl && (
+                  <div className="flex gap-2 relative mt-4">
+                    {p.proofUrl && (
+                      <Button
+                        onClick={() => setProofViewPayment(p)}
+                        className="flex-1 py-2 rounded-xl border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> View Proof
+                      </Button>
+                    )}
                     <Button
-                      onClick={() => setProofViewPayment(p)}
-                      className="flex-1 py-2 rounded-xl border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center justify-center gap-1.5"
+                      onClick={() => setReviewingPayment(p)}
+                      className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-sm hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                     >
-                      <Eye className="w-3.5 h-3.5" /> View Proof
+                      <ThumbsUp className="w-3.5 h-3.5" /> Review Pay
                     </Button>
-                  )}
-                  <Button
-                    onClick={() => setReviewingPayment(p)}
-                    className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-sm hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <ThumbsUp className="w-3.5 h-3.5" /> Review Pay
-                  </Button>
+                  </div>
                 </div>
-              </div>
               );
             })}
           </div>
@@ -473,16 +511,23 @@ export function PaymentsList({
                 <tr className="bg-zinc-50/50 dark:bg-zinc-900/50 border-b border-zinc-100 dark:border-zinc-800">
                   <th className="text-left py-4 px-6 font-medium text-sm text-zinc-600 dark:text-zinc-400">
                     <div className="flex items-center gap-2">
-                      <input 
-                        type="checkbox" 
-                        checked={regularPayments.length > 0 && selectedPayments.size === regularPayments.length}
+                      <input
+                        type="checkbox"
+                        checked={
+                          regularPayments.length > 0 &&
+                          selectedPayments.size === regularPayments.length
+                        }
                         onChange={handleSelectAll}
-                        className="rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 cursor-pointer" 
+                        className="rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 cursor-pointer"
                       />
-                      Payment ID 
-                      <ArrowUpDown 
-                        onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
-                        className={`w-3 h-3 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors ${sortOrder ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400"}`} 
+                      Payment ID
+                      <ArrowUpDown
+                        onClick={() =>
+                          setSortOrder((prev) =>
+                            prev === "asc" ? "desc" : "asc",
+                          )
+                        }
+                        className={`w-3 h-3 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors ${sortOrder ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400"}`}
                       />
                     </div>
                   </th>
@@ -510,7 +555,11 @@ export function PaymentsList({
                 {regularPayments.map((p) => {
                   const statusConfig = getStatusConfig(p.status);
                   // Mock a payment method based on ID for visual parity
-                  const mockMethods = ["Virtual Card", "Bank Transfer", "NadaPay Wallet"];
+                  const mockMethods = [
+                    "Virtual Card",
+                    "Bank Transfer",
+                    "NadaPay Wallet",
+                  ];
                   const mockMethod = mockMethods[p.id.charCodeAt(0) % 3];
 
                   return (
@@ -520,11 +569,13 @@ export function PaymentsList({
                     >
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-4">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={selectedPayments.has(p.id)}
-                            onChange={(e) => handleSelect(p.id, e.target.checked)}
-                            className="rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 cursor-pointer" 
+                            onChange={(e) =>
+                              handleSelect(p.id, e.target.checked)
+                            }
+                            className="rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 cursor-pointer"
                           />
                           <span className="font-medium text-zinc-600 dark:text-zinc-400">
                             INV-{p.id.slice(0, 5).toUpperCase()}
@@ -543,7 +594,10 @@ export function PaymentsList({
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-medium text-zinc-600 dark:text-zinc-400 tracking-tight whitespace-nowrap">
-                          ₦{p.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                          ₦
+                          {p.amount.toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                          })}
                         </span>
                       </td>
                       <td className="py-4 px-6">
@@ -554,55 +608,75 @@ export function PaymentsList({
                       <td className="py-4 px-6">
                         <span className="font-medium text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
                           {new Date(p.dueDate).toLocaleDateString(undefined, {
-                            day: "numeric", month: "short", year: "numeric"
-                          })} {new Date(p.dueDate).toLocaleTimeString(undefined, {
-                            hour: "2-digit", minute: "2-digit"
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}{" "}
+                          {new Date(p.dueDate).toLocaleTimeString(undefined, {
+                            hour: "2-digit",
+                            minute: "2-digit",
                           })}
                         </span>
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex flex-col gap-1 items-start">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium ${statusConfig.className}`}>
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium ${statusConfig.className}`}
+                          >
                             {statusConfig.label}
                           </span>
-                          {(p.status === "PENDING" || p.status === "OVERDUE") && p.rejectionReason && (
-                            <span className="text-[10px] text-rose-500 font-medium leading-tight max-w-[120px] truncate" title={`Rejected: ${p.rejectionReason}`}>
-                              Rejected: {p.rejectionReason}
-                            </span>
-                          )}
-                          {p.amountPaid && p.amountPaid > 0 && p.amountPaid < p.amount && p.status === "UNDER_REVIEW" ? (
+                          {(p.status === "PENDING" || p.status === "OVERDUE") &&
+                            p.rejectionReason && (
+                              <span
+                                className="text-[10px] text-rose-500 font-medium leading-tight max-w-[120px] truncate"
+                                title={`Rejected: ${p.rejectionReason}`}
+                              >
+                                Rejected: {p.rejectionReason}
+                              </span>
+                            )}
+                          {p.amountPaid &&
+                          p.amountPaid > 0 &&
+                          p.amountPaid < p.amount &&
+                          p.status === "UNDER_REVIEW" ? (
                             <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">
-                              Partial: ₦{p.amountPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                              Partial: ₦
+                              {p.amountPaid.toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                              })}
                             </span>
                           ) : null}
                           {p.balancePromise && p.status === "UNDER_REVIEW" && (
                             <span className="text-[10px] text-zinc-500 font-medium">
-                              Promise: {new Date(p.balancePromise).toLocaleDateString()}
+                              Promise:{" "}
+                              {new Date(p.balancePromise).toLocaleDateString()}
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {(p.status === "PENDING" || p.status === "OVERDUE" || p.status === "PARTIALLY_PAID") && isPropertyManager && (
-                            <>
-                              <Button
-                                onClick={() => setPartialPaymentView(p)}
-                                title="Partial Pay"
-                                className="p-1.5 text-zinc-400 hover:text-amber-600 transition-colors"
-                              >
-                                <CreditCard className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                onClick={() => handleMarkPaid(p.id)}
-                                title="Approve / Mark Settled"
-                                className="p-1.5 text-zinc-400 hover:text-emerald-600 transition-colors"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                          
+                          {(p.status === "PENDING" ||
+                            p.status === "OVERDUE" ||
+                            p.status === "PARTIALLY_PAID") &&
+                            isPropertyManager && (
+                              <>
+                                <Button
+                                  onClick={() => setPartialPaymentView(p)}
+                                  title="Partial Pay"
+                                  className="p-1.5 text-zinc-400 hover:text-amber-600 transition-colors"
+                                >
+                                  <CreditCard className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  onClick={() => handleMarkPaid(p.id)}
+                                  title="Approve / Mark Settled"
+                                  className="p-1.5 text-zinc-400 hover:text-emerald-600 transition-colors"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+
                           {p.status === "UNDER_REVIEW" && isPropertyManager && (
                             <Button
                               onClick={() => setReviewingPayment(p)}
@@ -622,7 +696,7 @@ export function PaymentsList({
                               <Printer className="w-4 h-4" />
                             </Button>
                           )}
-                          
+
                           {p.proofUrl && (
                             <Button
                               onClick={() => setProofViewPayment(p)}
@@ -661,7 +735,7 @@ export function PaymentsList({
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                
+
                 {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
                   // Simplified pagination display for 1-5
                   const pageNum = i + 1;
@@ -783,11 +857,16 @@ function ProofViewerModal({
                   minimumFractionDigits: 2,
                 })}
               </p>
-              {payment.amountPaid && payment.amountPaid > 0 && payment.amountPaid < payment.amount && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
-                  Partial Paid: ₦{payment.amountPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                </span>
-              )}
+              {payment.amountPaid &&
+                payment.amountPaid > 0 &&
+                payment.amountPaid < payment.amount && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
+                    Partial Paid: ₦
+                    {payment.amountPaid.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                )}
             </div>
           </div>
           <Button
@@ -846,18 +925,22 @@ function ReviewPaymentModal({
   const queryClient = useQueryClient();
   const [action, setAction] = React.useState<"approve" | "reject" | null>(null);
   const [rejectionReason, setRejectionReason] = React.useState("");
-  const pendingTx = payment.transactions?.find((t: PaymentTransaction) => t.status === "PENDING");
-  const defaultAmount = pendingTx ? pendingTx.amount : (payment.amount - (payment.amountPaid || 0));
+  const pendingTx = payment.transactions?.find(
+    (t: PaymentTransaction) => t.status === "PENDING",
+  );
+  const defaultAmount = pendingTx
+    ? pendingTx.amount
+    : payment.amount - (payment.amountPaid || 0);
 
   const [approvedAmountPaid, setApprovedAmountPaid] = React.useState<string>(
-    String(defaultAmount)
+    String(defaultAmount),
   );
 
   const reviewMutation = useMutation({
     mutationFn: async (status: "PAID" | "REJECTED") => {
       if (status === "REJECTED" && !rejectionReason.trim())
         throw new Error("Rejection reason required");
-      
+
       const numAmount = Number(approvedAmountPaid);
       if (status === "PAID" && (isNaN(numAmount) || numAmount <= 0)) {
         throw new Error("Please enter a valid amount received.");
@@ -945,33 +1028,51 @@ function ReviewPaymentModal({
               {pendingTx && (
                 <div className="mt-1 flex flex-col items-end gap-1">
                   <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-bold">
-                    Claimed: ₦{pendingTx.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    Claimed: ₦
+                    {pendingTx.amount.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}
                   </span>
                   <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold uppercase tracking-wider">
-                    Balance Due: ₦{(payment.amount - (payment.amountPaid || 0)).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    Balance Due: ₦
+                    {(
+                      payment.amount - (payment.amountPaid || 0)
+                    ).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </span>
                   {payment.balancePromise && (
                     <span className="text-[10px] font-medium text-amber-700 dark:text-amber-500 uppercase tracking-wider">
-                      Promise: {new Date(payment.balancePromise).toLocaleDateString()}
+                      Promise:{" "}
+                      {new Date(payment.balancePromise).toLocaleDateString()}
                     </span>
                   )}
                 </div>
               )}
-              {!pendingTx && payment.amountPaid && payment.amountPaid > 0 && payment.amountPaid < payment.amount && (
-                <div className="mt-1 flex flex-col items-end gap-1">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-bold">
-                    Partial Paid: ₦{payment.amountPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                  </span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold uppercase tracking-wider">
-                    Balance Due: ₦{(payment.amount - payment.amountPaid).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                  </span>
-                  {payment.balancePromise && (
-                    <span className="text-[10px] font-medium text-amber-700 dark:text-amber-500 uppercase tracking-wider">
-                      Promise: {new Date(payment.balancePromise).toLocaleDateString()}
+              {!pendingTx &&
+                payment.amountPaid &&
+                payment.amountPaid > 0 &&
+                payment.amountPaid < payment.amount && (
+                  <div className="mt-1 flex flex-col items-end gap-1">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-bold">
+                      Partial Paid: ₦
+                      {payment.amountPaid.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                      })}
                     </span>
-                  )}
-                </div>
-              )}
+                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold uppercase tracking-wider">
+                      Balance Due: ₦
+                      {(payment.amount - payment.amountPaid).toLocaleString(
+                        "en-US",
+                        { minimumFractionDigits: 2 },
+                      )}
+                    </span>
+                    {payment.balancePromise && (
+                      <span className="text-[10px] font-medium text-amber-700 dark:text-amber-500 uppercase tracking-wider">
+                        Promise:{" "}
+                        {new Date(payment.balancePromise).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                )}
             </div>
           </div>
 
@@ -1035,14 +1136,25 @@ function ReviewPaymentModal({
                     className="w-full px-4 py-3 rounded-xl border-2 border-emerald-200/50 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-zinc-900/50 text-sm font-bold text-emerald-900 dark:text-emerald-100 focus:outline-none cursor-not-allowed opacity-80"
                   />
                 </div>
-                {((payment.amountPaid || 0) + Number(approvedAmountPaid)) < payment.amount && (
+                {(payment.amountPaid || 0) + Number(approvedAmountPaid) <
+                  payment.amount && (
                   <p className="text-xs font-bold text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-lg border border-amber-200 dark:border-amber-900/50">
-                    This will be approved as a PARTIAL PAYMENT. The remaining balance of ₦{(payment.amount - ((payment.amountPaid || 0) + Number(approvedAmountPaid))).toLocaleString("en-US", { minimumFractionDigits: 2 })} will remain due.
+                    This will be approved as a PARTIAL PAYMENT. The remaining
+                    balance of ₦
+                    {(
+                      payment.amount -
+                      ((payment.amountPaid || 0) + Number(approvedAmountPaid))
+                    ).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}{" "}
+                    will remain due.
                   </p>
                 )}
-                {((payment.amountPaid || 0) + Number(approvedAmountPaid)) >= payment.amount && (
+                {(payment.amountPaid || 0) + Number(approvedAmountPaid) >=
+                  payment.amount && (
                   <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded-lg border border-emerald-200 dark:border-emerald-900/50">
-                    This will clear the remaining balance. The invoice will be marked as fully paid.
+                    This will clear the remaining balance. The invoice will be
+                    marked as fully paid.
                   </p>
                 )}
                 <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/60 mt-1">
@@ -1500,8 +1612,8 @@ function PaymentForm({
               Capture a manual rent payment or cash deposit.{" "}
               <br className="hidden md:block" />
               <span className="text-blue-600 dark:text-blue-400 font-medium">
-                Digital payments submitted by tenants will automatically appear in
-                your Pending Verification inbox.
+                Digital payments submitted by tenants will automatically appear
+                in your Pending Verification inbox.
               </span>
             </p>
           </div>
@@ -1513,139 +1625,134 @@ function PaymentForm({
             <X className="w-4 h-4" />
           </Button>
         </div>
-        <form
-          onSubmit={handleSubmit}
-          className="p-8 space-y-8"
-        >
+        <form onSubmit={handleSubmit} className="p-8 space-y-8">
+          {error && (
+            <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <div>
+                  <h5 className="text-sm font-bold text-rose-900 dark:text-rose-100">
+                    Action Blocked
+                  </h5>
+                  <p className="text-sm text-rose-700 dark:text-rose-300 mt-1">
+                    {error}
+                  </p>
+                </div>
+              </div>
+              {error.includes("limit reached") && (
+                <Link
+                  href="/#pricing"
+                  className="whitespace-nowrap px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm text-center"
+                >
+                  Upgrade to Pro
+                </Link>
+              )}
+            </div>
+          )}
 
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-300">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-            <div>
-              <h5 className="text-sm font-bold text-rose-900 dark:text-rose-100">
-                Action Blocked
-              </h5>
-              <p className="text-sm text-rose-700 dark:text-rose-300 mt-1">
-                {error}
-              </p>
+          <div className="grid gap-6 md:grid-cols-2 relative">
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
+                Occupancy / Lease Agreement
+              </label>
+              <select
+                required
+                value={formData.leaseId}
+                onChange={(e) => handleLeaseChange(e.target.value)}
+                className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all font-medium appearance-none"
+              >
+                <option value="">
+                  {leases.length === 0
+                    ? "Loading leases..."
+                    : "Select active tenant lease..."}
+                </option>
+                {leases.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.tenant?.name} — {l.property?.name}{" "}
+                    {l.unit?.unitNumber ? `(Unit ${l.unit.unitNumber})` : ""} —
+                    ₦{l.yearlyRent?.toLocaleString()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
+                Payment Amount (₦)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                required
+                readOnly
+                value={formData.amount}
+                onChange={(e) =>
+                  setFormData({ ...formData, amount: e.target.value })
+                }
+                className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 focus:outline-none cursor-not-allowed font-bold tracking-tight text-zinc-500"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
+                Due Date
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.dueDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, dueDate: e.target.value })
+                }
+                className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-medium"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
+                Status
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) =>
+                  setFormData({ ...formData, status: e.target.value })
+                }
+                className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-bold appearance-none"
+              >
+                <option value="PENDING">PENDING</option>
+                <option value="PAID">PAID</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
+                Reference / Note
+              </label>
+              <input
+                value={formData.note}
+                onChange={(e) =>
+                  setFormData({ ...formData, note: e.target.value })
+                }
+                className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-medium"
+                placeholder="e.g. Annual Rent Payment 2024"
+              />
             </div>
           </div>
-          {error.includes("limit reached") && (
-            <Link
-              href="/#pricing"
-              className="whitespace-nowrap px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm text-center"
+
+          <div className="flex justify-end pt-6 border-t border-zinc-100 dark:border-zinc-800">
+            <Button
+              onClick={() => onComplete()}
+              type="button"
+              className="px-6 py-3 mr-4 rounded-full font-bold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 transition-colors"
             >
-              Upgrade to Pro
-            </Link>
-          )}
-        </div>
-      )}
-
-      <div className="grid gap-6 md:grid-cols-2 relative">
-        <div className="md:col-span-2 space-y-1.5">
-          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
-            Occupancy / Lease Agreement
-          </label>
-          <select
-            required
-            value={formData.leaseId}
-            onChange={(e) => handleLeaseChange(e.target.value)}
-            className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all font-medium appearance-none"
-          >
-            <option value="">
-              {leases.length === 0
-                ? "Loading leases..."
-                : "Select active tenant lease..."}
-            </option>
-            {leases.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.tenant?.name} — {l.property?.name}{" "}
-                {l.unit?.unitNumber ? `(Unit ${l.unit.unitNumber})` : ""} — ₦
-                {l.yearlyRent?.toLocaleString()}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
-            Payment Amount (₦)
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            readOnly
-            value={formData.amount}
-            onChange={(e) =>
-              setFormData({ ...formData, amount: e.target.value })
-            }
-            className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 focus:outline-none cursor-not-allowed font-bold tracking-tight text-zinc-500"
-            placeholder="0.00"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
-            Due Date
-          </label>
-          <input
-            type="date"
-            required
-            value={formData.dueDate}
-            onChange={(e) =>
-              setFormData({ ...formData, dueDate: e.target.value })
-            }
-            className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-medium"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
-            Status
-          </label>
-          <select
-            value={formData.status}
-            onChange={(e) =>
-              setFormData({ ...formData, status: e.target.value })
-            }
-            className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-bold appearance-none"
-          >
-            <option value="PENDING">PENDING</option>
-            <option value="PAID">PAID</option>
-          </select>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
-            Reference / Note
-          </label>
-          <input
-            value={formData.note}
-            onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-            className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 font-medium"
-            placeholder="e.g. Annual Rent Payment 2024"
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end pt-6 border-t border-zinc-100 dark:border-zinc-800">
-        <Button
-          onClick={() => onComplete()}
-          type="button"
-          className="px-6 py-3 mr-4 rounded-full font-bold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 transition-colors"
-        >
-          Cancel
-        </Button>
-        <Button
-          disabled={loading}
-          type="submit" variant="primary"
-        >
-          {loading ? "Recording..." : "Record Payment"}
-        </Button>
-      </div>
+              Cancel
+            </Button>
+            <Button disabled={loading} type="submit" variant="primary">
+              {loading ? "Recording..." : "Record Payment"}
+            </Button>
+          </div>
         </form>
       </div>
     </div>
@@ -1719,7 +1826,11 @@ function PartialPaymentModal({
               Record Partial Payment
             </h3>
             <p className="text-xs text-zinc-500 mt-1">
-              Total due: ₦{payment.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Total due: ₦
+              {payment.amount.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </p>
           </div>
           <Button

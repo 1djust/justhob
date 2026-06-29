@@ -25,6 +25,7 @@ import {
   AlertOctagon,
   DollarSign,
   ShieldCheck,
+  History,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
@@ -55,7 +56,9 @@ type DashboardView =
   | "admin-upgrades"
   | "admin-errors"
   | "admin-payments"
-  | "admin-security";
+  | "admin-security"
+  | "admin-legal-leases"
+  | "admin-audit-trail";
 
 interface SidebarProps {
   activeView: string;
@@ -258,12 +261,14 @@ export function Sidebar({
 
   const adminItems = [
     { id: "admin-overview", label: "Overview", icon: Activity },
-    { id: "admin-users", label: "Users", icon: Users },
+    { id: "admin-users", label: "Users Management", icon: Users },
     { id: "admin-workspaces", label: "Workspaces", icon: Building2 },
     { id: "admin-upgrades", label: "Upgrade Requests", icon: TrendingUp },
     { id: "admin-errors", label: "System Logs", icon: AlertOctagon },
     { id: "admin-payments", label: "Payments", icon: DollarSign },
     { id: "admin-security", label: "Security & MFA", icon: ShieldCheck },
+    { id: "admin-legal-leases", label: "Legal Leases", icon: FileCheck },
+    { id: "admin-audit-trail", label: "Manager Audit Trail", icon: History },
   ];
 
   return (
@@ -299,7 +304,11 @@ export function Sidebar({
         <div className="h-16 flex items-center justify-between px-6 border-b border-border">
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
-              <img src="/images/assets/logo.png" alt="PropertyStack Logo" className="h-8 w-auto" />
+              <img
+                src="/images/assets/logo.png"
+                alt="PropertyStack Logo"
+                className="h-8 w-auto"
+              />
               <span className="font-bold text-lg tracking-tight whitespace-nowrap bg-gradient-to-br from-zinc-900 to-zinc-500 dark:from-white dark:to-zinc-500 bg-clip-text text-transparent">
                 PropertyStack
               </span>
@@ -422,119 +431,119 @@ export function Sidebar({
               ref={notifRef}
               className="relative mt-4 pt-4 border-t border-border"
             >
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-                "text-muted-foreground hover:text-foreground dark:hover:text-zinc-200 hover:bg-secondary dark:hover:bg-card",
-              )}
-            >
-              <div className="relative">
-                <Bell className="h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-destructive text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-bounce">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
-              </div>
-              {!isCollapsed && (
-                <span className="font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis">
-                  Notifications
-                </span>
-              )}
-            </button>
-
-            {/* Notification Dropdown */}
-            {showNotifications && (
-              <div
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
                 className={cn(
-                  "absolute z-[60] bg-white dark:bg-background border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-left-2 duration-200",
-                  isCollapsed
-                    ? "left-full ml-2 top-0 w-80"
-                    : "left-0 bottom-full mb-2 w-full",
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+                  "text-muted-foreground hover:text-foreground dark:hover:text-zinc-200 hover:bg-secondary dark:hover:bg-card",
                 )}
               >
-                <div className="flex items-center justify-between p-4 border-b border-border">
-                  <h4 className="text-sm font-bold text-foreground">
-                    Notifications
-                  </h4>
+                <div className="relative">
+                  <Bell className="h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
                   {unreadCount > 0 && (
-                    <button
-                      onClick={markAllRead}
-                      className="text-[10px] font-bold text-primary hover:text-primary uppercase tracking-wider"
-                    >
-                      Mark all read
-                    </button>
+                    <span className="absolute -top-1.5 -right-1.5 bg-destructive text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-bounce">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
                   )}
                 </div>
-                <div className="max-h-72 overflow-y-auto custom-scrollbar">
-                  {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground text-sm">
-                      <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      No notifications yet
-                    </div>
-                  ) : (
-                    notifications.slice(0, 10).map((n) => (
-                      <div
-                        key={n.id}
-                        onClick={() => {
-                          markAsRead(n.id);
-                          if (n.type === "PAYMENT_SUBMITTED") {
-                            onViewChange("payments");
-                          } else if (n.type === "MAINTENANCE_CREATED") {
-                            onViewChange("maintenance");
-                          } else if (
-                            n.type === "PAYMENT_APPROVED" ||
-                            n.type === "PAYMENT_REJECTED"
-                          ) {
-                            onViewChange("payments");
-                          }
-                          setSelectedNotification(n);
-                          setShowNotifications(false);
-                        }}
-                        className={cn(
-                          "flex items-start gap-3 p-3.5 border-b border-zinc-50 dark:border-zinc-900 transition-colors cursor-pointer",
-                          !n.isRead
-                            ? "bg-primary/5/50 dark:bg-blue-950/10 hover:bg-primary/5 dark:hover:bg-blue-950/20"
-                            : "hover:bg-secondary/50 dark:hover:bg-card/50",
-                        )}
+                {!isCollapsed && (
+                  <span className="font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+                    Notifications
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div
+                  className={cn(
+                    "absolute z-[60] bg-white dark:bg-background border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-left-2 duration-200",
+                    isCollapsed
+                      ? "left-full ml-2 top-0 w-80"
+                      : "left-0 bottom-full mb-2 w-full",
+                  )}
+                >
+                  <div className="flex items-center justify-between p-4 border-b border-border">
+                    <h4 className="text-sm font-bold text-foreground">
+                      Notifications
+                    </h4>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllRead}
+                        className="text-[10px] font-bold text-primary hover:text-primary uppercase tracking-wider"
                       >
-                        <div className="mt-0.5 flex-shrink-0">
-                          {getNotifIcon(n.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={cn(
-                              "text-xs truncate",
-                              !n.isRead
-                                ? "font-bold text-foreground"
-                                : "font-medium text-muted-foreground",
-                            )}
-                          >
-                            {n.title}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                            {n.message}
-                          </p>
-                          <p className="text-[9px] text-muted-foreground mt-1 uppercase tracking-wider font-bold">
-                            {new Date(n.createdAt).toLocaleString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
-                        </div>
-                        {!n.isRead && (
-                          <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
-                        )}
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-muted-foreground text-sm">
+                        <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        No notifications yet
                       </div>
-                    ))
-                  )}
+                    ) : (
+                      notifications.slice(0, 10).map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => {
+                            markAsRead(n.id);
+                            if (n.type === "PAYMENT_SUBMITTED") {
+                              onViewChange("payments");
+                            } else if (n.type === "MAINTENANCE_CREATED") {
+                              onViewChange("maintenance");
+                            } else if (
+                              n.type === "PAYMENT_APPROVED" ||
+                              n.type === "PAYMENT_REJECTED"
+                            ) {
+                              onViewChange("payments");
+                            }
+                            setSelectedNotification(n);
+                            setShowNotifications(false);
+                          }}
+                          className={cn(
+                            "flex items-start gap-3 p-3.5 border-b border-zinc-50 dark:border-zinc-900 transition-colors cursor-pointer",
+                            !n.isRead
+                              ? "bg-primary/5/50 dark:bg-blue-950/10 hover:bg-primary/5 dark:hover:bg-blue-950/20"
+                              : "hover:bg-secondary/50 dark:hover:bg-card/50",
+                          )}
+                        >
+                          <div className="mt-0.5 flex-shrink-0">
+                            {getNotifIcon(n.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className={cn(
+                                "text-xs truncate",
+                                !n.isRead
+                                  ? "font-bold text-foreground"
+                                  : "font-medium text-muted-foreground",
+                              )}
+                            >
+                              {n.title}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                              {n.message}
+                            </p>
+                            <p className="text-[9px] text-muted-foreground mt-1 uppercase tracking-wider font-bold">
+                              {new Date(n.createdAt).toLocaleString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                          {!n.isRead && (
+                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           )}
         </nav>
 
@@ -655,8 +664,8 @@ export function Sidebar({
               >
                 Close
               </button>
-              {(selectedNotification.type === "PAYMENT_SUBMITTED" || 
-                selectedNotification.type === "PAYMENT_APPROVED" || 
+              {(selectedNotification.type === "PAYMENT_SUBMITTED" ||
+                selectedNotification.type === "PAYMENT_APPROVED" ||
                 selectedNotification.type === "PAYMENT_REJECTED") && (
                 <button
                   onClick={() => {
@@ -697,9 +706,7 @@ export function Sidebar({
               <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
                 <LogOut className="w-8 h-8 text-red-500" />
               </div>
-              <h3 className="font-bold text-foreground text-xl">
-                Sign Out
-              </h3>
+              <h3 className="font-bold text-foreground text-xl">Sign Out</h3>
             </div>
 
             {/* Body */}

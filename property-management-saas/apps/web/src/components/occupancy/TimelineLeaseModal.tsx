@@ -41,7 +41,9 @@ export function TimelineLeaseModal({
           body: JSON.stringify({
             startDate: formData.startDate,
             endDate: formData.endDate || null,
-            yearlyRent: formData.yearlyRent ? parseFloat(formData.yearlyRent) : undefined,
+            yearlyRent: formData.yearlyRent
+              ? parseFloat(formData.yearlyRent)
+              : undefined,
             status: formData.status,
           }),
           credentials: "include",
@@ -62,13 +64,16 @@ export function TimelineLeaseModal({
     e.preventDefault();
     updateLeaseMutation.mutate();
   };
-  
+
   const loading = updateLeaseMutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm" onClick={onClose} />
-      
+      <div
+        className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
       <form
         onSubmit={handleSubmit}
         className="relative w-full max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"

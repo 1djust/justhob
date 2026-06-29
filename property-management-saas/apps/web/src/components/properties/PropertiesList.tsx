@@ -30,6 +30,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { ExportButton } from "@/components/shared/ExportButton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface Lease {
   id: string;
@@ -79,14 +80,35 @@ function getPropertyImage(propertyId: string): string {
   return PROPERTY_IMAGES[Math.abs(hash) % PROPERTY_IMAGES.length];
 }
 
-function getPropertyStatus(property: Property): { label: string; color: string } {
+function getPropertyStatus(property: Property): {
+  label: string;
+  color: string;
+} {
   const totalUnits = property.units?.length || 0;
-  const occupiedUnits = property.units?.filter(u => u.status === "OCCUPIED").length || 0;
+  const occupiedUnits =
+    property.units?.filter((u) => u.status === "OCCUPIED").length || 0;
 
-  if (totalUnits === 0) return { label: "No Units", color: "text-zinc-500 bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-400" };
-  if (occupiedUnits === totalUnits) return { label: "Fully Occupied", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400" };
-  if (occupiedUnits === 0) return { label: "100% Vacant", color: "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400" };
-  return { label: "Partially Vacant", color: "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400" };
+  if (totalUnits === 0)
+    return {
+      label: "No Units",
+      color: "text-zinc-500 bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-400",
+    };
+  if (occupiedUnits === totalUnits)
+    return {
+      label: "Fully Occupied",
+      color:
+        "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400",
+    };
+  if (occupiedUnits === 0)
+    return {
+      label: "100% Vacant",
+      color: "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400",
+    };
+  return {
+    label: "Partially Vacant",
+    color:
+      "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400",
+  };
 }
 
 function getTotalRent(property: Property): number {
@@ -94,7 +116,7 @@ function getTotalRent(property: Property): number {
 }
 
 function getUniqueTenants(property: Property): string[] {
-  const tenantNames = property.leases?.map(l => l.tenant.name) || [];
+  const tenantNames = property.leases?.map((l) => l.tenant.name) || [];
   return [...new Set(tenantNames)];
 }
 
@@ -163,6 +185,8 @@ export function PropertiesList({
   const [propertyToDelete, setPropertyToDelete] =
     React.useState<Property | null>(null);
   const [propertyToReassign, setPropertyToReassign] =
+    React.useState<Property | null>(null);
+  const [propertyToAddUnits, setPropertyToAddUnits] =
     React.useState<Property | null>(null);
   const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -245,14 +269,43 @@ export function PropertiesList({
     deleteMutation.mutate(propertyId);
   const handleReassignProperty = (propertyId: string, ownerId: string) =>
     reassignMutation.mutate({ propertyId, ownerId });
+
+  const addUnitsMutation = useMutation({
+    mutationFn: async ({
+      propertyId,
+      units,
+    }: {
+      propertyId: string;
+      units: { unitNumber: string; type: string }[];
+    }) => {
+      await apiFetch(
+        `/api/workspaces/${workspaceId}/properties/${propertyId}/units`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ units }),
+          credentials: "include",
+        },
+      );
+    },
+    onSuccess: () => {
+      setPropertyToAddUnits(null);
+      queryClient.invalidateQueries({ queryKey: ["properties", workspaceId] });
+      toast.success("Apartment units added successfully!");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to add units");
+    },
+  });
+
   const deleting = deleteMutation.isPending;
   const reassigning = reassignMutation.isPending;
 
   // Derive unique locations for the filter dropdown
   const uniqueLocations = React.useMemo(() => {
-    const locations = properties.map(p => {
+    const locations = properties.map((p) => {
       // Extract city/area from address (take first meaningful part)
-      const parts = p.address.split(",").map(s => s.trim());
+      const parts = p.address.split(",").map((s) => s.trim());
       return parts[0] || p.address;
     });
     return [...new Set(locations)];
@@ -260,15 +313,17 @@ export function PropertiesList({
 
   // Filter properties
   const filteredProperties = React.useMemo(() => {
-    return properties.filter(p => {
-      const matchesSearch = searchQuery === "" ||
+    return properties.filter((p) => {
+      const matchesSearch =
+        searchQuery === "" ||
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.address.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesType = typeFilter === "all" ||
-        p.units?.some(u => u.type === typeFilter);
+      const matchesType =
+        typeFilter === "all" || p.units?.some((u) => u.type === typeFilter);
 
-      const matchesLocation = locationFilter === "all" ||
+      const matchesLocation =
+        locationFilter === "all" ||
         p.address.toLowerCase().includes(locationFilter.toLowerCase());
 
       return matchesSearch && matchesType && matchesLocation;
@@ -322,19 +377,19 @@ export function PropertiesList({
 
           {/* Filters Row */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                      {/* Search Bar */}
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            <input
-              type="text"
-              placeholder="Search properties..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-            />
-          </div>
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Search properties..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+              />
+            </div>
 
-          {/* Type Filter */}
+            {/* Type Filter */}
             <div className="relative">
               <select
                 value={typeFilter}
@@ -343,7 +398,9 @@ export function PropertiesList({
               >
                 <option value="all">Type: All Properties</option>
                 {Object.entries(propertyTypeConfig).map(([key, config]) => (
-                  <option key={key} value={key}>{config.label}</option>
+                  <option key={key} value={key}>
+                    {config.label}
+                  </option>
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
@@ -358,7 +415,9 @@ export function PropertiesList({
               >
                 <option value="all">Location: All</option>
                 {uniqueLocations.map((loc) => (
-                  <option key={loc} value={loc}>{loc}</option>
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
@@ -399,9 +458,11 @@ export function PropertiesList({
             <Building className="w-12 h-12 text-zinc-300 mb-4" />
             <p className="text-zinc-500 font-medium text-center px-4">
               {properties.length === 0 ? (
-                <>No properties found in this workspace. <br />
-                {isPropertyManager &&
-                  "Get started by creating your first property."}</>
+                <>
+                  No properties found in this workspace. <br />
+                  {isPropertyManager &&
+                    "Get started by creating your first property."}
+                </>
               ) : (
                 "No properties match your current filters."
               )}
@@ -418,6 +479,7 @@ export function PropertiesList({
                 isPropertyManager={isPropertyManager}
                 onDelete={() => setPropertyToDelete(p)}
                 onReassign={() => setPropertyToReassign(p)}
+                onAddUnits={() => setPropertyToAddUnits(p)}
               />
             ))}
           </div>
@@ -443,6 +505,7 @@ export function PropertiesList({
                 isPropertyManager={isPropertyManager}
                 onDelete={() => setPropertyToDelete(p)}
                 onReassign={() => setPropertyToReassign(p)}
+                onAddUnits={() => setPropertyToAddUnits(p)}
               />
             ))}
           </div>
@@ -469,6 +532,19 @@ export function PropertiesList({
             onClose={() => setPropertyToReassign(null)}
           />
         )}
+        {propertyToAddUnits && (
+          <AddUnitsModal
+            property={propertyToAddUnits}
+            isSaving={addUnitsMutation.isPending}
+            onConfirm={(units) =>
+              addUnitsMutation.mutate({
+                propertyId: propertyToAddUnits.id,
+                units,
+              })
+            }
+            onClose={() => setPropertyToAddUnits(null)}
+          />
+        )}
       </AnimatePresence>
     </>
   );
@@ -483,12 +559,14 @@ function PropertyGridCard({
   isPropertyManager,
   onDelete,
   onReassign,
+  onAddUnits,
 }: {
   property: Property;
   index: number;
   isPropertyManager: boolean;
   onDelete: () => void;
   onReassign: () => void;
+  onAddUnits: () => void;
 }) {
   const status = getPropertyStatus(property);
   const totalRent = getTotalRent(property);
@@ -516,7 +594,9 @@ function PropertyGridCard({
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 flex items-end justify-between">
           <div className="flex items-center gap-1 text-white/90 text-[11px] font-medium">
             <MapPin className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate max-w-[140px]">{property.address.split(",")[0]}</span>
+            <span className="truncate max-w-[140px]">
+              {property.address.split(",")[0]}
+            </span>
           </div>
           {totalRent > 0 && (
             <span className="text-white text-[11px] font-bold bg-black/30 backdrop-blur-sm px-2 py-0.5 rounded-md">
@@ -549,9 +629,13 @@ function PropertyGridCard({
         <div className="flex items-center justify-between mt-auto">
           <div className="flex items-center gap-1.5 text-zinc-500 text-xs font-medium">
             <Building className="w-3.5 h-3.5" />
-            <span>{unitCount} {unitCount === 1 ? "Apartment" : "Apartments"}</span>
+            <span>
+              {unitCount} {unitCount === 1 ? "Apartment" : "Apartments"}
+            </span>
           </div>
-          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide ${status.color}`}>
+          <span
+            className={`text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide ${status.color}`}
+          >
             {status.label}
           </span>
         </div>
@@ -583,6 +667,20 @@ function PropertyGridCard({
             <span className="text-[11px] text-zinc-400 italic">No tenants</span>
           )}
         </div>
+
+        {isPropertyManager && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddUnits();
+            }}
+            className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-card hover:bg-zinc-50 dark:hover:bg-zinc-900 text-[11px] font-bold text-zinc-755 dark:text-zinc-300 transition-all cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700"
+          >
+            <Plus className="w-3.5 h-3.5 text-zinc-450" />
+            Add Apartment
+          </button>
+        )}
       </div>
     </div>
   );
@@ -597,12 +695,14 @@ function PropertyListRow({
   isPropertyManager,
   onDelete,
   onReassign,
+  onAddUnits,
 }: {
   property: Property;
   index: number;
   isPropertyManager: boolean;
   onDelete: () => void;
   onReassign: () => void;
+  onAddUnits: () => void;
 }) {
   const status = getPropertyStatus(property);
   const totalRent = getTotalRent(property);
@@ -611,9 +711,7 @@ function PropertyListRow({
   const image = property.imageUrl || getPropertyImage(property.id);
 
   return (
-    <div
-      className="group grid grid-cols-[80px_1.5fr_1fr_1fr_0.8fr_0.8fr_0.6fr] gap-4 px-6 py-4 items-center border-b border-zinc-100 dark:border-zinc-800 last:border-b-0 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors"
-    >
+    <div className="group grid grid-cols-[80px_1.5fr_1fr_1fr_0.8fr_0.8fr_0.6fr] gap-4 px-6 py-4 items-center border-b border-zinc-100 dark:border-zinc-800 last:border-b-0 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
       {/* Thumbnail */}
       <div className="w-[64px] h-[48px] rounded-xl overflow-hidden">
         <img
@@ -626,19 +724,29 @@ function PropertyListRow({
 
       {/* Name */}
       <div>
-        <div className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5">Model Name</div>
-        <p className="text-sm font-bold text-zinc-900 dark:text-white truncate">{property.name}</p>
+        <div className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5">
+          Model Name
+        </div>
+        <p className="text-sm font-bold text-zinc-900 dark:text-white truncate">
+          {property.name}
+        </p>
       </div>
 
       {/* Location */}
       <div>
-        <div className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5">Location</div>
-        <p className="text-sm text-zinc-600 dark:text-zinc-300 truncate">{property.address.split(",")[0]}</p>
+        <div className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5">
+          Location
+        </div>
+        <p className="text-sm text-zinc-600 dark:text-zinc-300 truncate">
+          {property.address.split(",")[0]}
+        </p>
       </div>
 
       {/* Rent */}
       <div>
-        <div className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5">Rent</div>
+        <div className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5">
+          Rent
+        </div>
         <p className="text-sm font-semibold text-zinc-900 dark:text-white">
           {totalRent > 0 ? `₦${totalRent.toLocaleString()}/Flat` : "—"}
         </p>
@@ -646,7 +754,9 @@ function PropertyListRow({
 
       {/* Asset (Units) */}
       <div>
-        <div className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5">Asset</div>
+        <div className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5">
+          Asset
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">
           {unitCount} {unitCount === 1 ? "Apartment" : "Apartments"}
         </p>
@@ -654,7 +764,9 @@ function PropertyListRow({
 
       {/* Tenants */}
       <div>
-        <div className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5">Tenants</div>
+        <div className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5">
+          Tenants
+        </div>
         {tenants.length > 0 ? (
           <div className="flex -space-x-1.5">
             {tenants.slice(0, 3).map((name, i) => (
@@ -679,20 +791,34 @@ function PropertyListRow({
 
       {/* Status */}
       <div className="flex items-center gap-2">
-        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide ${status.color}`}>
+        <span
+          className={`text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wide ${status.color}`}
+        >
           {status.label}
         </span>
         {isPropertyManager && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="text-zinc-400 hover:text-rose-500 transition-colors p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 opacity-0 group-hover:opacity-100"
-            title="Delete Property"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddUnits();
+              }}
+              className="text-zinc-400 hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900/60 opacity-0 group-hover:opacity-100"
+              title="Add Apartments"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="text-zinc-400 hover:text-rose-500 transition-colors p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 opacity-0 group-hover:opacity-100"
+              title="Delete Property"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -807,7 +933,13 @@ function DeleteConfirmationModal({
 /* ============================================================
    PROPERTY FORM
    ============================================================ */
-function ImageUploader({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+function ImageUploader({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+}) {
   const [uploading, setUploading] = React.useState(false);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -816,12 +948,15 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
 
     setUploading(true);
     try {
-      const { signedUrl, publicUrl } = await apiFetch("/api/uploads/presigned-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, contentType: file.type }),
-        credentials: "include",
-      });
+      const { signedUrl, publicUrl } = await apiFetch(
+        "/api/uploads/presigned-url",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+          credentials: "include",
+        },
+      );
 
       await fetch(signedUrl, {
         method: "PUT",
@@ -854,7 +989,11 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
         </div>
       ) : value ? (
         <div className="relative h-32 rounded-xl overflow-hidden shadow-sm">
-          <img src={value} alt="Preview" className="w-full h-full object-cover" />
+          <img
+            src={value}
+            alt="Preview"
+            className="w-full h-full object-cover"
+          />
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <p className="text-white text-xs font-bold flex items-center gap-1">
               <UploadCloud className="w-3 h-3" /> Change
@@ -867,8 +1006,12 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
             <UploadCloud className="w-4 h-4" />
           </div>
           <div>
-            <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Click or drag property photo</p>
-            <p className="text-[10px] text-zinc-500 mt-0.5">High-quality JPG or PNG</p>
+            <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+              Click or drag property photo
+            </p>
+            <p className="text-[10px] text-zinc-500 mt-0.5">
+              High-quality JPG or PNG
+            </p>
           </div>
         </div>
       )}
@@ -876,22 +1019,43 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
   );
 }
 
-function PropertyForm({ workspaceId, onComplete, onClose }: { workspaceId: string; onComplete: () => void; onClose: () => void; }) {
+function PropertyForm({
+  workspaceId,
+  onComplete,
+  onClose,
+}: {
+  workspaceId: string;
+  onComplete: () => void;
+  onClose: () => void;
+}) {
   const queryClient = useQueryClient();
-  const [formData, setFormData] = React.useState({ name: "", address: "", ownerId: "", imageUrl: "" });
-  const [units, setUnits] = React.useState<{ unitNumber: string; type: string }[]>([]);
+  const [formData, setFormData] = React.useState({
+    name: "",
+    address: "",
+    ownerId: "",
+    imageUrl: "",
+  });
+  const [units, setUnits] = React.useState<
+    { unitNumber: string; type: string }[]
+  >([]);
 
-  const { data: owners = [] } = useQuery<{ id: string; name: string; email: string }[]>({
+  const { data: owners = [] } = useQuery<
+    { id: string; name: string; email: string }[]
+  >({
     queryKey: ["owners", workspaceId],
     queryFn: async () => {
-      const data = await apiFetch(`/api/workspaces/${workspaceId}/owners`, { credentials: "include" });
+      const data = await apiFetch(`/api/workspaces/${workspaceId}/owners`, {
+        credentials: "include",
+      });
       return data.owners || [];
     },
     enabled: !!workspaceId,
   });
 
-  const addUnit = () => setUnits([...units, { unitNumber: "", type: "MINI_FLAT" }]);
-  const removeUnit = (index: number) => setUnits(units.filter((_, i) => i !== index));
+  const addUnit = () =>
+    setUnits([...units, { unitNumber: "", type: "MINI_FLAT" }]);
+  const removeUnit = (index: number) =>
+    setUnits(units.filter((_, i) => i !== index));
   const updateUnit = (index: number, field: string, value: string) => {
     const newUnits = [...units];
     newUnits[index] = { ...newUnits[index], [field]: value };
@@ -900,7 +1064,12 @@ function PropertyForm({ workspaceId, onComplete, onClose }: { workspaceId: strin
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const payload = { ...formData, units, ownerId: formData.ownerId || undefined, imageUrl: formData.imageUrl || undefined };
+      const payload = {
+        ...formData,
+        units,
+        ownerId: formData.ownerId || undefined,
+        imageUrl: formData.imageUrl || undefined,
+      };
       await apiFetch(`/api/workspaces/${workspaceId}/properties`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -924,56 +1093,102 @@ function PropertyForm({ workspaceId, onComplete, onClose }: { workspaceId: strin
     <div className="fixed inset-0 z-[100] flex justify-end">
       {/* Backdrop */}
       <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         onClick={onClose}
         className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm"
       />
-      
+
       {/* Drawer */}
       <motion.div
-        initial={{ x: "100%", opacity: 0.5 }} animate={{ x: 0, opacity: 1 }} exit={{ x: "100%", opacity: 0 }}
+        initial={{ x: "100%", opacity: 0.5 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: "100%", opacity: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className="relative w-full max-w-md bg-zinc-50 dark:bg-zinc-950 h-full shadow-2xl flex flex-col border-l border-zinc-200 dark:border-zinc-800"
       >
         {/* Header */}
         <div className="px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between sticky top-0 z-10 shadow-sm">
           <div>
-            <h4 className="text-lg font-bold text-zinc-900 dark:text-white">Create Property</h4>
-            <p className="text-xs text-zinc-500">Add a new building to your portfolio</p>
+            <h4 className="text-lg font-bold text-zinc-900 dark:text-white">
+              Create Property
+            </h4>
+            <p className="text-xs text-zinc-500">
+              Add a new building to your portfolio
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-500">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-500"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable Form Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-          
           {/* Card 1: Image Upload */}
           <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-            <h5 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-3">Property Photo</h5>
-            <ImageUploader value={formData.imageUrl} onChange={(url) => setFormData({ ...formData, imageUrl: url })} />
+            <h5 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-3">
+              Property Photo
+            </h5>
+            <ImageUploader
+              value={formData.imageUrl}
+              onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+            />
           </div>
 
           {/* Card 2: Property Details */}
           <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
-            <h5 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Details</h5>
+            <h5 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">
+              Details
+            </h5>
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-zinc-500">Property Name</label>
-              <input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-primary/30 text-sm" placeholder="e.g. Skyline Towers" />
+              <label className="text-[11px] font-bold text-zinc-500">
+                Property Name
+              </label>
+              <input
+                required
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-primary/30 text-sm"
+                placeholder="e.g. Skyline Towers"
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-zinc-500">Address</label>
-              <input required value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-primary/30 text-sm" placeholder="Physical location..." />
+              <label className="text-[11px] font-bold text-zinc-500">
+                Address
+              </label>
+              <input
+                required
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-primary/30 text-sm"
+                placeholder="Physical location..."
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-zinc-500">Assign Landlord</label>
-              <select value={formData.ownerId} onChange={(e) => setFormData({ ...formData, ownerId: e.target.value })}
-                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-primary/30 text-sm appearance-none">
+              <label className="text-[11px] font-bold text-zinc-500">
+                Assign Landlord
+              </label>
+              <select
+                value={formData.ownerId}
+                onChange={(e) =>
+                  setFormData({ ...formData, ownerId: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-primary/30 text-sm appearance-none"
+              >
                 <option value="">No Landlord (Internal)</option>
-                {owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                {owners.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -981,44 +1196,79 @@ function PropertyForm({ workspaceId, onComplete, onClose }: { workspaceId: strin
           {/* Card 3: Unit Configuration */}
           <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
             <div className="flex justify-between items-center mb-4">
-              <h5 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Units</h5>
-              <button type="button" onClick={addUnit} className="flex items-center gap-1 text-[10px] font-bold bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 transition-colors">
+              <h5 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+                Units
+              </h5>
+              <button
+                type="button"
+                onClick={addUnit}
+                className="flex items-center gap-1 text-[10px] font-bold bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 transition-colors"
+              >
                 <Plus className="w-3 h-3" /> Add
               </button>
             </div>
             <div className="space-y-3">
               {units.map((unit, index) => (
-                <div key={index} className="flex items-center gap-2 p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+                <div
+                  key={index}
+                  className="flex items-center gap-2 p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-xl"
+                >
                   <div className="w-16">
-                    <input required value={unit.unitNumber} onChange={(e) => updateUnit(index, "unitNumber", e.target.value)}
-                      className="w-full px-2 py-1.5 text-xs border border-zinc-200 dark:border-zinc-800 rounded-lg focus:ring-2 focus:ring-primary/20 bg-white dark:bg-zinc-900" placeholder="A1" />
+                    <input
+                      required
+                      value={unit.unitNumber}
+                      onChange={(e) =>
+                        updateUnit(index, "unitNumber", e.target.value)
+                      }
+                      className="w-full px-2 py-1.5 text-xs border border-zinc-200 dark:border-zinc-800 rounded-lg focus:ring-2 focus:ring-primary/20 bg-white dark:bg-zinc-900"
+                      placeholder="A1"
+                    />
                   </div>
                   <div className="flex-1">
-                    <select value={unit.type} onChange={(e) => updateUnit(index, "type", e.target.value)}
-                      className="w-full px-2 py-1.5 text-xs border border-zinc-200 dark:border-zinc-800 rounded-lg focus:ring-2 focus:ring-primary/20 bg-white dark:bg-zinc-900 appearance-none">
-                      {Object.entries(propertyTypeConfig).map(([key, config]) => (
-                        <option key={key} value={key}>{config.label}</option>
-                      ))}
+                    <select
+                      value={unit.type}
+                      onChange={(e) =>
+                        updateUnit(index, "type", e.target.value)
+                      }
+                      className="w-full px-2 py-1.5 text-xs border border-zinc-200 dark:border-zinc-800 rounded-lg focus:ring-2 focus:ring-primary/20 bg-white dark:bg-zinc-900 appearance-none"
+                    >
+                      {Object.entries(propertyTypeConfig).map(
+                        ([key, config]) => (
+                          <option key={key} value={key}>
+                            {config.label}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </div>
-                  <button type="button" onClick={() => removeUnit(index)} className="p-1.5 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => removeUnit(index)}
+                    className="p-1.5 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}
               {units.length === 0 && (
-                <p className="text-[10px] text-zinc-500 text-center py-4 italic">No units added. Tracked as a single property.</p>
+                <p className="text-[10px] text-zinc-500 text-center py-4 italic">
+                  No units added. Tracked as a single property.
+                </p>
               )}
             </div>
           </div>
-          
+
           {/* Spacer to ensure scrolling past the footer */}
           <div className="h-10" />
         </div>
 
         {/* Footer */}
         <div className="p-4 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 sticky bottom-0 z-10">
-          <button disabled={loading} onClick={handleSubmit} className="w-full bg-primary text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50">
+          <button
+            disabled={loading}
+            onClick={handleSubmit}
+            className="w-full bg-primary text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+          >
             {loading ? "Creating..." : "Save Property"}
           </button>
         </div>
@@ -1125,6 +1375,169 @@ function ReassignOwnerModal({
             className="w-full py-3 rounded-full text-sm font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
           >
             Cancel
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ============================================================
+   ADD APARTMENTS / UNITS MODAL
+   ============================================================ */
+function AddUnitsModal({
+  property,
+  isSaving,
+  onConfirm,
+  onClose,
+}: {
+  property: Property;
+  isSaving: boolean;
+  onConfirm: (units: { unitNumber: string; type: string }[]) => void;
+  onClose: () => void;
+}) {
+  const [units, setUnits] = React.useState<{ unitNumber: string; type: string }[]>([
+    { unitNumber: "", type: "MINI_FLAT" },
+  ]);
+
+  const addUnit = () =>
+    setUnits([...units, { unitNumber: "", type: "MINI_FLAT" }]);
+
+  const removeUnit = (index: number) =>
+    setUnits(units.filter((_, i) => i !== index));
+
+  const updateUnit = (index: number, field: string, value: string) => {
+    const newUnits = [...units];
+    newUnits[index] = { ...newUnits[index], [field]: value };
+    setUnits(newUnits);
+  };
+
+  const handleSave = () => {
+    const invalid = units.some((u) => !u.unitNumber.trim());
+    if (invalid) {
+      toast.error("Please fill in all unit numbers");
+      return;
+    }
+    onConfirm(units);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative w-full max-w-md bg-white dark:bg-zinc-950 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+      >
+        <div className="p-6 flex justify-between items-center border-b border-zinc-150 dark:border-zinc-900">
+          <div>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+              Add Apartments / Units
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Adding units to {property.name}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl text-zinc-400 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 flex-1 overflow-y-auto space-y-4">
+          {property.units && property.units.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
+                Existing Units ({property.units.length})
+              </label>
+              <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto border border-zinc-200/60 dark:border-zinc-800 p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/10">
+                {property.units.map((u) => (
+                  <span key={u.id} className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-700/40">
+                    Unit {u.unitNumber}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
+                New Units to Add
+              </label>
+              <button
+                type="button"
+                onClick={addUnit}
+                className="flex items-center gap-1 text-[10px] font-black text-primary hover:underline"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Row
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {units.map((unit, index) => (
+                <div key={index} className="flex gap-2.5 items-center">
+                  <div className="flex-1">
+                    <input
+                      required
+                      placeholder="Unit Number (e.g. A1)"
+                      value={unit.unitNumber}
+                      onChange={(e) => updateUnit(index, "unitNumber", e.target.value)}
+                      className="w-full px-3.5 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/10"
+                    />
+                  </div>
+                  <div className="flex-1 relative">
+                    <select
+                      value={unit.type}
+                      onChange={(e) => updateUnit(index, "type", e.target.value)}
+                      className="w-full pl-3.5 pr-8 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer"
+                    >
+                      {Object.entries(propertyTypeConfig).map(([key, val]) => (
+                        <option key={key} value={key}>
+                          {val.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                  </div>
+                  {units.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeUnit(index)}
+                      className="p-2 text-zinc-400 hover:text-rose-500 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0 cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-zinc-150 dark:border-zinc-900 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-xl transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={isSaving}
+            onClick={handleSave}
+            className="px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-bold shadow-md hover:scale-[1.02] active:scale-98 transition-all disabled:opacity-50 cursor-pointer"
+          >
+            {isSaving ? "Saving..." : "Add Apartments"}
           </button>
         </div>
       </motion.div>

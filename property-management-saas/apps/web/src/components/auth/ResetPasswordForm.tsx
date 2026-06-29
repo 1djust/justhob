@@ -49,9 +49,7 @@ export function ResetPasswordForm() {
     } catch (err: unknown) {
       const errorObj = err as Error;
       console.error("Reset password error:", errorObj);
-      setError(
-        errorObj.message || "An unexpected error occurred",
-      );
+      setError(errorObj.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -88,8 +86,9 @@ export function ResetPasswordForm() {
       )}
 
       <div className="space-y-2">
-        <label className="text-sm font-medium leading-none">New Password</label>
+        <label htmlFor="new-password" className="text-sm font-medium leading-none">New Password</label>
         <input
+          id="new-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -101,10 +100,11 @@ export function ResetPasswordForm() {
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium leading-none">
+        <label htmlFor="confirm-password" className="text-sm font-medium leading-none">
           Confirm New Password
         </label>
         <input
+          id="confirm-password"
           type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}

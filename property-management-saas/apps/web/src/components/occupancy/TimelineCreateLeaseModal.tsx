@@ -37,7 +37,10 @@ export function TimelineCreateLeaseModal({
 
   const { data: tenantsData } = useQuery({
     queryKey: ["tenants", workspaceId],
-    queryFn: () => apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, { credentials: "include" })
+    queryFn: () =>
+      apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/tenants`, {
+        credentials: "include",
+      }),
   });
 
   const tenants: Tenant[] = tenantsData?.tenants || [];
@@ -55,7 +58,9 @@ export function TimelineCreateLeaseModal({
             unitId: formData.unitId,
             startDate: formData.startDate,
             endDate: formData.endDate || null,
-            yearlyRent: formData.yearlyRent ? parseFloat(formData.yearlyRent) : 0,
+            yearlyRent: formData.yearlyRent
+              ? parseFloat(formData.yearlyRent)
+              : 0,
           }),
           credentials: "include",
         },
@@ -75,13 +80,16 @@ export function TimelineCreateLeaseModal({
     e.preventDefault();
     createLeaseMutation.mutate();
   };
-  
+
   const loading = createLeaseMutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm" onClick={onClose} />
-      
+      <div
+        className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
       <form
         onSubmit={handleSubmit}
         className="relative w-full max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
@@ -120,8 +128,10 @@ export function TimelineCreateLeaseModal({
               className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 text-sm font-medium focus:ring-2 focus:ring-primary/20 appearance-none"
             >
               <option value="">Choose a tenant...</option>
-              {tenants.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
+              {tenants.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
               ))}
             </select>
           </div>

@@ -4,7 +4,11 @@
  * Reports errors and warnings to our custom Supabase-backed API ingestion route.
  */
 export const logger = {
-  async error(message: string, error?: unknown, context?: Record<string, unknown>) {
+  async error(
+    message: string,
+    error?: unknown,
+    context?: Record<string, unknown>,
+  ) {
     if (process.env.NODE_ENV === "development") {
       console.error(message, error, context);
     }

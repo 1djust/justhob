@@ -34,7 +34,11 @@ interface StatsData {
   chartData: { name: string; revenue: number }[];
 }
 
-export function DashboardStats({ workspaceId, userName, plan }: DashboardStatsProps) {
+export function DashboardStats({
+  workspaceId,
+  userName,
+  plan,
+}: DashboardStatsProps) {
   const queryClient = useQueryClient();
   const { socket, joinWorkspace } = useRealtime();
 
@@ -174,49 +178,63 @@ export function DashboardStats({ workspaceId, userName, plan }: DashboardStatsPr
   const secondaryCards = statCards.slice(4);
 
   return (
-    <div className="flex flex-col w-full space-y-6" aria-label="Dashboard Stats Form">
+    <div
+      className="flex flex-col w-full space-y-6"
+      aria-label="Dashboard Stats Form"
+    >
       {/* Hero Banner (Contains Cards) */}
       <div className="relative rounded-3xl overflow-hidden shadow-sm">
         {/* Realistic houses background image */}
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2075&q=80')] bg-cover bg-center" />
-        
+
         {/* Subtle overlay to ensure white text readability without making it too dark */}
         <div className="absolute inset-0 bg-black/20" />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-900/60 via-slate-900/20 to-transparent" />
 
         {/* Content Container */}
         <div className="relative z-10 p-6 sm:p-8">
-          
           {/* Top Row: Welcome Text & Date Picker */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-8">
-             <div>
-               <h2 className="text-[32px] font-bold text-white mb-1 tracking-tight">Welcome back, {userName}!</h2>
-               <p className="text-white/90 text-[15px] font-medium">Here&apos;s your property summary for today.</p>
-             </div>
-             <div className="bg-white dark:bg-zinc-900/90 dark:backdrop-blur-md text-slate-700 dark:text-zinc-200 px-4 py-2.5 rounded-lg text-[13px] font-semibold flex items-center shadow-sm border border-white/20 dark:border-zinc-700/50">
-               <Calendar className="w-4 h-4 mr-2 text-slate-500 dark:text-zinc-400" />
-               01 Nov 2025 - 31 Dec 2026
-             </div>
+            <div>
+              <h2 className="text-[32px] font-bold text-white mb-1 tracking-tight">
+                Welcome back, {userName}!
+              </h2>
+              <p className="text-white/90 text-[15px] font-medium">
+                Here&apos;s your property summary for today.
+              </p>
+            </div>
+            <div className="bg-white dark:bg-zinc-900/90 dark:backdrop-blur-md text-slate-700 dark:text-zinc-200 px-4 py-2.5 rounded-lg text-[13px] font-semibold flex items-center shadow-sm border border-white/20 dark:border-zinc-700/50">
+              <Calendar className="w-4 h-4 mr-2 text-slate-500 dark:text-zinc-400" />
+              01 Nov 2025 - 31 Dec 2026
+            </div>
           </div>
 
           {/* 4 Stat Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {top4Cards.map((card, i) => {
               // Exact trend color logic
-              const isNeutral = card.trend === "Active" || card.title.includes("Properties");
-              const isNegative = card.urgent || card.trend.toLowerCase().includes("overdue");
-              
+              const isNeutral =
+                card.trend === "Active" || card.title.includes("Properties");
+              const isNegative =
+                card.urgent || card.trend.toLowerCase().includes("overdue");
+
               let trendColorClass = "text-[#10b981]"; // Emerald green for positive
               if (isNegative) trendColorClass = "text-red-500";
-              else if (isNeutral) trendColorClass = "text-indigo-500 dark:text-indigo-400";
+              else if (isNeutral)
+                trendColorClass = "text-indigo-500 dark:text-indigo-400";
 
               // Clean up title (e.g. "Total Properties" instead of "TOTAL PROPERTIES")
-              const cleanTitle = card.title.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+              const cleanTitle = card.title
+                .split(" ")
+                .map(
+                  (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+                )
+                .join(" ");
 
               // Fallback trend subtext if trend doesn't have a space
-              const trendParts = card.trend.split(' ');
+              const trendParts = card.trend.split(" ");
               const trendValue = trendParts[0];
-              const trendSubtext = trendParts.slice(1).join(' ') || 'This Week';
+              const trendSubtext = trendParts.slice(1).join(" ") || "This Week";
 
               return (
                 <div
@@ -225,17 +243,19 @@ export function DashboardStats({ workspaceId, userName, plan }: DashboardStatsPr
                 >
                   {/* Wavy background decoration mimicking reference */}
                   <div className="absolute right-0 top-0 bottom-0 w-2/3 overflow-hidden pointer-events-none rounded-r-2xl">
-                     <div className="absolute right-[-20%] top-[10%] w-[120%] h-[150%] border-[16px] border-indigo-50/60 dark:border-indigo-500/10 rounded-[100%] transform -rotate-12 blur-[0.5px]" />
-                     <div className="absolute right-[-45%] top-[-10%] w-[120%] h-[150%] border-[16px] border-teal-50/50 dark:border-teal-500/10 rounded-[100%] transform -rotate-12 blur-[0.5px]" />
+                    <div className="absolute right-[-20%] top-[10%] w-[120%] h-[150%] border-[16px] border-indigo-50/60 dark:border-indigo-500/10 rounded-[100%] transform -rotate-12 blur-[0.5px]" />
+                    <div className="absolute right-[-45%] top-[-10%] w-[120%] h-[150%] border-[16px] border-teal-50/50 dark:border-teal-500/10 rounded-[100%] transform -rotate-12 blur-[0.5px]" />
                   </div>
 
                   <div className="relative z-10 flex flex-col h-full">
                     <p className="text-[15px] font-medium text-slate-800 dark:text-zinc-300 mb-1">
                       {cleanTitle}
                     </p>
-                    
+
                     <div className="flex items-center gap-1.5 mb-6">
-                      <span className={`text-[12px] font-bold ${trendColorClass}`}>
+                      <span
+                        className={`text-[12px] font-bold ${trendColorClass}`}
+                      >
                         {trendValue}
                       </span>
                       <span className="text-[12px] text-slate-400 dark:text-zinc-500 font-medium">
@@ -270,7 +290,7 @@ export function DashboardStats({ workspaceId, userName, plan }: DashboardStatsPr
               </p>
             </div>
             <div className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-md text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-               Monthly
+              Monthly
             </div>
           </div>
 
@@ -284,8 +304,7 @@ export function DashboardStats({ workspaceId, userName, plan }: DashboardStatsPr
                   Advanced Analytics
                 </h4>
                 <p className="text-muted-foreground text-center max-w-[280px] text-sm font-medium mb-6">
-                  Upgrade to{" "}
-                  <span className="text-primary font-bold">PRO</span>{" "}
+                  Upgrade to <span className="text-primary font-bold">PRO</span>{" "}
                   to unlock detailed charts.
                 </p>
                 <button
@@ -308,23 +327,34 @@ export function DashboardStats({ workspaceId, userName, plan }: DashboardStatsPr
 
         {/* Secondary Widgets (Urgent Actions) */}
         <div className="rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-           <h3 className="text-xl font-bold tracking-tight text-foreground mb-6">Action Needed</h3>
-           <div className="space-y-4">
-              {secondaryCards.map((card, i) => (
-                  <div key={i} className="flex justify-between items-center p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 hover:bg-zinc-100 transition-colors">
-                     <div className="flex items-center gap-4">
-                         <div className={`p-3 rounded-xl ${card.bg} ${card.color}`}>
-                            <card.icon className="w-6 h-6" />
-                         </div>
-                         <div>
-                           <p className="text-sm font-bold text-foreground">{card.title}</p>
-                           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1">{card.trend}</p>
-                         </div>
-                     </div>
-                     <div className="text-2xl font-bold text-foreground">{card.value}</div>
+          <h3 className="text-xl font-bold tracking-tight text-foreground mb-6">
+            Action Needed
+          </h3>
+          <div className="space-y-4">
+            {secondaryCards.map((card, i) => (
+              <div
+                key={i}
+                className="flex justify-between items-center p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 hover:bg-zinc-100 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 rounded-xl ${card.bg} ${card.color}`}>
+                    <card.icon className="w-6 h-6" />
                   </div>
-              ))}
-           </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">
+                      {card.title}
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1">
+                      {card.trend}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-foreground">
+                  {card.value}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -96,6 +96,30 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({
         router.refresh();
       });
 
+      s.on("PROPERTY_CREATED", (data: RealtimeEventData) => {
+        console.log("[Realtime] Property created:", data);
+        toast.success(data.message || "New property added to workspace");
+        router.refresh();
+      });
+
+      s.on("PROPERTY_DELETED", (data: RealtimeEventData) => {
+        console.log("[Realtime] Property deleted:", data);
+        toast.warning(data.message || "Property removed from workspace");
+        router.refresh();
+      });
+
+      s.on("TENANT_CREATED", (data: RealtimeEventData) => {
+        console.log("[Realtime] Tenant created:", data);
+        toast.success(data.message || "New tenant registered");
+        router.refresh();
+      });
+
+      s.on("TENANT_DELETED", (data: RealtimeEventData) => {
+        console.log("[Realtime] Tenant deleted:", data);
+        toast.warning(data.message || "Tenant removed from workspace");
+        router.refresh();
+      });
+
       s.on("LEASE_RENEWED", (data: RealtimeEventData) => {
         console.log("[Realtime] Lease renewed:", data);
         toast.success(data.message || "Lease renewal accepted");

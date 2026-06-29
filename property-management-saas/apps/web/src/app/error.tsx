@@ -26,8 +26,8 @@ export default function Error({
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4 text-center">
       <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
       <p className="text-muted-foreground mb-8 max-w-md">
-        An unexpected error occurred. We&apos;ve been notified and are looking into
-        it.
+        An unexpected error occurred. We&apos;ve been notified and are looking
+        into it.
       </p>
       <div className="flex gap-4">
         <button

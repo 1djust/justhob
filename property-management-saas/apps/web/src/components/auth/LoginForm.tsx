@@ -36,9 +36,14 @@ export function LoginForm() {
   const hasLowercase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
-  const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
+  const isPasswordValid =
+    hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 
-  const strengthScore = password ? [hasMinLength, hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length : 0;
+  const strengthScore = password
+    ? [hasMinLength, hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(
+        Boolean,
+      ).length
+    : 0;
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -49,7 +54,9 @@ export function LoginForm() {
       }
 
       if (window.location.hash) {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hashParams = new URLSearchParams(
+          window.location.hash.substring(1),
+        );
         const errorMsg = hashParams.get("error_description");
         if (errorMsg) {
           setError(errorMsg.replace(/\+/g, " "));
@@ -76,8 +83,13 @@ export function LoginForm() {
       } = await supabase.auth.getSession();
       if (session?.user) {
         // Fetch fresh profile from sync/me to see if they must change password
-        const meData = await apiFetch("/api/auth/me").catch(() => null) as { user?: { role?: string; mustChangePassword?: boolean } };
-        if (meData?.user?.mustChangePassword && meData?.user?.role !== "PROPERTY_MANAGER") {
+        const meData = (await apiFetch("/api/auth/me").catch(() => null)) as {
+          user?: { role?: string; mustChangePassword?: boolean };
+        };
+        if (
+          meData?.user?.mustChangePassword &&
+          meData?.user?.role !== "PROPERTY_MANAGER"
+        ) {
           setIsInviteFlow(true);
           setEmail(session.user.email || "");
           return;
@@ -152,7 +164,8 @@ export function LoginForm() {
       ) {
         const factors = data.user.factors || [];
         const totp = factors.find(
-          (f: { factor_type: string; status: string; id: string }) => f.factor_type === "totp" && f.status === "verified",
+          (f: { factor_type: string; status: string; id: string }) =>
+            f.factor_type === "totp" && f.status === "verified",
         );
         if (totp) {
           setFactorId(totp.id);
@@ -163,16 +176,38 @@ export function LoginForm() {
       }
 
       // If no MFA required, proceed normally
-      const syncData = await apiFetch("/api/auth/sync", {
+      const syncData = (await apiFetch("/api/auth/sync", {
         method: "POST",
-      }) as { user?: { role?: string; globalRole?: string; mustChangePassword?: boolean } };
+      })) as {
+        user?: {
+          role?: string;
+          globalRole?: string;
+          mustChangePassword?: boolean;
+        };
+      };
 
       if (syncData?.user?.globalRole === "SUPER_ADMIN") {
         await supabase.auth.signOut();
-        throw new Error("Super Admin accounts must sign in through the Admin Portal.");
+        throw new Error(
+          "Super Admin accounts must sign in through the Admin Portal.",
+        );
       }
 
-      if (syncData?.user?.mustChangePassword === true && syncData?.user?.role !== "PROPERTY_MANAGER") {
+      // Block tenant users from the web dashboard — they must use the mobile app
+      if (
+        syncData?.user?.role === "TENANT" ||
+        syncData?.user?.globalRole === "TENANT"
+      ) {
+        await supabase.auth.signOut();
+        throw new Error(
+          "Tenant accounts can only access PropertyStack through the mobile app. Please download the app to continue.",
+        );
+      }
+
+      if (
+        syncData?.user?.mustChangePassword === true &&
+        syncData?.user?.role !== "PROPERTY_MANAGER"
+      ) {
         setTempPassword(password); // Pre-fill temporary password with the password they typed to log in
         setPassword(""); // Clear password field for new password entry
         setConfirmPassword("");
@@ -182,9 +217,11 @@ export function LoginForm() {
         router.push("/dashboard");
       }
     } catch (err: unknown) {
-      const errorObj = err as Error & { details?: string | Record<string, unknown> };
+      const errorObj = err as Error & {
+        details?: string | Record<string, unknown>;
+      };
       console.error("Login error:", errorObj);
-      
+
       // Make sure we are signed out of Supabase local session on failure
       try {
         await supabase.auth.signOut();
@@ -221,20 +258,39 @@ export function LoginForm() {
       }
 
       // Sync with Prisma backend
-      const syncData = await apiFetch("/api/auth/sync", {
+      const syncData = (await apiFetch("/api/auth/sync", {
         method: "POST",
-      }) as { user?: { role?: string; globalRole?: string; mustChangePassword?: boolean } };
+      })) as {
+        user?: {
+          role?: string;
+          globalRole?: string;
+          mustChangePassword?: boolean;
+        };
+      };
 
       if (syncData?.user?.globalRole === "SUPER_ADMIN") {
         await supabase.auth.signOut();
-        throw new Error("Super Admin accounts must sign in through the Admin Portal.");
+        throw new Error(
+          "Super Admin accounts must sign in through the Admin Portal.",
+        );
+      }
+
+      // Block tenant users from the web dashboard — they must use the mobile app
+      if (
+        syncData?.user?.role === "TENANT" ||
+        syncData?.user?.globalRole === "TENANT"
+      ) {
+        await supabase.auth.signOut();
+        throw new Error(
+          "Tenant accounts can only access PropertyStack through the mobile app. Please download the app to continue.",
+        );
       }
 
       router.push("/dashboard");
     } catch (err: unknown) {
       const errorObj = err as Error;
       console.error("MFA error:", errorObj);
-      
+
       // Make sure we are signed out of Supabase local session on failure
       try {
         await supabase.auth.signOut();
@@ -332,9 +388,7 @@ export function LoginForm() {
       setError("Confirmation email sent! Please check your inbox.");
     } catch (err: unknown) {
       const errorObj = err as Error;
-      setError(
-        errorObj.message || "Failed to resend confirmation",
-      );
+      setError(errorObj.message || "Failed to resend confirmation");
     } finally {
       setResending(false);
     }
@@ -344,9 +398,12 @@ export function LoginForm() {
     return (
       <form onSubmit={handleSetPassword} className="space-y-5">
         <div className="bg-emerald-500/10 border-l-4 border-emerald-500 text-emerald-700 dark:text-emerald-400 p-4 rounded-r-sm text-sm mb-6">
-          <p className="font-bold tracking-tight">Email Verified Successfully! 🎉</p>
+          <p className="font-bold tracking-tight">
+            Email Verified Successfully! 🎉
+          </p>
           <p className="mt-1 opacity-90">
-            Please verify your temporary password and set a new permanent password to complete your setup.
+            Please verify your temporary password and set a new permanent
+            password to complete your setup.
           </p>
         </div>
 
@@ -427,18 +484,30 @@ export function LoginForm() {
           {password && (
             <div className="space-y-2.5 mt-2 animate-in fade-in duration-300">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-500 font-medium dark:text-zinc-400">Password Strength:</span>
-                <span className={`font-bold ${
-                  strengthScore <= 2 ? "text-red-500" :
-                  strengthScore === 3 ? "text-amber-500" :
-                  strengthScore === 4 ? "text-emerald-500/80" : "text-emerald-500"
-                }`}>
-                  {strengthScore <= 2 ? "Weak" :
-                   strengthScore === 3 ? "Fair" :
-                   strengthScore === 4 ? "Good" : "Strong"}
+                <span className="text-zinc-500 font-medium dark:text-zinc-400">
+                  Password Strength:
+                </span>
+                <span
+                  className={`font-bold ${
+                    strengthScore <= 2
+                      ? "text-red-500"
+                      : strengthScore === 3
+                        ? "text-amber-500"
+                        : strengthScore === 4
+                          ? "text-emerald-500/80"
+                          : "text-emerald-500"
+                  }`}
+                >
+                  {strengthScore <= 2
+                    ? "Weak"
+                    : strengthScore === 3
+                      ? "Fair"
+                      : strengthScore === 4
+                        ? "Good"
+                        : "Strong"}
                 </span>
               </div>
-              
+
               <div className="grid grid-cols-5 gap-1">
                 {[1, 2, 3, 4, 5].map((index) => (
                   <div
@@ -448,10 +517,10 @@ export function LoginForm() {
                         ? strengthScore <= 2
                           ? "bg-red-500"
                           : strengthScore === 3
-                          ? "bg-amber-500"
-                          : strengthScore === 4
-                          ? "bg-emerald-500/80"
-                          : "bg-emerald-500"
+                            ? "bg-amber-500"
+                            : strengthScore === 4
+                              ? "bg-emerald-500/80"
+                              : "bg-emerald-500"
                         : "bg-zinc-200 dark:bg-zinc-800"
                     }`}
                   />
@@ -460,24 +529,74 @@ export function LoginForm() {
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-1.5 text-xs text-zinc-500 dark:text-zinc-400 border-t border-zinc-100 dark:border-zinc-900 mt-2">
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className={`w-3.5 h-3.5 ${hasMinLength ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`} />
-                  <span className={hasMinLength ? "text-zinc-800 dark:text-zinc-200 font-medium" : ""}>8+ chars</span>
+                  <CheckCircle2
+                    className={`w-3.5 h-3.5 ${hasMinLength ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`}
+                  />
+                  <span
+                    className={
+                      hasMinLength
+                        ? "text-zinc-800 dark:text-zinc-200 font-medium"
+                        : ""
+                    }
+                  >
+                    8+ chars
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className={`w-3.5 h-3.5 ${hasUppercase ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`} />
-                  <span className={hasUppercase ? "text-zinc-800 dark:text-zinc-200 font-medium" : ""}>1 Uppercase</span>
+                  <CheckCircle2
+                    className={`w-3.5 h-3.5 ${hasUppercase ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`}
+                  />
+                  <span
+                    className={
+                      hasUppercase
+                        ? "text-zinc-800 dark:text-zinc-200 font-medium"
+                        : ""
+                    }
+                  >
+                    1 Uppercase
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className={`w-3.5 h-3.5 ${hasLowercase ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`} />
-                  <span className={hasLowercase ? "text-zinc-800 dark:text-zinc-200 font-medium" : ""}>1 Lowercase</span>
+                  <CheckCircle2
+                    className={`w-3.5 h-3.5 ${hasLowercase ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`}
+                  />
+                  <span
+                    className={
+                      hasLowercase
+                        ? "text-zinc-800 dark:text-zinc-200 font-medium"
+                        : ""
+                    }
+                  >
+                    1 Lowercase
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className={`w-3.5 h-3.5 ${hasNumber ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`} />
-                  <span className={hasNumber ? "text-zinc-800 dark:text-zinc-200 font-medium" : ""}>1 Number</span>
+                  <CheckCircle2
+                    className={`w-3.5 h-3.5 ${hasNumber ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`}
+                  />
+                  <span
+                    className={
+                      hasNumber
+                        ? "text-zinc-800 dark:text-zinc-200 font-medium"
+                        : ""
+                    }
+                  >
+                    1 Number
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className={`w-3.5 h-3.5 ${hasSpecial ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`} />
-                  <span className={hasSpecial ? "text-zinc-800 dark:text-zinc-200 font-medium" : ""}>1 Special char</span>
+                  <CheckCircle2
+                    className={`w-3.5 h-3.5 ${hasSpecial ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-700"}`}
+                  />
+                  <span
+                    className={
+                      hasSpecial
+                        ? "text-zinc-800 dark:text-zinc-200 font-medium"
+                        : ""
+                    }
+                  >
+                    1 Special char
+                  </span>
                 </div>
               </div>
             </div>
@@ -515,7 +634,13 @@ export function LoginForm() {
 
         <button
           type="submit"
-          disabled={loading || !isPasswordValid || !tempPassword || !confirmPassword || password !== confirmPassword}
+          disabled={
+            loading ||
+            !isPasswordValid ||
+            !tempPassword ||
+            !confirmPassword ||
+            password !== confirmPassword
+          }
           className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-4 w-full mt-6 shadow-sm"
         >
           {loading ? "Setting Password..." : "Save Password & Continue"}
@@ -546,20 +671,22 @@ export function LoginForm() {
               {errorDetails}
             </p>
           )}
-          {!mfaStep && (error.toLowerCase().includes("email") || error.toLowerCase().includes("credential")) && (
-            <div className="pt-3 mt-3 border-t border-red-500/10">
-              <button
-                type="button"
-                onClick={handleResendConfirmation}
-                disabled={resending}
-                className="text-xs font-bold underline hover:no-underline block text-zinc-700 dark:text-zinc-300"
-              >
-                {resending
-                  ? "Sending..."
-                  : "Didn't receive a confirmation email? Resend"}
-              </button>
-            </div>
-          )}
+          {!mfaStep &&
+            (error.toLowerCase().includes("email") ||
+              error.toLowerCase().includes("credential")) && (
+              <div className="pt-3 mt-3 border-t border-red-500/10">
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={resending}
+                  className="text-xs font-bold underline hover:no-underline block text-zinc-700 dark:text-zinc-300"
+                >
+                  {resending
+                    ? "Sending..."
+                    : "Didn't receive a confirmation email? Resend"}
+                </button>
+              </div>
+            )}
         </div>
       )}
 

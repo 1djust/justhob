@@ -35,7 +35,8 @@ export function RegisterForm() {
   const hasLowercase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[!@#$%^&*()_+\[\]{};':"\\|,.<>\/?]/.test(password);
-  const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
+  const isPasswordValid =
+    hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -101,9 +102,7 @@ export function RegisterForm() {
     } catch (err: unknown) {
       const errorObj = err as Error;
       console.error("Registration error:", errorObj);
-      setError(
-        errorObj.message || "An unexpected error occurred",
-      );
+      setError(errorObj.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -124,7 +123,9 @@ export function RegisterForm() {
 
       {success && (
         <div className="p-5 text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 rounded-sm border-l-4 border-emerald-500 text-center space-y-3">
-          <p className="font-bold text-base tracking-tight">Registration Successful!</p>
+          <p className="font-bold text-base tracking-tight">
+            Registration Successful!
+          </p>
           <p>
             Please check your email to confirm your account before logging in.
           </p>
@@ -236,24 +237,95 @@ export function RegisterForm() {
 
           <div className="p-4 bg-secondary/30 rounded-lg border border-border space-y-2.5 mt-2">
             <div className="flex items-center gap-2.5 text-sm">
-              <CheckCircle2 className={cn("w-4 h-4", hasMinLength ? "text-emerald-500" : "text-muted-foreground/40")} />
-              <span className={cn(hasMinLength ? "text-foreground font-medium" : "text-muted-foreground")}>8 characters minimum</span>
+              <CheckCircle2
+                className={cn(
+                  "w-4 h-4",
+                  hasMinLength
+                    ? "text-emerald-500"
+                    : "text-muted-foreground/40",
+                )}
+              />
+              <span
+                className={cn(
+                  hasMinLength
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground",
+                )}
+              >
+                8 characters minimum
+              </span>
             </div>
             <div className="flex items-center gap-2.5 text-sm">
-              <CheckCircle2 className={cn("w-4 h-4", hasUppercase ? "text-emerald-500" : "text-muted-foreground/40")} />
-              <span className={cn(hasUppercase ? "text-foreground font-medium" : "text-muted-foreground")}>One uppercase letter</span>
+              <CheckCircle2
+                className={cn(
+                  "w-4 h-4",
+                  hasUppercase
+                    ? "text-emerald-500"
+                    : "text-muted-foreground/40",
+                )}
+              />
+              <span
+                className={cn(
+                  hasUppercase
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground",
+                )}
+              >
+                One uppercase letter
+              </span>
             </div>
             <div className="flex items-center gap-2.5 text-sm">
-              <CheckCircle2 className={cn("w-4 h-4", hasLowercase ? "text-emerald-500" : "text-muted-foreground/40")} />
-              <span className={cn(hasLowercase ? "text-foreground font-medium" : "text-muted-foreground")}>One lowercase letter</span>
+              <CheckCircle2
+                className={cn(
+                  "w-4 h-4",
+                  hasLowercase
+                    ? "text-emerald-500"
+                    : "text-muted-foreground/40",
+                )}
+              />
+              <span
+                className={cn(
+                  hasLowercase
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground",
+                )}
+              >
+                One lowercase letter
+              </span>
             </div>
             <div className="flex items-center gap-2.5 text-sm">
-              <CheckCircle2 className={cn("w-4 h-4", hasNumber ? "text-emerald-500" : "text-muted-foreground/40")} />
-              <span className={cn(hasNumber ? "text-foreground font-medium" : "text-muted-foreground")}>One number</span>
+              <CheckCircle2
+                className={cn(
+                  "w-4 h-4",
+                  hasNumber ? "text-emerald-500" : "text-muted-foreground/40",
+                )}
+              />
+              <span
+                className={cn(
+                  hasNumber
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground",
+                )}
+              >
+                One number
+              </span>
             </div>
             <div className="flex items-center gap-2.5 text-sm">
-              <CheckCircle2 className={cn("w-4 h-4", hasSpecial ? "text-emerald-500" : "text-muted-foreground/40")} />
-              <span className={cn(hasSpecial ? "text-foreground font-medium" : "text-muted-foreground")}>One special character</span>
+              <CheckCircle2
+                className={cn(
+                  "w-4 h-4",
+                  hasSpecial ? "text-emerald-500" : "text-muted-foreground/40",
+                )}
+              />
+              <span
+                className={cn(
+                  hasSpecial
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground",
+                )}
+              >
+                One special character
+              </span>
             </div>
           </div>
 
@@ -268,11 +340,25 @@ export function RegisterForm() {
                 disabled={loading}
               />
             </div>
-            <label htmlFor="consent" className="text-sm text-muted-foreground leading-snug cursor-pointer">
-               By submitting this form, you consent to PropertyStack&apos;s{" "}
-              <Link href="#" className="text-primary hover:underline font-medium">Terms</Link>{" "}
+            <label
+              htmlFor="consent"
+              className="text-sm text-muted-foreground leading-snug cursor-pointer"
+            >
+              By submitting this form, you consent to PropertyStack&apos;s{" "}
+              <Link
+                href="#"
+                className="text-primary hover:underline font-medium"
+              >
+                Terms
+              </Link>{" "}
               and the use of your contact information in accordance with our{" "}
-              <Link href="#" className="text-primary hover:underline font-medium">Privacy Policy</Link>.
+              <Link
+                href="#"
+                className="text-primary hover:underline font-medium"
+              >
+                Privacy Policy
+              </Link>
+              .
             </label>
           </div>
 

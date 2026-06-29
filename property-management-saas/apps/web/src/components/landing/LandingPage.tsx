@@ -19,7 +19,7 @@ import {
   CheckCircle2,
   MessageSquare,
   Lock,
-  Zap
+  Zap,
 } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
 import { DashboardCarousel } from "./DashboardCarousel";
@@ -39,7 +39,9 @@ export function LandingPage() {
           setVersion(data.latestVersion);
         }
       })
-      .catch(() => { /* version fetch failed silently */ });
+      .catch(() => {
+        /* version fetch failed silently */
+      });
   }, []);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -50,7 +52,7 @@ export function LandingPage() {
       const res = await fetch(`${API_BASE_URL}/api/auth/check-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email }),
       });
       const data = await res.json();
       if (data.exists) {
@@ -90,7 +92,11 @@ export function LandingPage() {
         Adapts dynamically between light/dark mode by using bg-primary with opacity changes.
       */}
       <div className="absolute top-0 right-0 w-[150%] h-[900px] md:w-[120%] lg:w-[65%] lg:h-[950px] z-0 pointer-events-none origin-top-right">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full fill-primary dark:fill-primary/20">
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          className="w-full h-full fill-primary dark:fill-primary/20"
+        >
           <path d="M0,0 L100,0 L100,100 C70,100 40,70 20,40 C10,25 5,10 0,0 Z" />
         </svg>
         <div className="absolute top-[20%] right-[10%] w-[500px] h-[500px] bg-blue-600/30 rounded-full blur-[120px] mix-blend-screen hidden dark:block"></div>
@@ -101,16 +107,38 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
-              <Image src="/images/assets/logo.png" alt="PropertyStack Logo" width={160} height={40} className="h-10 w-auto" priority />
+              <Image
+                src="/images/assets/logo.png"
+                alt="PropertyStack Logo"
+                width={160}
+                height={40}
+                className="h-10 w-auto"
+                priority
+              />
               <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
                 PropertyStack
               </span>
             </div>
-            
+
             <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-white">
-              <Link href="#features" className="hover:opacity-80 transition-opacity">Features</Link>
-              <Link href="#how-it-works" className="hover:opacity-80 transition-opacity">How it Works</Link>
-              <Link href="#pricing" className="hover:opacity-80 transition-opacity">Pricing</Link>
+              <Link
+                href="#features"
+                className="hover:opacity-80 transition-opacity"
+              >
+                Features
+              </Link>
+              <Link
+                href="#how-it-works"
+                className="hover:opacity-80 transition-opacity"
+              >
+                How it Works
+              </Link>
+              <Link
+                href="#pricing"
+                className="hover:opacity-80 transition-opacity"
+              >
+                Pricing
+              </Link>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -138,7 +166,6 @@ export function LandingPage() {
       <section className="relative pt-12 pb-20 md:pt-24 md:pb-32 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
-            
             {/* Left Column: Text & CTA */}
             <motion.div
               initial="hidden"
@@ -151,14 +178,28 @@ export function LandingPage() {
                 className="text-5xl md:text-6xl lg:text-[4rem] font-medium tracking-tight mb-6 text-slate-800 dark:text-slate-100 leading-[1.1]"
               >
                 Scale Your Portfolio <br className="hidden sm:block" />
-                with <span className="font-extrabold text-primary dark:text-blue-400">Intelligent Automation</span>
+                with{" "}
+                <span className="font-extrabold text-primary dark:text-blue-400">
+                  Intelligent Automation
+                </span>
               </motion.h1>
 
-              <motion.div variants={fadeInUp} className="bg-slate-100/80 dark:bg-slate-900/50 backdrop-blur-sm p-8 rounded-3xl border border-slate-200/50 dark:border-slate-800 shadow-sm mb-8 mt-10">
-                <h2 className="text-2xl font-bold mb-2">Turn operational chaos into cash flow.</h2>
-                <p className="text-slate-600 dark:text-slate-400 mb-6 font-medium">Manage units, collect rent automatically, and delight tenants with our unified platform.</p>
-                
-                <form onSubmit={handleEmailSubmit} className="flex flex-col sm:flex-row gap-3">
+              <motion.div
+                variants={fadeInUp}
+                className="bg-slate-100/80 dark:bg-slate-900/50 backdrop-blur-sm p-8 rounded-3xl border border-slate-200/50 dark:border-slate-800 shadow-sm mb-8 mt-10"
+              >
+                <h2 className="text-2xl font-bold mb-2">
+                  Turn operational chaos into cash flow.
+                </h2>
+                <p className="text-slate-600 dark:text-slate-400 mb-6 font-medium">
+                  Manage units, collect rent automatically, and delight tenants
+                  with our unified platform.
+                </p>
+
+                <form
+                  onSubmit={handleEmailSubmit}
+                  className="flex flex-col sm:flex-row gap-3"
+                >
                   <div className="relative flex-1">
                     <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                       <Mail className="h-5 w-5 text-slate-400" />
@@ -177,10 +218,13 @@ export function LandingPage() {
                     disabled={loading}
                     className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-xl font-bold transition-all whitespace-nowrap shadow-lg shadow-primary/25 flex items-center justify-center disabled:opacity-70"
                   >
-                    {loading ? "Checking..." : "Get Started Free"} <ArrowRight className="ml-2 h-5 w-5" />
+                    {loading ? "Checking..." : "Get Started Free"}{" "}
+                    <ArrowRight className="ml-2 h-5 w-5" />
                   </button>
                 </form>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-4 font-medium">No credit card required</p>
+                <p className="text-xs text-slate-500 dark:text-slate-500 mt-4 font-medium">
+                  No credit card required
+                </p>
               </motion.div>
             </motion.div>
 
@@ -193,11 +237,14 @@ export function LandingPage() {
             >
               {/* Abstract Floating Composition */}
               <div className="relative w-full h-full max-w-lg mx-auto">
-                
                 {/* Center Main Dashboard Card */}
-                <motion.div 
-                  animate={{ y: [0, -10, 0] }} 
-                  transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+                <motion.div
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 6,
+                    ease: "easeInOut",
+                  }}
                   className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 bg-white dark:bg-[#0A192F] rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-6 z-20"
                 >
                   <div className="flex items-center gap-4 mb-6">
@@ -205,8 +252,12 @@ export function LandingPage() {
                       <CheckCircle2 className="w-6 h-6" />
                     </div>
                     <div>
-                      <div className="font-bold text-slate-900 dark:text-white">Payment Success</div>
-                      <div className="text-xs text-slate-500">Rent paid by Sarah J.</div>
+                      <div className="font-bold text-slate-900 dark:text-white">
+                        Payment Success
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Rent paid by Sarah J.
+                      </div>
                     </div>
                   </div>
                   <div className="space-y-3">
@@ -216,28 +267,42 @@ export function LandingPage() {
                 </motion.div>
 
                 {/* Top Right Chart Card */}
-                <motion.div 
-                  animate={{ y: [0, 10, 0] }} 
-                  transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }}
+                <motion.div
+                  animate={{ y: [0, 10, 0] }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 5,
+                    ease: "easeInOut",
+                    delay: 1,
+                  }}
                   className="absolute top-16 right-4 w-48 bg-white dark:bg-[#0A192F] rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-5 z-10"
                 >
                   <div className="flex justify-between items-center mb-4">
                     <PieChart className="w-8 h-8 text-primary" />
                     <span className="text-primary font-bold text-sm">+14%</span>
                   </div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-white mb-1">$42,500</div>
+                  <div className="text-2xl font-black text-slate-900 dark:text-white mb-1">
+                    $42,500
+                  </div>
                   <div className="text-xs text-slate-500">Total Revenue</div>
                 </motion.div>
 
                 {/* Bottom Left Tenant Card */}
-                <motion.div 
-                  animate={{ y: [0, -8, 0] }} 
-                  transition={{ repeat: Infinity, duration: 7, ease: "easeInOut", delay: 0.5 }}
+                <motion.div
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 7,
+                    ease: "easeInOut",
+                    delay: 0.5,
+                  }}
                   className="absolute bottom-20 left-0 w-64 bg-white dark:bg-[#0A192F] rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-5 z-30"
                 >
                   <div className="flex items-center gap-3 mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
                     <Users className="w-5 h-5 text-blue-500" />
-                    <span className="font-bold text-sm text-slate-900 dark:text-white">New Tenants</span>
+                    <span className="font-bold text-sm text-slate-900 dark:text-white">
+                      New Tenants
+                    </span>
                   </div>
                   <div className="space-y-4">
                     {[1, 2].map((i) => (
@@ -253,18 +318,21 @@ export function LandingPage() {
                 </motion.div>
 
                 {/* Bottom Right Message Card */}
-                <motion.div 
-                  animate={{ y: [0, 12, 0] }} 
-                  transition={{ repeat: Infinity, duration: 6.5, ease: "easeInOut", delay: 2 }}
+                <motion.div
+                  animate={{ y: [0, 12, 0] }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 6.5,
+                    ease: "easeInOut",
+                    delay: 2,
+                  }}
                   className="absolute bottom-12 right-12 w-16 h-16 bg-white dark:bg-[#0A192F] rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 flex items-center justify-center z-10"
                 >
                   <MessageSquare className="w-8 h-8 text-amber-500" />
                   <div className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-[#0A192F]"></div>
                 </motion.div>
-
               </div>
             </motion.div>
-
           </div>
         </div>
       </section>
@@ -293,7 +361,10 @@ export function LandingPage() {
       </section>
 
       {/* Features Overview */}
-      <section id="features" className="py-24 bg-white dark:bg-[#060B19] relative z-10">
+      <section
+        id="features"
+        className="py-24 bg-white dark:bg-[#060B19] relative z-10"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial="hidden"
@@ -306,8 +377,9 @@ export function LandingPage() {
               Everything you need to run your properties
             </h2>
             <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-              We&apos;ve built all the essential tools into one cohesive platform so
-              you can stop switching between spreadsheets and emails.
+              We&apos;ve built all the essential tools into one cohesive
+              platform so you can stop switching between spreadsheets and
+              emails.
             </p>
           </motion.div>
 
@@ -475,7 +547,9 @@ export function LandingPage() {
                   MFA & Biometric Security
                 </h3>
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Protect manager and tenant accounts with Two-Factor Authentication (MFA) and log in seamlessly using native biometrics (FaceID/Fingerprint).
+                  Protect manager and tenant accounts with Two-Factor
+                  Authentication (MFA) and log in seamlessly using native
+                  biometrics (FaceID/Fingerprint).
                 </p>
               </div>
             </motion.div>
@@ -502,7 +576,9 @@ export function LandingPage() {
                   Real-Time Sync & Caching
                 </h3>
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Enjoy sub-second navigation between properties, payments, and invoices. Centralized high-performance API caching and websockets ensure instant synchronization.
+                  Enjoy sub-second navigation between properties, payments, and
+                  invoices. Centralized high-performance API caching and
+                  websockets ensure instant synchronization.
                 </p>
               </div>
             </motion.div>
@@ -533,9 +609,9 @@ export function LandingPage() {
                 Complete control at your fingertips
               </h2>
               <p className="text-lg text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-                The manager&apos;s web dashboard provides an eagle-eye view of your
-                entire portfolio. Monitor rent collection trends, assign units
-                to tenants, generate official payment invoices, and handle
+                The manager&apos;s web dashboard provides an eagle-eye view of
+                your entire portfolio. Monitor rent collection trends, assign
+                units to tenants, generate official payment invoices, and handle
                 maintenance tickets efficiently.
               </p>
             </motion.div>
@@ -659,7 +735,13 @@ export function LandingPage() {
       <footer className="bg-white dark:bg-[#060B19] border-t border-slate-200 dark:border-slate-800 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
           <div className="flex items-center space-x-2 mb-4 md:mb-0">
-            <Image src="/images/assets/logo.png" alt="PropertyStack Logo" width={128} height={32} className="h-8 w-auto" />
+            <Image
+              src="/images/assets/logo.png"
+              alt="PropertyStack Logo"
+              width={128}
+              height={32}
+              className="h-8 w-auto"
+            />
             <span className="font-bold text-xl tracking-tight">
               PropertyStack
             </span>

@@ -6,9 +6,15 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "success" | "accent" | "ghost" | "outline";
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?:
+    | "primary"
+    | "secondary"
+    | "danger"
+    | "success"
+    | "accent"
+    | "ghost"
+    | "outline";
   size?: "sm" | "md" | "lg" | "icon";
   isLoading?: boolean;
 }
@@ -24,7 +30,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       disabled,
       ...props
     },
-    ref
+    ref,
   ) => {
     const baseStyles =
       "inline-flex items-center justify-center font-bold transition-all disabled:opacity-50 disabled:pointer-events-none active:scale-95";
@@ -34,12 +40,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         "bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 shadow-xl hover:scale-[1.02]",
       secondary:
         "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700",
-      danger:
-        "bg-rose-600 text-white hover:bg-rose-700 shadow-sm",
-      success:
-        "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm",
-      accent:
-        "bg-blue-600 text-white hover:bg-blue-700 shadow-sm",
+      danger: "bg-rose-600 text-white hover:bg-rose-700 shadow-sm",
+      success: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm",
+      accent: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm",
       ghost:
         "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800",
       outline:
@@ -66,7 +69,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {children}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";

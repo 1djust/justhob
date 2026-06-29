@@ -26,10 +26,12 @@ export function AdminLoginForm() {
     try {
       if (step === 1) {
         // 1. Authenticate with Supabase first
-        const { data, error: sbError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { data, error: sbError } = await supabase.auth.signInWithPassword(
+          {
+            email,
+            password,
+          },
+        );
 
         if (sbError || !data.user) {
           throw new Error(sbError?.message || "Invalid login credentials");
@@ -46,7 +48,8 @@ export function AdminLoginForm() {
         ) {
           const factors = data.user.factors || [];
           const totp = factors.find(
-            (f: { factor_type: string; status: string; id: string }) => f.factor_type === "totp" && f.status === "verified",
+            (f: { factor_type: string; status: string; id: string }) =>
+              f.factor_type === "totp" && f.status === "verified",
           );
           if (totp) {
             setFactorId(totp.id);
@@ -95,7 +98,7 @@ export function AdminLoginForm() {
       const errorObj = err as Error;
       console.error("Admin login error:", errorObj);
       setError(errorObj.message || "An unexpected error occurred");
-      
+
       // If verification failed in step 2 or 3, sign out and reset
       if (step === 2 || step === 3) {
         await supabase.auth.signOut();

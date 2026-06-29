@@ -17,8 +17,10 @@ import {
   Banknote,
   Landmark,
   X,
+  Edit,
 } from "lucide-react";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
+import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../shared/Button";
 
@@ -40,6 +42,13 @@ const NIGERIAN_BANKS = [
   { code: "212", name: "Wema Bank" },
   { code: "035", name: "ALAT by WEMA" },
   { code: "068", name: "Standard Chartered Bank" },
+  { code: "999992", name: "OPay (PayCom)" },
+  { code: "50515", name: "Moniepoint Microfinance Bank" },
+  { code: "999991", name: "PalmPay" },
+  { code: "50211", name: "Kuda Microfinance Bank" },
+  { code: "565", name: "Carbon" },
+  { code: "090110", name: "VFD Microfinance Bank" },
+  { code: "51318", name: "FairMoney Microfinance Bank" },
 ];
 
 interface OwnerManagementProps {
@@ -60,6 +69,7 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = React.useState(false);
   const [ownerToDelete, setOwnerToDelete] = React.useState<Owner | null>(null);
+  const [editingOwner, setEditingOwner] = React.useState<Owner | null>(null);
   const payoutStrategyLabels: Record<string, string> = {
     DIRECT_TO_LANDLORD: "Landlord Receives Directly",
     MANAGER_COLLECTS: "Manager Collects First",
@@ -145,6 +155,18 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
         />
       )}
 
+      {editingOwner && (
+        <EditOwnerModal
+          owner={editingOwner}
+          workspaceId={workspaceId}
+          onClose={() => setEditingOwner(null)}
+          onSuccess={() => {
+            setEditingOwner(null);
+            queryClient.invalidateQueries({ queryKey: ["owners", workspaceId] });
+          }}
+        />
+      )}
+
       {owners.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] bg-zinc-50/50 dark:bg-zinc-900/30">
           <Landmark className="w-12 h-12 text-zinc-300 mb-4" />
@@ -220,7 +242,7 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
                         </span>
                         <span className="text-[10px] font-bold text-zinc-500 tracking-wider">
                           {o.accountNumber
-                            ? `NUBAN: ${o.accountNumber}`
+                            ? `${NIGERIAN_BANKS.find((b) => b.code === o.bankCode)?.name || "Bank"} • NUBAN: ${o.accountNumber}`
                             : "Account Pending"}
                         </span>
                       </div>
@@ -236,8 +258,14 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-zinc-400">
-                          <MoreVertical className="w-4 h-4" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingOwner(o)}
+                          className="hover:text-primary hover:bg-primary/5 text-zinc-400"
+                          title="Edit Landlord Profile"
+                        >
+                          <Edit className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
@@ -312,52 +340,48 @@ function AddOwnerForm({
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={() => onComplete()}
       >
-        <div 
+        <div
           className="relative max-w-lg w-full p-8 border border-emerald-200 dark:border-emerald-900/50 rounded-[2.5rem] bg-emerald-50 dark:bg-emerald-950 shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-300"
           onClick={(e) => e.stopPropagation()}
         >
-        <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-        <div>
-          <h4 className="text-xl font-bold text-emerald-900 dark:text-emerald-100">
-            Landlord Added Successfully!
-          </h4>
-          <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-2">
-            Please copy the secure invite link below and send it to them
-            directly.
-          </p>
-        </div>
-        <div className="bg-white dark:bg-black p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/50 break-all flex items-center justify-between gap-4">
-          <code className="text-xs text-emerald-800 dark:text-emerald-200 font-medium text-left">
-            {successLink}
-          </code>
-          <Button
-            type="button"
-            variant={copied ? "success" : "accent"}
-            size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(successLink);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 2000);
-            }}
-            className="transition-all duration-300 gap-1.5 shrink-0"
-          >
-            {copied ? (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Copied!
-              </>
-            ) : (
-              "Copy Link"
-            )}
+          <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
+          <div>
+            <h4 className="text-xl font-bold text-emerald-900 dark:text-emerald-100">
+              Landlord Added Successfully!
+            </h4>
+            <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-2">
+              Please copy the secure invite link below and send it to them
+              directly.
+            </p>
+          </div>
+          <div className="bg-white dark:bg-black p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/50 break-all flex items-center justify-between gap-4">
+            <code className="text-xs text-emerald-800 dark:text-emerald-200 font-medium text-left">
+              {successLink}
+            </code>
+            <Button
+              type="button"
+              variant={copied ? "success" : "accent"}
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(successLink);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="transition-all duration-300 gap-1.5 shrink-0"
+            >
+              {copied ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Copied!
+                </>
+              ) : (
+                "Copy Link"
+              )}
+            </Button>
+          </div>
+          <Button type="button" variant="success" onClick={() => onComplete()}>
+            Done
           </Button>
-        </div>
-        <Button
-          type="button"
-          variant="success"
-          onClick={() => onComplete()}
-        >
-          Done
-        </Button>
         </div>
       </div>
     );
@@ -395,174 +419,175 @@ function AddOwnerForm({
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-zinc-50 dark:bg-zinc-900/50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50 pointer-events-none"></div>
 
-      {error && (
-        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-100 dark:border-rose-900/50 flex items-center gap-3">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          {error}
-        </div>
-      )}
-
-      <div className="grid gap-8 md:grid-cols-2 relative">
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
-            Full Identity
-          </label>
-          <input
-            required
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold placeholder:font-normal"
-            placeholder="e.g. Johnathan Doe"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
-            Communication Email
-          </label>
-          <input
-            type="email"
-            required
-            value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
-            className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold placeholder:font-normal"
-            placeholder="landlord@example.com"
-          />
-        </div>
-        <div className="md:col-span-2 space-y-2">
-          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
-            Access Authentication (Temporary Password)
-          </label>
-          <input
-            value={formData.password}
-            onChange={(e) =>
-              setFormData({ ...formData, password: e.target.value })
-            }
-            className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold placeholder:font-normal"
-            placeholder="Defaults to: TempPass123!"
-          />
-        </div>
-
-        <div className="md:col-span-2 space-y-8 pt-6">
-          <div className="flex items-center gap-3">
-            <div className="h-[1px] flex-1 bg-zinc-100 dark:border-zinc-800" />
-            <span className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.3em]">
-              Settlement Configuration
-            </span>
-            <div className="h-[1px] flex-1 bg-zinc-100 dark:border-zinc-800" />
-          </div>
-
-          <div className="grid gap-8 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
-                Payout Protocol
-              </label>
-              <select
-                value={formData.payoutStrategy}
-                onChange={(e) =>
-                  setFormData({ ...formData, payoutStrategy: e.target.value })
-                }
-                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold appearance-none cursor-pointer"
-              >
-                <option value="DIRECT_TO_LANDLORD">
-                  LANDLORD RECEIVES DIRECTLY (Tenant transfers to Landlord)
-                </option>
-                <option value="MANAGER_COLLECTS">
-                  MANAGER COLLECTS FIRST (Tenant transfers to Manager)
-                </option>
-              </select>
+          {error && (
+            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-100 dark:border-rose-900/50 flex items-center gap-3">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {error}
             </div>
+          )}
+
+          <div className="grid gap-8 md:grid-cols-2 relative">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
-                Receiving Financial Institution
-              </label>
-              <select
-                required
-                value={formData.bankCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, bankCode: e.target.value })
-                }
-                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold appearance-none cursor-pointer"
-              >
-                <option value="">Select bank...</option>
-                {NIGERIAN_BANKS.sort((a, b) =>
-                  a.name.localeCompare(b.name),
-                ).map((b) => (
-                  <option key={b.code} value={b.code}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
-                NUBAN Account Number
+                Full Identity
               </label>
               <input
                 required
-                maxLength={10}
-                value={formData.accountNumber}
+                value={formData.name}
                 onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    accountNumber: e.target.value.replace(/[^0-9]/g, ""),
-                  })
+                  setFormData({ ...formData, name: e.target.value })
                 }
-                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 font-black tracking-[0.2em]"
-                placeholder="0000000000"
+                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold placeholder:font-normal"
+                placeholder="e.g. Johnathan Doe"
               />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
-                Account Holder Name (Legal)
+                Communication Email
               </label>
               <input
+                type="email"
                 required
-                value={formData.accountName}
+                value={formData.email}
                 onChange={(e) =>
-                  setFormData({ ...formData, accountName: e.target.value })
+                  setFormData({ ...formData, email: e.target.value })
                 }
-                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 font-bold placeholder:font-normal"
-                placeholder="AS SEEN ON BANK RECORDS"
+                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold placeholder:font-normal"
+                placeholder="landlord@example.com"
               />
             </div>
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+                Access Authentication (Temporary Password)
+              </label>
+              <input
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold placeholder:font-normal"
+                placeholder="Defaults to: TempPass123!"
+              />
+            </div>
+
+            <div className="md:col-span-2 space-y-8 pt-6">
+              <div className="flex items-center gap-3">
+                <div className="h-[1px] flex-1 bg-zinc-100 dark:border-zinc-800" />
+                <span className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.3em]">
+                  Settlement Configuration
+                </span>
+                <div className="h-[1px] flex-1 bg-zinc-100 dark:border-zinc-800" />
+              </div>
+
+              <div className="grid gap-8 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+                    Payout Protocol
+                  </label>
+                  <select
+                    value={formData.payoutStrategy}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        payoutStrategy: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold appearance-none cursor-pointer"
+                  >
+                    <option value="DIRECT_TO_LANDLORD">
+                      LANDLORD RECEIVES DIRECTLY (Tenant transfers to Landlord)
+                    </option>
+                    <option value="MANAGER_COLLECTS">
+                      MANAGER COLLECTS FIRST (Tenant transfers to Manager)
+                    </option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+                    Receiving Financial Institution
+                  </label>
+                  <select
+                    required
+                    value={formData.bankCode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bankCode: e.target.value })
+                    }
+                    className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 transition-all font-bold appearance-none cursor-pointer"
+                  >
+                    <option value="">Select bank...</option>
+                    {NIGERIAN_BANKS.sort((a, b) =>
+                      a.name.localeCompare(b.name),
+                    ).map((b) => (
+                      <option key={b.code} value={b.code}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+                    NUBAN Account Number
+                  </label>
+                  <input
+                    required
+                    maxLength={10}
+                    value={formData.accountNumber}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        accountNumber: e.target.value.replace(/[^0-9]/g, ""),
+                      })
+                    }
+                    className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 font-black tracking-[0.2em]"
+                    placeholder="0000000000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+                    Account Holder Name (Legal)
+                  </label>
+                  <input
+                    required
+                    value={formData.accountName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, accountName: e.target.value })
+                    }
+                    className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-200 font-bold placeholder:font-normal"
+                    placeholder="AS SEEN ON BANK RECORDS"
+                  />
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 flex items-start gap-3">
+                <Banknote className="w-4 h-4 text-zinc-400 mt-0.5" />
+                <p className="text-[11px] font-medium text-zinc-500 leading-relaxed">
+                  {formData.payoutStrategy === "DIRECT_TO_LANDLORD"
+                    ? "FUNDS PROTOCOL: Tenant pays to Landlord's account, sends proof to you, and you verify receipt in the system."
+                    : "FUNDS PROTOCOL: Tenant pays to your account, sends proof, and you manually disburse to the Landlord later."}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 flex items-start gap-3">
-            <Banknote className="w-4 h-4 text-zinc-400 mt-0.5" />
-            <p className="text-[11px] font-medium text-zinc-500 leading-relaxed">
-              {formData.payoutStrategy === "DIRECT_TO_LANDLORD"
-                ? "FUNDS PROTOCOL: Tenant pays to Landlord's account, sends proof to you, and you verify receipt in the system."
-                : "FUNDS PROTOCOL: Tenant pays to your account, sends proof, and you manually disburse to the Landlord later."}
-            </p>
+          <div className="flex justify-end pt-4 gap-4">
+            <Button onClick={() => onComplete()} type="button" variant="ghost">
+              Cancel
+            </Button>
+            <Button
+              disabled={
+                loading ||
+                !formData.name ||
+                !formData.email ||
+                !formData.bankCode ||
+                formData.accountNumber.length !== 10 ||
+                !formData.accountName
+              }
+              type="submit"
+              isLoading={loading}
+              size="lg"
+              className="uppercase tracking-widest font-black"
+            >
+              {loading ? "Processing..." : "Authorize Add"}
+            </Button>
           </div>
-        </div>
-      </div>
-      <div className="flex justify-end pt-4 gap-4">
-        <Button
-          onClick={() => onComplete()}
-          type="button"
-          variant="ghost"
-        >
-          Cancel
-        </Button>
-        <Button
-          disabled={
-            loading ||
-            !formData.name ||
-            !formData.email ||
-            !formData.bankCode ||
-            formData.accountNumber.length !== 10 ||
-            !formData.accountName
-          }
-          type="submit"
-          isLoading={loading}
-          size="lg"
-          className="uppercase tracking-widest font-black"
-        >
-          {loading ? "Processing..." : "Authorize Add"}
-        </Button>
-      </div>
         </form>
       </div>
     </div>
@@ -600,11 +625,18 @@ function ConfirmDeleteModal({
             Remove Landlord
           </h4>
           <p className="text-sm text-zinc-500 leading-relaxed font-medium">
-            Are you sure you want to remove <span className="font-bold text-zinc-900 dark:text-zinc-100">{ownerName}</span>?
+            Are you sure you want to remove{" "}
+            <span className="font-bold text-zinc-900 dark:text-zinc-100">
+              {ownerName}
+            </span>
+            ?
           </p>
           <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100/50 dark:border-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-bold text-left flex items-start gap-2.5 mt-2">
             <AlertCircle className="w-4.5 h-4.5 mt-0.5 shrink-0" />
-            <span>This action is permanent. All associated properties will become unassigned.</span>
+            <span>
+              This action is permanent. All associated properties will become
+              unassigned.
+            </span>
           </div>
         </div>
 
@@ -628,6 +660,194 @@ function ConfirmDeleteModal({
             Confirm
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   EDIT LANDLORD PROFILE & SETTLEMENT MODAL
+   ============================================================ */
+interface EditOwnerModalProps {
+  owner: Owner;
+  workspaceId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function EditOwnerModal({
+  owner,
+  workspaceId,
+  onClose,
+  onSuccess,
+}: EditOwnerModalProps) {
+  const [payoutStrategy, setPayoutStrategy] = React.useState(owner.payoutStrategy || "DIRECT_TO_LANDLORD");
+  const [bankCode, setBankCode] = React.useState(owner.bankCode || "");
+  const [accountNumber, setAccountNumber] = React.useState(owner.accountNumber || "");
+  const [accountName, setAccountName] = React.useState(owner.accountName || "");
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+
+    try {
+      await apiFetch(
+        `${API_BASE_URL}/api/workspaces/${workspaceId}/owners/${owner.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payoutStrategy,
+            bankCode: bankCode || null,
+            accountNumber: accountNumber || null,
+            accountName: accountName || null,
+          }),
+          credentials: "include",
+        },
+      );
+      toast.success("Landlord settings updated successfully!");
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update landlord settings");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/10">
+          <div>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+              Landlord Settings
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Configure settlement and bank account details
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl text-zinc-400 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/60 dark:border-zinc-800 p-4 rounded-2xl space-y-3">
+            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+              Profile Information
+            </h4>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-sm text-zinc-800 dark:text-zinc-200">
+                {owner.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">
+                  {owner.name}
+                </p>
+                <p className="text-xs text-zinc-500 font-medium">
+                  {owner.email}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+              Payout Strategy
+            </label>
+            <select
+              value={payoutStrategy}
+              onChange={(e) => setPayoutStrategy(e.target.value)}
+              className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50 dark:bg-zinc-950 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
+            >
+              <option value="DIRECT_TO_LANDLORD">
+                Direct to Landlord (Automated Settlement)
+              </option>
+              <option value="MANAGER_COLLECTS">
+                Manager Collects First (Manual Payout)
+              </option>
+            </select>
+          </div>
+
+          <div className="space-y-4 pt-2 border-t border-zinc-150 dark:border-zinc-900">
+            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+              Bank Details (For Direct Settlement)
+            </h4>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 ml-1">
+                Settlement Bank
+              </label>
+              <select
+                value={bankCode}
+                onChange={(e) => setBankCode(e.target.value)}
+                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50 dark:bg-zinc-950 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
+              >
+                <option value="">Select Settlement Bank</option>
+                {NIGERIAN_BANKS.map((bank) => (
+                  <option key={bank.code} value={bank.code}>
+                    {bank.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 ml-1">
+                Account Number (NUBAN)
+              </label>
+              <input
+                maxLength={10}
+                placeholder="10-digit Account Number"
+                value={accountNumber}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/\D/g, "");
+                  setAccountNumber(cleaned);
+                }}
+                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50 dark:bg-zinc-950 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 ml-1">
+                Account Name
+              </label>
+              <input
+                placeholder="Beneficiary Account Name"
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+                className="w-full px-4 py-3.5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50 dark:bg-zinc-950 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 border-t border-zinc-150 dark:border-zinc-900">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-xl transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={isSaving}
+              type="submit"
+              className="px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-bold shadow-md hover:scale-[1.02] active:scale-98 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isSaving ? "Saving Settings..." : "Save Landlord Details"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
