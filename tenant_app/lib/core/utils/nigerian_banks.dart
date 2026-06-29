@@ -34,6 +34,11 @@ class NigerianBanks {
     '090267': 'Kuda Microfinance Bank',
     '100025': 'Kuda',
     '50211': 'Kuda',
+    '999992': 'OPay (PayCom)',
+    '50515': 'Moniepoint Microfinance Bank',
+    '999991': 'PalmPay',
+    '565': 'Carbon',
+    '51318': 'FairMoney Microfinance Bank',
   };
 
   /// Returns the bank name for a given code, or the code itself if not found.

@@ -114,7 +114,10 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             Center(
               child: Column(
                 children: [
-                  Icon(Icons.apartment_rounded, size: 48, color: Colors.grey.shade400),
+                  Image.asset(
+                    'assets/icon/app_icon.png',
+                    height: 48,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'PropertyStack Tenant App',

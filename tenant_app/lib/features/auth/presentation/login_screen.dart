@@ -175,6 +175,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(88, 48),
+              tapTargetSize: MaterialTapTargetSize.padded,
+            ),
             child: const Text('Not Now'),
           ),
           ElevatedButton(
@@ -187,6 +191,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
               setState(() => _biometricEnabled = true);
               if (ctx.mounted) Navigator.pop(ctx);
             },
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(88, 48),
+              tapTargetSize: MaterialTapTargetSize.padded,
+            ),
             child: const Text('Enable'),
           ),
         ],
@@ -263,10 +271,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                   const SizedBox(height: 48),
                   // Logo
                   Center(
-                    child: Icon(
-                      Icons.apartment_rounded,
-                      size: 72,
-                      color: AppTheme.textPrimary,
+                    child: Image.asset(
+                      'assets/icon/app_icon.png',
+                      height: 72,
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -376,6 +383,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                       onPressed: () => _showForgotPasswordDialog(context),
                       style: TextButton.styleFrom(
                         foregroundColor: AppTheme.textPrimary,
+                        minimumSize: const Size(88, 48),
+                        tapTargetSize: MaterialTapTargetSize.padded,
                         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                       ),
                       child: const Text('Forgot Password?'),
@@ -424,17 +433,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                         ),
                       ),
                       GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Request an invite from your landlord.')),
                           );
                         },
-                        child: const Text(
-                          'Contact Manager',
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                          child: Text(
+                            'Contact Manager',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
@@ -445,11 +458,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                     const SizedBox(height: 40),
                     Center(
                       child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: () => _handleBiometricLogin(manualTrigger: true),
-                        child: Icon(
-                          Icons.fingerprint,
-                          size: 44,
-                          color: AppTheme.textSecondary,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Icon(
+                            Icons.fingerprint,
+                            size: 44,
+                            color: AppTheme.textSecondary,
+                          ),
                         ),
                       ),
                     ),

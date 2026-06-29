@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'create_maintenance_screen.dart';
 import 'maintenance_chat_screen.dart';
 import '../../../core/utils/error_message.dart';
+import '../../../core/widgets/app_loading_indicator.dart';
 
 class MaintenanceListScreen extends ConsumerWidget {
   const MaintenanceListScreen({super.key});
@@ -33,7 +34,7 @@ class MaintenanceListScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingIndicator(),
         error: (err, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

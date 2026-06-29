@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'notifications_notifier.dart';
 import 'package:intl/intl.dart';
 import '../../../core/utils/error_message.dart';
+import '../../../core/widgets/app_loading_indicator.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -52,7 +53,7 @@ class NotificationsScreen extends ConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingIndicator(),
         error: (err, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

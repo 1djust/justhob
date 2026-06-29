@@ -42,6 +42,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/
+
 
 flutter_launcher_icons:
   android: "launcher_icon"
@@ -53,8 +56,9 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: "#060B19"
-  image: "assets/icon/app_icon.png"
+  image: "assets/icon/logo.png"
   android_12:
     color: "#060B19"
-    image: "assets/icon/app_icon.png"
+    image: "assets/icon/logo.png"
+    icon_background_color: "#060B19"
 

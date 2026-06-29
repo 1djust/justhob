@@ -176,4 +176,18 @@ class TenantRepository {
       data: {'accept': accept},
     );
   }
+
+  Future<void> approveLease(String leaseId, String signatureUrl) async {
+    await _apiClient.dio.post(
+      '/tenant/leases/$leaseId/approve',
+      data: {'signatureUrl': signatureUrl},
+    );
+  }
+
+  Future<void> rejectLease(String leaseId, String reason) async {
+    await _apiClient.dio.post(
+      '/tenant/leases/$leaseId/reject',
+      data: {'reason': reason},
+    );
+  }
 }

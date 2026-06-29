@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'maintenance_chat_notifier.dart';
 import '../../../../shared/domain/maintenance_message.dart';
 import 'package:intl/intl.dart';
+import '../../../core/widgets/app_loading_indicator.dart';
 
 class MaintenanceChatScreen extends ConsumerStatefulWidget {
   final String requestId;
@@ -92,7 +93,7 @@ class _MaintenanceChatScreenState extends ConsumerState<MaintenanceChatScreen> {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const AppLoadingIndicator(),
               error: (err, stack) => Center(child: Text('Error: $err')),
             ),
           ),

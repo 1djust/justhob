@@ -11,6 +11,8 @@ import '../../features/payments/presentation/payments_notifier.dart';
 import '../../features/payments/presentation/lockout_screen.dart';
 import '../../features/maintenance/presentation/maintenance_list_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/home/presentation/home_notifier.dart';
+import '../../features/auth/presentation/lease_review_screen.dart';
 
 /// A notifier that communicates auth changes to GoRouter without rebuilding the Router instance itself.
 class RouterNotifier extends ChangeNotifier {
@@ -19,6 +21,7 @@ class RouterNotifier extends ChangeNotifier {
   RouterNotifier(this._ref) {
     _ref.listen(authStateProvider, (_, __) => notifyListeners());
     _ref.listen(paymentsProvider, (_, __) => notifyListeners());
+    _ref.listen(homeStateProvider, (_, __) => notifyListeners());
   }
 }
 
@@ -47,6 +50,21 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (authStateValue.mustChangePassword) {
         return isChangingPassword ? null : '/change-password';
+      }
+
+      final tenant = ref.read(homeStateProvider).valueOrNull;
+      final activeLease = tenant?.leases?.isNotEmpty == true ? tenant!.leases!.first : null;
+      final leaseStatus = activeLease?.status;
+
+      final isLeaseReviewScreen = state.matchedLocation == '/lease-review';
+
+      if (leaseStatus == 'PENDING_SIGNATURE' || leaseStatus == 'REJECTED') {
+        if (!isLeaseReviewScreen) {
+          return '/lease-review';
+        }
+        return null;
+      } else if (isLeaseReviewScreen) {
+        return '/';
       }
 
       if (isLoggingIn || isChangingPassword) {
@@ -84,6 +102,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/lockout',
         builder: (context, state) => const LockoutScreen(),
+      ),
+      GoRoute(
+        path: '/lease-review',
+        builder: (context, state) => const LeaseReviewScreen(),
       ),
       GoRoute(
         path: '/change-password',

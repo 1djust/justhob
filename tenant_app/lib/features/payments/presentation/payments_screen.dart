@@ -13,6 +13,7 @@ import '../presentation/payments_notifier.dart';
 import '../../../core/services/receipt_service.dart';
 import '../../../core/utils/nigerian_banks.dart';
 import '../../../core/utils/error_message.dart';
+import '../../../core/widgets/app_loading_indicator.dart';
 
 class PaymentsScreen extends ConsumerWidget {
   const PaymentsScreen({super.key});
@@ -83,7 +84,7 @@ class PaymentsScreen extends ConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingIndicator(),
         error: (err, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1022,7 +1023,7 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                     const Text('PAYMENT DETAILS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey)),
                     const SizedBox(height: 16),
                     if (paymentInfo != null) ...[
-                      _ReceiptRow(label: 'Bank Code', value: paymentInfo.bankCode ?? 'N/A'),
+                      _ReceiptRow(label: 'Bank Name', value: NigerianBanks.getBankName(paymentInfo.bankCode)),
                       const SizedBox(height: 12),
                       _ReceiptRow(label: 'Account Name', value: paymentInfo.accountName ?? 'N/A'),
                       const SizedBox(height: 12),

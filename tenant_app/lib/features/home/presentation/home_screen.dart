@@ -12,6 +12,7 @@ import '../../../shared/domain/lease_renewal_offer.dart';
 import '../../../core/utils/nigerian_banks.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/widgets/app_update_dialog.dart';
+import '../../../core/widgets/app_loading_indicator.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -288,7 +289,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingIndicator(),
         error: (err, stack) {
           final isAuthError = err.toString().contains('401');
           return Center(
@@ -1254,7 +1255,7 @@ class _RenewalOfferSheetState extends State<_RenewalOfferSheet> {
             ],
             const SizedBox(height: 28),
             if (_isLoading)
-              const Center(child: CircularProgressIndicator())
+              const AppLoadingIndicator(size: 32)
             else
               Row(
                 children: [

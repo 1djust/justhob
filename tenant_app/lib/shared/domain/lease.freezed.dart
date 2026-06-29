@@ -27,6 +27,11 @@ mixin _$Lease {
   DateTime? get endDate => throw _privateConstructorUsedError;
   double get yearlyRent => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
+  String? get agreementText => throw _privateConstructorUsedError;
+  String? get rejectionReason => throw _privateConstructorUsedError;
+  String? get signatureUrl => throw _privateConstructorUsedError;
+  String? get managerSignature => throw _privateConstructorUsedError;
+  String? get legalDocUrl => throw _privateConstructorUsedError;
   Property? get property => throw _privateConstructorUsedError;
   PaymentInfo? get paymentInfo => throw _privateConstructorUsedError;
   List<LeaseRenewalOffer>? get renewalOffers =>
@@ -54,6 +59,11 @@ abstract class $LeaseCopyWith<$Res> {
       DateTime? endDate,
       double yearlyRent,
       String status,
+      String? agreementText,
+      String? rejectionReason,
+      String? signatureUrl,
+      String? managerSignature,
+      String? legalDocUrl,
       Property? property,
       PaymentInfo? paymentInfo,
       List<LeaseRenewalOffer>? renewalOffers});
@@ -84,6 +94,11 @@ class _$LeaseCopyWithImpl<$Res, $Val extends Lease>
     Object? endDate = freezed,
     Object? yearlyRent = null,
     Object? status = null,
+    Object? agreementText = freezed,
+    Object? rejectionReason = freezed,
+    Object? signatureUrl = freezed,
+    Object? managerSignature = freezed,
+    Object? legalDocUrl = freezed,
     Object? property = freezed,
     Object? paymentInfo = freezed,
     Object? renewalOffers = freezed,
@@ -117,6 +132,26 @@ class _$LeaseCopyWithImpl<$Res, $Val extends Lease>
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as String,
+      agreementText: freezed == agreementText
+          ? _value.agreementText
+          : agreementText // ignore: cast_nullable_to_non_nullable
+              as String?,
+      rejectionReason: freezed == rejectionReason
+          ? _value.rejectionReason
+          : rejectionReason // ignore: cast_nullable_to_non_nullable
+              as String?,
+      signatureUrl: freezed == signatureUrl
+          ? _value.signatureUrl
+          : signatureUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      managerSignature: freezed == managerSignature
+          ? _value.managerSignature
+          : managerSignature // ignore: cast_nullable_to_non_nullable
+              as String?,
+      legalDocUrl: freezed == legalDocUrl
+          ? _value.legalDocUrl
+          : legalDocUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
       property: freezed == property
           ? _value.property
           : property // ignore: cast_nullable_to_non_nullable
@@ -176,6 +211,11 @@ abstract class _$$LeaseImplCopyWith<$Res> implements $LeaseCopyWith<$Res> {
       DateTime? endDate,
       double yearlyRent,
       String status,
+      String? agreementText,
+      String? rejectionReason,
+      String? signatureUrl,
+      String? managerSignature,
+      String? legalDocUrl,
       Property? property,
       PaymentInfo? paymentInfo,
       List<LeaseRenewalOffer>? renewalOffers});
@@ -206,6 +246,11 @@ class __$$LeaseImplCopyWithImpl<$Res>
     Object? endDate = freezed,
     Object? yearlyRent = null,
     Object? status = null,
+    Object? agreementText = freezed,
+    Object? rejectionReason = freezed,
+    Object? signatureUrl = freezed,
+    Object? managerSignature = freezed,
+    Object? legalDocUrl = freezed,
     Object? property = freezed,
     Object? paymentInfo = freezed,
     Object? renewalOffers = freezed,
@@ -239,6 +284,26 @@ class __$$LeaseImplCopyWithImpl<$Res>
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as String,
+      agreementText: freezed == agreementText
+          ? _value.agreementText
+          : agreementText // ignore: cast_nullable_to_non_nullable
+              as String?,
+      rejectionReason: freezed == rejectionReason
+          ? _value.rejectionReason
+          : rejectionReason // ignore: cast_nullable_to_non_nullable
+              as String?,
+      signatureUrl: freezed == signatureUrl
+          ? _value.signatureUrl
+          : signatureUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      managerSignature: freezed == managerSignature
+          ? _value.managerSignature
+          : managerSignature // ignore: cast_nullable_to_non_nullable
+              as String?,
+      legalDocUrl: freezed == legalDocUrl
+          ? _value.legalDocUrl
+          : legalDocUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
       property: freezed == property
           ? _value.property
           : property // ignore: cast_nullable_to_non_nullable
@@ -266,6 +331,11 @@ class _$LeaseImpl implements _Lease {
       this.endDate,
       required this.yearlyRent,
       required this.status,
+      this.agreementText,
+      this.rejectionReason,
+      this.signatureUrl,
+      this.managerSignature,
+      this.legalDocUrl,
       this.property,
       this.paymentInfo,
       final List<LeaseRenewalOffer>? renewalOffers})
@@ -289,6 +359,16 @@ class _$LeaseImpl implements _Lease {
   @override
   final String status;
   @override
+  final String? agreementText;
+  @override
+  final String? rejectionReason;
+  @override
+  final String? signatureUrl;
+  @override
+  final String? managerSignature;
+  @override
+  final String? legalDocUrl;
+  @override
   final Property? property;
   @override
   final PaymentInfo? paymentInfo;
@@ -304,7 +384,7 @@ class _$LeaseImpl implements _Lease {
 
   @override
   String toString() {
-    return 'Lease(id: $id, tenantId: $tenantId, propertyId: $propertyId, startDate: $startDate, endDate: $endDate, yearlyRent: $yearlyRent, status: $status, property: $property, paymentInfo: $paymentInfo, renewalOffers: $renewalOffers)';
+    return 'Lease(id: $id, tenantId: $tenantId, propertyId: $propertyId, startDate: $startDate, endDate: $endDate, yearlyRent: $yearlyRent, status: $status, agreementText: $agreementText, rejectionReason: $rejectionReason, signatureUrl: $signatureUrl, managerSignature: $managerSignature, legalDocUrl: $legalDocUrl, property: $property, paymentInfo: $paymentInfo, renewalOffers: $renewalOffers)';
   }
 
   @override
@@ -323,6 +403,16 @@ class _$LeaseImpl implements _Lease {
             (identical(other.yearlyRent, yearlyRent) ||
                 other.yearlyRent == yearlyRent) &&
             (identical(other.status, status) || other.status == status) &&
+            (identical(other.agreementText, agreementText) ||
+                other.agreementText == agreementText) &&
+            (identical(other.rejectionReason, rejectionReason) ||
+                other.rejectionReason == rejectionReason) &&
+            (identical(other.signatureUrl, signatureUrl) ||
+                other.signatureUrl == signatureUrl) &&
+            (identical(other.managerSignature, managerSignature) ||
+                other.managerSignature == managerSignature) &&
+            (identical(other.legalDocUrl, legalDocUrl) ||
+                other.legalDocUrl == legalDocUrl) &&
             (identical(other.property, property) ||
                 other.property == property) &&
             (identical(other.paymentInfo, paymentInfo) ||
@@ -342,6 +432,11 @@ class _$LeaseImpl implements _Lease {
       endDate,
       yearlyRent,
       status,
+      agreementText,
+      rejectionReason,
+      signatureUrl,
+      managerSignature,
+      legalDocUrl,
       property,
       paymentInfo,
       const DeepCollectionEquality().hash(_renewalOffers));
@@ -371,6 +466,11 @@ abstract class _Lease implements Lease {
       final DateTime? endDate,
       required final double yearlyRent,
       required final String status,
+      final String? agreementText,
+      final String? rejectionReason,
+      final String? signatureUrl,
+      final String? managerSignature,
+      final String? legalDocUrl,
       final Property? property,
       final PaymentInfo? paymentInfo,
       final List<LeaseRenewalOffer>? renewalOffers}) = _$LeaseImpl;
@@ -391,6 +491,16 @@ abstract class _Lease implements Lease {
   double get yearlyRent;
   @override
   String get status;
+  @override
+  String? get agreementText;
+  @override
+  String? get rejectionReason;
+  @override
+  String? get signatureUrl;
+  @override
+  String? get managerSignature;
+  @override
+  String? get legalDocUrl;
   @override
   Property? get property;
   @override

@@ -4,6 +4,7 @@ import '../../auth/presentation/auth_notifier.dart';
 import 'notification_settings_screen.dart';
 import 'privacy_security_screen.dart';
 import 'help_support_screen.dart';
+import '../../../core/widgets/app_loading_indicator.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -24,7 +25,7 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
       body: user == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppLoadingIndicator()
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(

@@ -63,6 +63,10 @@ class AppUpdateDialog extends StatelessWidget {
         if (!updateInfo.isMandatory)
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(88, 48),
+              tapTargetSize: MaterialTapTargetSize.padded,
+            ),
             child: const Text('Later', style: TextStyle(color: Colors.grey)),
           ),
         ElevatedButton(
@@ -70,6 +74,8 @@ class AppUpdateDialog extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
+            minimumSize: const Size(88, 48),
+            tapTargetSize: MaterialTapTargetSize.padded,
           ),
           child: const Text('Download Update'),
         ),

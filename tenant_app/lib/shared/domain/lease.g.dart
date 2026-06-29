@@ -16,6 +16,11 @@ _$LeaseImpl _$$LeaseImplFromJson(Map<String, dynamic> json) => _$LeaseImpl(
           : DateTime.parse(json['endDate'] as String),
       yearlyRent: (json['yearlyRent'] as num).toDouble(),
       status: json['status'] as String,
+      agreementText: json['agreementText'] as String?,
+      rejectionReason: json['rejectionReason'] as String?,
+      signatureUrl: json['signatureUrl'] as String?,
+      managerSignature: json['managerSignature'] as String?,
+      legalDocUrl: json['legalDocUrl'] as String?,
       property: json['property'] == null
           ? null
           : Property.fromJson(json['property'] as Map<String, dynamic>),
@@ -36,6 +41,11 @@ Map<String, dynamic> _$$LeaseImplToJson(_$LeaseImpl instance) =>
       'endDate': instance.endDate?.toIso8601String(),
       'yearlyRent': instance.yearlyRent,
       'status': instance.status,
+      'agreementText': instance.agreementText,
+      'rejectionReason': instance.rejectionReason,
+      'signatureUrl': instance.signatureUrl,
+      'managerSignature': instance.managerSignature,
+      'legalDocUrl': instance.legalDocUrl,
       'property': instance.property,
       'paymentInfo': instance.paymentInfo,
       'renewalOffers': instance.renewalOffers,
