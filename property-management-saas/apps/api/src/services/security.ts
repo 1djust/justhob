@@ -5,11 +5,7 @@ export class SecurityService {
   /**
    * Logs a security event to the database and checks thresholds.
    */
-  static async logEvent(
-    ipAddress: string,
-    eventType: string,
-    details?: any,
-  ) {
+  static async logEvent(ipAddress: string, eventType: string, details?: any) {
     try {
       // 1. Record the event
       await prisma.securityAuditLog.create({
@@ -40,7 +36,11 @@ export class SecurityService {
           gte: timeLimit,
         },
         eventType: {
-          in: ["FAILED_LOGIN", "UNAUTHORIZED_API_ACCESS", "RATE_LIMIT_EXCEEDED"],
+          in: [
+            "FAILED_LOGIN",
+            "UNAUTHORIZED_API_ACCESS",
+            "RATE_LIMIT_EXCEEDED",
+          ],
         },
       },
     });
@@ -54,7 +54,7 @@ export class SecurityService {
   static async sendAlertEmail(ipAddress: string, count: number) {
     try {
       const adminEmail = process.env.ADMIN_EMAIL || "admin@propertystack.com";
-      
+
       const htmlContent = `
         <h2>Security Alert: Suspicious Activity Detected</h2>
         <p>The system has detected multiple failed security events from a single IP address.</p>
@@ -68,7 +68,7 @@ export class SecurityService {
       await sendEmail(
         adminEmail,
         "🚨 PropertyStack Security Alert: Multiple Failed Attempts",
-        htmlContent
+        htmlContent,
       );
 
       console.log(`[SecurityService] Alert email sent for IP: ${ipAddress}`);

@@ -1,4 +1,5 @@
-if (process.env.NODE_ENV === "production") throw new Error("CRITICAL: Cannot run test scripts in production!");
+if (process.env.NODE_ENV === "production")
+  throw new Error("CRITICAL: Cannot run test scripts in production!");
 
 import { prisma } from "./apps/api/src/lib/database";
 async function main() {

@@ -1,5 +1,7 @@
 if (process.env.NODE_ENV === "production") {
-  console.warn("WARNING: Running database modification scripts in production environment!");
+  console.warn(
+    "WARNING: Running database modification scripts in production environment!",
+  );
 }
 
 import "dotenv/config";
@@ -23,21 +25,29 @@ async function run() {
   const monthsArg = getArg("--months") || "12";
 
   if (!email && !workspaceId) {
-    console.error("Error: Please specify either --email <email> or --workspace-id <id>");
-    console.log("Usage: npx tsx scripts/test-seeds/upgrade-workspace.ts --email <manager-email> --plan <FREE|PRO|ENTERPRISE> [--months <count>]");
+    console.error(
+      "Error: Please specify either --email <email> or --workspace-id <id>",
+    );
+    console.log(
+      "Usage: npx tsx scripts/test-seeds/upgrade-workspace.ts --email <manager-email> --plan <FREE|PRO|ENTERPRISE> [--months <count>]",
+    );
     process.exit(1);
   }
 
   const validPlans = ["FREE", "PRO", "ENTERPRISE"];
   const plan = planArg.toUpperCase();
   if (!validPlans.includes(plan)) {
-    console.error(`Error: Invalid plan '${planArg}'. Valid options: FREE, PRO, ENTERPRISE`);
+    console.error(
+      `Error: Invalid plan '${planArg}'. Valid options: FREE, PRO, ENTERPRISE`,
+    );
     process.exit(1);
   }
 
   const months = parseInt(monthsArg, 10);
   if (isNaN(months) || months <= 0) {
-    console.error(`Error: Invalid months count '${monthsArg}'. Must be a positive integer.`);
+    console.error(
+      `Error: Invalid months count '${monthsArg}'. Must be a positive integer.`,
+    );
     process.exit(1);
   }
 
@@ -50,15 +60,22 @@ async function run() {
         role: "PROPERTY_MANAGER",
         user: { email: { equals: email, mode: "insensitive" } },
       },
-      select: { workspaceId: true, user: { select: { email: true, name: true } } },
+      select: {
+        workspaceId: true,
+        user: { select: { email: true, name: true } },
+      },
     });
 
     if (!member) {
-      console.error(`Error: No workspace found for owner/manager email: ${email}`);
+      console.error(
+        `Error: No workspace found for owner/manager email: ${email}`,
+      );
       process.exit(1);
     }
     targetWorkspaceId = member.workspaceId;
-    console.log(`Found workspace owned by user ${member.user.name || member.user.email} (Workspace ID: ${targetWorkspaceId})`);
+    console.log(
+      `Found workspace owned by user ${member.user.name || member.user.email} (Workspace ID: ${targetWorkspaceId})`,
+    );
   }
 
   if (!targetWorkspaceId) {
@@ -93,7 +110,9 @@ async function run() {
   console.log(`Workspace Name: ${updated.name}`);
   console.log(`New Plan Tier:  ${updated.plan}`);
   console.log(`Status:         ${updated.status}`);
-  console.log(`Expires At:     ${updated.subscriptionExpiresAt?.toLocaleDateString() || "N/A"}`);
+  console.log(
+    `Expires At:     ${updated.subscriptionExpiresAt?.toLocaleDateString() || "N/A"}`,
+  );
   console.log("-----------------------------------------\n");
 }
 

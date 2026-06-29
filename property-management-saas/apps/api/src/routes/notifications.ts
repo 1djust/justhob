@@ -24,11 +24,9 @@ export default async function notificationRoutes(fastify: FastifyInstance) {
       return reply.send({ notifications });
     } catch (error: unknown) {
       request.log.error({ err: error }, "[GetNotificationsError]");
-      return reply
-        .status(500)
-        .send({
-          error: "Failed to fetch notifications: " + (error as Error).message,
-        });
+      return reply.status(500).send({
+        error: "Failed to fetch notifications: " + (error as Error).message,
+      });
     }
   });
 

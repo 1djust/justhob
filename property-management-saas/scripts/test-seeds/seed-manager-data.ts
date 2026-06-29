@@ -1,11 +1,12 @@
-if (process.env.NODE_ENV === "production") throw new Error("CRITICAL: Cannot run test scripts in production!");
+if (process.env.NODE_ENV === "production")
+  throw new Error("CRITICAL: Cannot run test scripts in production!");
 
 import * as dotenv from "dotenv";
 import { join } from "path";
 
 // Load .env before initializing Prisma
-dotenv.config({ path: join(process.cwd(), "../../.env") }); 
-dotenv.config({ path: join(process.cwd(), ".env") }); 
+dotenv.config({ path: join(process.cwd(), "../../.env") });
+dotenv.config({ path: join(process.cwd(), ".env") });
 
 const { prisma } = require("./src/lib/database");
 
@@ -15,7 +16,7 @@ async function seedManagerData() {
   // Get user
   const user = await prisma.user.findUnique({
     where: { email: "manager@justhob.com" },
-    include: { workspaces: true }
+    include: { workspaces: true },
   });
 
   if (!user) {
@@ -33,9 +34,21 @@ async function seedManagerData() {
 
   // Create Properties
   const properties = [
-    { name: "Sunset Apartments", address: "123 Sunset Blvd", type: "RESIDENTIAL" },
-    { name: "Ocean View Complex", address: "456 Ocean Dr", type: "RESIDENTIAL" },
-    { name: "Downtown Office Plaza", address: "789 Main St", type: "COMMERCIAL" },
+    {
+      name: "Sunset Apartments",
+      address: "123 Sunset Blvd",
+      type: "RESIDENTIAL",
+    },
+    {
+      name: "Ocean View Complex",
+      address: "456 Ocean Dr",
+      type: "RESIDENTIAL",
+    },
+    {
+      name: "Downtown Office Plaza",
+      address: "789 Main St",
+      type: "COMMERCIAL",
+    },
   ];
 
   const createdProperties = [];
@@ -46,13 +59,16 @@ async function seedManagerData() {
         name: p.name,
         address: p.address,
         type: p.type,
-        status: "ACTIVE"
-      }
+        status: "ACTIVE",
+      },
     });
     createdProperties.push(prop);
   }
 
-  console.log("Created properties:", createdProperties.map(p => p.name));
+  console.log(
+    "Created properties:",
+    createdProperties.map((p) => p.name),
+  );
 
   // Create Units
   const units = [];
@@ -65,7 +81,7 @@ async function seedManagerData() {
           type: prop.type === "RESIDENTIAL" ? "APARTMENT" : "OFFICE",
           status: "VACANT",
           rentAmount: Math.floor(Math.random() * 5000) + 1000,
-        }
+        },
       });
       units.push(unit);
     }
@@ -75,9 +91,16 @@ async function seedManagerData() {
 
   // Create Tenants
   const tenantNames = [
-    "Emily Bennett", "Michael Thompson", "Olivia Rhye", "Ethan Roberts",
-    "Sarah Jenkins", "David Chen", "Marcus Johnson", "Sophia Patel",
-    "James Wilson", "Isabella Garcia"
+    "Emily Bennett",
+    "Michael Thompson",
+    "Olivia Rhye",
+    "Ethan Roberts",
+    "Sarah Jenkins",
+    "David Chen",
+    "Marcus Johnson",
+    "Sophia Patel",
+    "James Wilson",
+    "Isabella Garcia",
   ];
 
   const createdTenants = [];
@@ -88,8 +111,8 @@ async function seedManagerData() {
         name,
         email: `${name.toLowerCase().replace(" ", ".")}@example.com`,
         phone: "+1234567890",
-        status: "ACTIVE"
-      }
+        status: "ACTIVE",
+      },
     });
     createdTenants.push(tenant);
   }
@@ -101,12 +124,12 @@ async function seedManagerData() {
   for (let i = 0; i < 10; i++) {
     const unit = units[i];
     const tenant = createdTenants[tenantIdx++];
-    
+
     // Some leases start early this year, some late last year
     const startYear = new Date().getFullYear();
     const startMonth = Math.floor(Math.random() * 6); // Jan to Jun
     const startDate = new Date(startYear, startMonth, 1);
-    
+
     // Some are 1 year, some are 6 months
     const durationMonths = Math.random() > 0.5 ? 12 : 6;
     const endDate = new Date(startDate);
@@ -120,20 +143,20 @@ async function seedManagerData() {
         startDate,
         endDate,
         yearlyRent: unit.rentAmount * 12,
-        status: "ACTIVE"
-      }
+        status: "ACTIVE",
+      },
     });
 
     // Mark unit as occupied
     await prisma.unit.update({
       where: { id: unit.id },
-      data: { status: "OCCUPIED" }
+      data: { status: "OCCUPIED" },
     });
   }
 
   // Create an overlapping/expired lease
   const expiredTenant = createdTenants[tenantIdx++];
-  if(expiredTenant) {
+  if (expiredTenant) {
     await prisma.lease.create({
       data: {
         propertyId: units[0].propertyId,
@@ -142,8 +165,8 @@ async function seedManagerData() {
         startDate: new Date(new Date().getFullYear() - 1, 0, 1),
         endDate: new Date(new Date().getFullYear() - 1, 11, 31),
         yearlyRent: units[0].rentAmount * 12,
-        status: "EXPIRED"
-      }
+        status: "EXPIRED",
+      },
     });
   }
 

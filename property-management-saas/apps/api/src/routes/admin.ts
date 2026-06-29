@@ -1,6 +1,11 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/database";
-import { authenticate, requireSuperAdmin, verifiedAdminTokens, authCache } from "../lib/middleware";
+import {
+  authenticate,
+  requireSuperAdmin,
+  verifiedAdminTokens,
+  authCache,
+} from "../lib/middleware";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { timingSafeEqual } from "crypto";

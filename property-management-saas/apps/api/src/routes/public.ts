@@ -41,7 +41,13 @@ export default async function publicRoutes(fastify: FastifyInstance) {
               },
             },
           },
-          workspace: { select: { name: true, id: true, members: { where: { userId: request.userId } } } },
+          workspace: {
+            select: {
+              name: true,
+              id: true,
+              members: { where: { userId: request.userId } },
+            },
+          },
           maintenanceRequests: {
             orderBy: { createdAt: "desc" },
             include: { property: { select: { id: true, name: true } } },
@@ -57,10 +63,13 @@ export default async function publicRoutes(fastify: FastifyInstance) {
 
       // Security Check: User must either be the tenant themselves (by email) OR a member of the workspace
       const isSelf = false; // We can't definitively check this without joining on User by email, but workspace member check handles manager access
-      const isWorkspaceMember = tenant.workspace?.members && tenant.workspace.members.length > 0;
-      
-      if (!isSelf && !isWorkspaceMember && request.userRole !== 'SUPER_ADMIN') {
-        return reply.status(403).send({ error: "Unauthorized to view this tenant profile" });
+      const isWorkspaceMember =
+        tenant.workspace?.members && tenant.workspace.members.length > 0;
+
+      if (!isSelf && !isWorkspaceMember && request.userRole !== "SUPER_ADMIN") {
+        return reply
+          .status(403)
+          .send({ error: "Unauthorized to view this tenant profile" });
       }
 
       // Security: Strip sensitive data from public response — no PII, no bank details

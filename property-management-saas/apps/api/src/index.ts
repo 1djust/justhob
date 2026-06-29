@@ -8,7 +8,12 @@ const start = async () => {
       console.log(`[DNS] Resolving database host ${host} to IPv4...`);
       const ips = await dns.resolve4(host);
       if (ips && ips.length > 0) {
-        const ip = ips[0];
+        let ip = ips[0];
+        if (ips.includes("51.21.189.77")) {
+          ip = "51.21.189.77";
+        } else if (ip === "51.21.18.29" && ips.length > 1) {
+          ip = ips[1];
+        }
         console.log(`[DNS] Success: resolved to ${ip}`);
         if (process.env.DATABASE_URL) {
           process.env.DATABASE_URL = process.env.DATABASE_URL.replace(host, ip);
@@ -18,10 +23,15 @@ const start = async () => {
         }
       }
     } else {
-      console.log(`[DNS] Skipping manual hostname resolution on Render production`);
+      console.log(
+        `[DNS] Skipping manual hostname resolution on Render production`,
+      );
     }
   } catch (err) {
-    console.error("[DNS] Hostname IPv4 resolution failed, falling back to default env URL:", err);
+    console.error(
+      "[DNS] Hostname IPv4 resolution failed, falling back to default env URL:",
+      err,
+    );
   }
 
   // Dynamically import app and prisma after setting environment variables

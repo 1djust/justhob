@@ -22,7 +22,12 @@ const host = "aws-1-eu-north-1.pooler.supabase.com";
 try {
   const ips = await dns.resolve4(host);
   if (ips && ips.length > 0) {
-    const ip = ips[0];
+    let ip = ips[0];
+    if (ips.includes("51.21.189.77")) {
+      ip = "51.21.189.77";
+    } else if (ip === "51.21.18.29" && ips.length > 1) {
+      ip = ips[1];
+    }
     if (process.env.DATABASE_URL) {
       process.env.DATABASE_URL = process.env.DATABASE_URL.replace(host, ip);
     }
@@ -33,4 +38,3 @@ try {
 } catch (err) {
   // Ignore or log
 }
-

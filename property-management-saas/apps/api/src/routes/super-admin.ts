@@ -2,7 +2,12 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/database";
 import { authenticate, requireSuperAdmin } from "../lib/middleware";
 import { supabaseAdmin } from "../lib/supabase";
-import { AppError, ForbiddenError, NotFoundError, ValidationError } from "../lib/errors";
+import {
+  AppError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../lib/errors";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 
@@ -42,6 +47,11 @@ const RejectUpgradeBody = Type.Object({
 
 const ApproveUpgradeBody = Type.Object({
   durationMonths: Type.Optional(Type.Number({ minimum: 1, maximum: 60 })),
+});
+
+const VerifyLegalLeaseBody = Type.Object({
+  status: Type.Union([Type.Literal("VERIFIED"), Type.Literal("REJECTED")]),
+  reason: Type.Optional(Type.String({ maxLength: 500 })),
 });
 
 // Security: All string inputs are bounded to prevent ReDoS and DB performance attacks
@@ -94,6 +104,15 @@ const PaymentsQuery = Type.Object({
   ),
 });
 
+const AuditLogsQuery = Type.Object({
+  page: Type.Optional(Type.Number({ minimum: 1 })),
+  limit: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
+  workspaceId: Type.Optional(Type.String()),
+  actorId: Type.Optional(Type.String()),
+  action: Type.Optional(Type.String()),
+  search: Type.Optional(Type.String({ maxLength: 200 })),
+});
+
 export default async function superAdminRoutes(
   fastify: FastifyInstance,
 ): Promise<void> {
@@ -109,9 +128,17 @@ export default async function superAdminRoutes(
   server.get("/stats", { schema: {} }, async () => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
     const startOfYear = new Date(now.getFullYear(), 0, 1);
-    
+
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const endOfToday = new Date();
@@ -224,26 +251,34 @@ export default async function superAdminRoutes(
     ]);
 
     // Calculate monthly target and collected metrics
-    const monthlyTarget = monthlyTargetPayments.reduce((sum, p) => sum + p.amount, 0);
-    
-    // In-memory filters to reduce query count and prevent database pool timeouts
-    const monthlyCollectedPayments = paidPaymentsInYear.filter(
-      p => p.paidDate && p.paidDate >= startOfMonth && p.paidDate <= endOfMonth
-    );
-    const todayPayments = paidPaymentsInYear.filter(
-      p => p.paidDate && p.paidDate >= startOfToday && p.paidDate <= endOfToday
-    );
-    const recentPaidPaymentsList = paidPaymentsInYear.filter(
-      p => p.paidDate && p.paidDate >= sevenDaysAgo
-    );
-    const recentUsersList = usersInYear.filter(
-      u => u.createdAt >= sevenDaysAgo
-    );
-    const recentBannedUsersList = usersInYear.filter(
-      u => !u.isActive && u.updatedAt >= sevenDaysAgo
+    const monthlyTarget = monthlyTargetPayments.reduce(
+      (sum, p) => sum + p.amount,
+      0,
     );
 
-    const monthlyRevenueCollected = monthlyCollectedPayments.reduce((sum, p) => sum + p.amount, 0);
+    // In-memory filters to reduce query count and prevent database pool timeouts
+    const monthlyCollectedPayments = paidPaymentsInYear.filter(
+      (p) =>
+        p.paidDate && p.paidDate >= startOfMonth && p.paidDate <= endOfMonth,
+    );
+    const todayPayments = paidPaymentsInYear.filter(
+      (p) =>
+        p.paidDate && p.paidDate >= startOfToday && p.paidDate <= endOfToday,
+    );
+    const recentPaidPaymentsList = paidPaymentsInYear.filter(
+      (p) => p.paidDate && p.paidDate >= sevenDaysAgo,
+    );
+    const recentUsersList = usersInYear.filter(
+      (u) => u.createdAt >= sevenDaysAgo,
+    );
+    const recentBannedUsersList = usersInYear.filter(
+      (u) => !u.isActive && u.updatedAt >= sevenDaysAgo,
+    );
+
+    const monthlyRevenueCollected = monthlyCollectedPayments.reduce(
+      (sum, p) => sum + p.amount,
+      0,
+    );
     const todayRevenue = todayPayments.reduce((sum, p) => sum + p.amount, 0);
 
     // Helper to bucket dates into 7 days (index 0 is 6 days ago, index 6 is today)
@@ -267,24 +302,43 @@ export default async function superAdminRoutes(
     };
 
     const trends = {
-      users: getDailyBuckets(recentUsersList.map(u => u.createdAt)),
-      workspaces: getDailyBuckets(recentWorkspacesList.map(w => w.createdAt)),
-      properties: getDailyBuckets(recentPropertiesList.map(p => p.createdAt)),
-      leases: getDailyBuckets(recentLeasesList.map(l => l.createdAt)),
+      users: getDailyBuckets(recentUsersList.map((u) => u.createdAt)),
+      workspaces: getDailyBuckets(recentWorkspacesList.map((w) => w.createdAt)),
+      properties: getDailyBuckets(recentPropertiesList.map((p) => p.createdAt)),
+      leases: getDailyBuckets(recentLeasesList.map((l) => l.createdAt)),
       revenue: getDailyBuckets(
-        recentPaidPaymentsList.filter(p => p.paidDate !== null).map(p => p.paidDate as Date),
-        recentPaidPaymentsList.filter(p => p.paidDate !== null).map(p => p.amount)
+        recentPaidPaymentsList
+          .filter((p) => p.paidDate !== null)
+          .map((p) => p.paidDate as Date),
+        recentPaidPaymentsList
+          .filter((p) => p.paidDate !== null)
+          .map((p) => p.amount),
       ),
-      overdue: getDailyBuckets(recentOverduePaymentsList.map(p => p.updatedAt)),
-      banned: getDailyBuckets(recentBannedUsersList.map(u => u.updatedAt)),
-      errors: getDailyBuckets(recentErrorsList.map(e => e.createdAt)),
+      overdue: getDailyBuckets(
+        recentOverduePaymentsList.map((p) => p.updatedAt),
+      ),
+      banned: getDailyBuckets(recentBannedUsersList.map((u) => u.updatedAt)),
+      errors: getDailyBuckets(recentErrorsList.map((e) => e.createdAt)),
     };
 
     // Monthly aggregation
-    const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    
+    const MONTH_NAMES = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
     const monthlyRevenueArr = Array(12).fill(0);
-    paidPaymentsInYear.forEach(p => {
+    paidPaymentsInYear.forEach((p) => {
       if (p.paidDate) {
         const month = p.paidDate.getMonth();
         monthlyRevenueArr[month] += p.amount;
@@ -296,7 +350,7 @@ export default async function superAdminRoutes(
     }));
 
     const monthlySignups = Array(12).fill(0);
-    usersInYear.forEach(u => {
+    usersInYear.forEach((u) => {
       const month = u.createdAt.getMonth();
       monthlySignups[month]++;
     });
@@ -502,11 +556,6 @@ export default async function superAdminRoutes(
 
       const where: Record<string, any> = {
         role: "PROPERTY_MANAGER",
-        workspaces: {
-          some: {
-            role: "PROPERTY_MANAGER",
-          },
-        },
       };
       if (search) {
         where.AND = [
@@ -631,8 +680,10 @@ export default async function superAdminRoutes(
       // 3. Construct the response hierarchy: Landlord -> Tenants
       const hierarchy = landlordMembers.map((lm) => {
         const landlordUser = lm.user;
-        const landlordProperties = properties.filter((p) => p.ownerId === landlordUser.id);
-        
+        const landlordProperties = properties.filter(
+          (p) => p.ownerId === landlordUser.id,
+        );
+
         // Extract unique tenants across all properties owned by this landlord
         const tenantMap = new Map<string, any>();
         for (const prop of landlordProperties) {
@@ -663,6 +714,139 @@ export default async function superAdminRoutes(
       });
 
       return { hierarchy };
+    },
+  );
+
+  // =====================================================================
+  // GET /users/:id/profile — Get full profile details for any user role
+  // =====================================================================
+  server.get<{ Params: { id: string } }>(
+    "/users/:id/profile",
+    { schema: {} },
+    async (request) => {
+      const { id } = request.params;
+
+      let user = await prisma.user.findUnique({
+        where: { id },
+        include: {
+          workspaces: {
+            include: {
+              workspace: true,
+            },
+          },
+          propertiesOwned: true,
+        },
+      });
+
+      let tenantRecord = null;
+      if (!user) {
+        tenantRecord = await prisma.tenant.findUnique({
+          where: { id },
+          include: {
+            workspace: true,
+            leases: {
+              include: {
+                property: true,
+                unit: true,
+                payments: {
+                  orderBy: { dueDate: "desc" },
+                },
+              },
+            },
+            maintenanceRequests: {
+              orderBy: { createdAt: "desc" },
+            },
+          },
+        });
+
+        if (tenantRecord && tenantRecord.email) {
+          user = await prisma.user.findUnique({
+            where: { email: tenantRecord.email },
+            include: {
+              workspaces: {
+                include: {
+                  workspace: true,
+                },
+              },
+              propertiesOwned: true,
+            },
+          });
+        }
+      } else {
+        tenantRecord = await prisma.tenant.findFirst({
+          where: { email: user.email },
+          include: {
+            workspace: true,
+            leases: {
+              include: {
+                property: true,
+                unit: true,
+                payments: {
+                  orderBy: { dueDate: "desc" },
+                },
+              },
+            },
+            maintenanceRequests: {
+              orderBy: { createdAt: "desc" },
+            },
+          },
+        });
+      }
+
+      if (!user && !tenantRecord) {
+        throw new NotFoundError("Profile not found");
+      }
+
+      return {
+        user: user ? {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        } : {
+          id: tenantRecord!.id,
+          name: tenantRecord!.name,
+          email: tenantRecord!.email || "No email",
+          role: "TENANT",
+          isActive: true,
+          createdAt: tenantRecord!.createdAt,
+          updatedAt: tenantRecord!.updatedAt,
+        },
+        workspaces: user ? user.workspaces.map((w) => ({
+          workspaceId: w.workspaceId,
+          name: w.workspace.name,
+          role: w.role,
+          plan: w.workspace.plan,
+        })) : [{
+          workspaceId: tenantRecord!.workspaceId,
+          name: tenantRecord!.workspace?.name || "Unknown Workspace",
+          role: "TENANT",
+          plan: tenantRecord!.workspace?.plan || "FREE",
+        }],
+        propertiesOwned: user ? user.propertiesOwned.map((p) => ({
+          id: p.id,
+          name: p.name,
+          address: p.address,
+        })) : [],
+        tenantDetails: tenantRecord ? {
+          id: tenantRecord.id,
+          workspace: tenantRecord.workspace,
+          leases: tenantRecord.leases.map((l) => ({
+            id: l.id,
+            property: l.property.name,
+            unit: l.unit?.unitNumber || "None",
+            startDate: l.startDate,
+            endDate: l.endDate,
+            yearlyRent: l.yearlyRent,
+            status: l.status,
+            payments: l.payments,
+          })),
+          maintenanceRequests: tenantRecord.maintenanceRequests,
+        } : null,
+      };
     },
   );
 
@@ -724,10 +908,6 @@ export default async function superAdminRoutes(
       };
     },
   );
-
-
-
-
 
   // =====================================================================
   // GET /errors — System error log viewer
@@ -1001,6 +1181,179 @@ export default async function superAdminRoutes(
         success: true,
         upgradeRequest: updatedRequest,
       };
+    },
+  );
+
+  // GET /legal-lease-requests - Get all legal lease requests
+  server.get("/legal-lease-requests", async () => {
+    const requests = await prisma.legalLeaseRequest.findMany({
+      include: {
+        workspace: { select: { id: true, name: true } },
+        tenant: { select: { id: true, name: true, email: true } },
+        lease: {
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            yearlyRent: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return { success: true, requests };
+  });
+
+  // POST /legal-lease-requests/:id/verify - Verify a legal lease request
+  server.post<{
+    Params: { id: string };
+    Body: Static<typeof VerifyLegalLeaseBody>;
+  }>(
+    "/legal-lease-requests/:id/verify",
+    {
+      schema: { body: VerifyLegalLeaseBody },
+    },
+    async (request) => {
+      const { id } = request.params;
+      const { status, reason } = request.body;
+
+      const legalRequest = await prisma.legalLeaseRequest.findUnique({
+        where: { id },
+        include: {
+          lease: true,
+          workspace: true,
+        },
+      });
+
+      if (!legalRequest)
+        throw new NotFoundError("Legal lease request not found");
+      if (legalRequest.status !== "PENDING") {
+        throw new ValidationError(
+          "Legal lease request has already been processed",
+        );
+      }
+
+      const updatedRequest = await prisma.legalLeaseRequest.update({
+        where: { id },
+        data: {
+          status,
+          rejectionReason: status === "REJECTED" ? reason || null : null,
+        },
+      });
+
+      // Update associated lease status
+      const newLeaseStatus =
+        status === "VERIFIED" ? "PENDING_LEGAL_UPLOAD" : "REJECTED";
+      await prisma.lease.update({
+        where: { id: legalRequest.leaseId },
+        data: {
+          status: newLeaseStatus,
+          rejectionReason: status === "REJECTED" ? reason || null : null,
+        },
+      });
+
+      // Try to send automated email notification to the manager
+      const managerMember = await prisma.workspaceMember.findFirst({
+        where: {
+          workspaceId: legalRequest.workspaceId,
+          role: "PROPERTY_MANAGER",
+        },
+        include: { user: true },
+      });
+
+      if (managerMember?.user?.email) {
+        const { sendEmail } = await import("../lib/mailer");
+        if (status === "VERIFIED") {
+          await sendEmail(
+            managerMember.user.email,
+            "Legal Lease Payment Verified - Action Required",
+            `Hello ${managerMember.user.name || "Manager"},\n\n` +
+              `Your payment for the legal lease agreement of tenant "${legalRequest.tenantName}" has been verified.\n\n` +
+              `The legal team will email the final drafted PDF/JPG document to your email (${managerMember.user.email}) within 48 hours.\n` +
+              `Once you receive the document, please log into the application, expand the tenant details row, and upload the file to make it available for the tenant to sign.\n\n` +
+              `Best regards,\nPropertyStack Support Team`,
+          );
+        } else {
+          await sendEmail(
+            managerMember.user.email,
+            "Legal Lease Payment Verification Rejected",
+            `Hello ${managerMember.user.name || "Manager"},\n\n` +
+              `Your request for a legal lease agreement of tenant "${legalRequest.tenantName}" was rejected.\n` +
+              (reason ? `Reason provided: "${reason}"\n\n` : "") +
+              `Please check that your uploaded proof of payment image matches the transaction or contact support for help.\n\n` +
+              `Best regards,\nPropertyStack Support Team`,
+          );
+        }
+      }
+
+      (fastify as unknown as { io: import("socket.io").Server }).io
+        .to(`workspace:${legalRequest.workspaceId}`)
+        .emit("LEASE_UPDATED", {
+          leaseId: legalRequest.leaseId,
+          message: "Lease status changed",
+        });
+
+      return {
+        success: true,
+        legalLeaseRequest: updatedRequest,
+      };
+    },
+  );
+
+  // =====================================================================
+  // GET /audit-logs — Retrieve platform-wide manager audit logs
+  // =====================================================================
+  server.get<{ Querystring: Static<typeof AuditLogsQuery> }>(
+    "/audit-logs",
+    {
+      schema: { querystring: AuditLogsQuery },
+    },
+    async (request, reply) => {
+      const {
+        workspaceId,
+        actorId,
+        action,
+        search,
+        limit = 50,
+        page = 1,
+      } = request.query || {};
+
+      const skip = (page - 1) * limit;
+
+      const where = {
+        ...(workspaceId ? { workspaceId } : {}),
+        ...(actorId ? { actorId } : {}),
+        ...(action ? { action } : {}),
+        ...(search
+          ? {
+              OR: [
+                { actorName: { contains: search, mode: "insensitive" as const } },
+                { actorEmail: { contains: search, mode: "insensitive" as const } },
+                { details: { contains: search, mode: "insensitive" as const } },
+              ],
+            }
+          : {}),
+      };
+
+      const [logs, totalCount] = await Promise.all([
+        prisma.auditLog.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: limit,
+          skip,
+        }),
+        prisma.auditLog.count({ where }),
+      ]);
+
+      return reply.send({
+        logs,
+        pagination: {
+          totalCount,
+          totalPages: Math.ceil(totalCount / limit),
+          page,
+          limit,
+        },
+      });
     },
   );
 }

@@ -5,6 +5,7 @@ import {
   verifyWorkspaceAccess,
   requireManager,
 } from "../lib/middleware";
+import { logAction } from "../lib/audit";
 import { Prisma, PaymentStatus } from "@prisma/client";
 import { generateReceiptPDF } from "../lib/pdf";
 import { sendEmail } from "../lib/mailer";
@@ -199,6 +200,15 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           },
         });
 
+        await logAction({
+          userId: request.userId!,
+          action: "CREATE_INVOICE",
+          entityType: "PAYMENT",
+          entityId: result.id,
+          details: `Generated invoice of ₦${result.amount.toLocaleString()} for tenant "${result.lease.tenant.name}" in property "${result.lease.property.name}".`,
+          workspaceId,
+        });
+
         clearWorkspaceCache(workspaceId);
 
         return reply.status(201).send({ payment: result });
@@ -211,7 +221,10 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   );
 
   // Mark payment as paid
-  server.put<{ Params: Static<typeof PaymentIdParams>; Body: Static<typeof PayPaymentBody> }>(
+  server.put<{
+    Params: Static<typeof PaymentIdParams>;
+    Body: Static<typeof PayPaymentBody>;
+  }>(
     "/:id/pay",
     {
       preHandler: requireManager,
@@ -230,9 +243,13 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           return reply.status(404).send({ error: "Payment not found" });
 
         // Calculate amount to settle based on manager's approval or full amount
-        const amountReceived = approvedAmountPaid !== undefined ? approvedAmountPaid : (existingPayment.amount - (existingPayment.amountPaid || 0));
-        const newTotalAmountPaid = (existingPayment.amountPaid || 0) + amountReceived;
-        
+        const amountReceived =
+          approvedAmountPaid !== undefined
+            ? approvedAmountPaid
+            : existingPayment.amount - (existingPayment.amountPaid || 0);
+        const newTotalAmountPaid =
+          (existingPayment.amountPaid || 0) + amountReceived;
+
         // Is it a true partial payment?
         const isPartial = newTotalAmountPaid < existingPayment.amount;
         const newStatus = isPartial ? "PARTIALLY_PAID" : "PAID";
@@ -243,12 +260,17 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
             status: newStatus,
             paidDate: !isPartial ? new Date() : existingPayment.paidDate,
             amountPaid: newTotalAmountPaid,
-            dueDate: isPartial && existingPayment.balancePromise ? existingPayment.balancePromise : existingPayment.dueDate,
+            dueDate:
+              isPartial && existingPayment.balancePromise
+                ? existingPayment.balancePromise
+                : existingPayment.dueDate,
             transactions: {
               create: {
                 amount: amountReceived,
                 status: "COMPLETED",
-                note: isPartial ? "Partial payment approved manually" : "Payment marked as settled manually",
+                note: isPartial
+                  ? "Partial payment approved manually"
+                  : "Payment marked as settled manually",
               },
             },
           },
@@ -260,8 +282,19 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           .emit("PAYMENT_UPDATED", {
             paymentId: id,
             status: newStatus,
-            message: isPartial ? "A partial payment has been approved." : "A payment has been marked as settled.",
+            message: isPartial
+              ? "A partial payment has been approved."
+              : "A payment has been marked as settled.",
           });
+
+        await logAction({
+          userId: request.userId!,
+          action: "APPROVE_PAYMENT",
+          entityType: "PAYMENT",
+          entityId: id,
+          details: `Approved payment of ₦${amountReceived.toLocaleString()} for invoice ID "${id}" (New status: ${newStatus}).`,
+          workspaceId,
+        });
 
         clearWorkspaceCache(workspaceId);
 
@@ -481,11 +514,14 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
       if (status === "PAID") {
         const receiptId =
           `RCPT-${Date.now()}-${id.substring(0, 4)}`.toUpperCase();
-        
+
         // Handle true partial approval
-        const amountReceived = approvedAmountPaid !== undefined ? approvedAmountPaid : (payment.amount - (payment.amountPaid || 0));
+        const amountReceived =
+          approvedAmountPaid !== undefined
+            ? approvedAmountPaid
+            : payment.amount - (payment.amountPaid || 0);
         const newTotalAmountPaid = (payment.amountPaid || 0) + amountReceived; // Add the newly received amount to the previously paid amount
-        
+
         const isPartial = newTotalAmountPaid < payment.amount;
         const newStatus = isPartial ? "PARTIALLY_PAID" : "PAID";
 
@@ -496,12 +532,17 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
             paidDate: !isPartial ? new Date() : payment.paidDate,
             receiptId,
             amountPaid: newTotalAmountPaid,
-            dueDate: isPartial && payment.balancePromise ? payment.balancePromise : payment.dueDate,
+            dueDate:
+              isPartial && payment.balancePromise
+                ? payment.balancePromise
+                : payment.dueDate,
             transactions: {
               create: {
                 amount: amountReceived,
                 status: "COMPLETED",
-                note: isPartial ? "Proof of partial payment approved" : "Proof of payment approved",
+                note: isPartial
+                  ? "Proof of partial payment approved"
+                  : "Proof of payment approved",
                 receiptId,
                 proofUrl: payment.proofUrl,
               },
@@ -513,7 +554,9 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           await prisma.notification.create({
             data: {
               userId: tenantUser.id,
-              title: isPartial ? "Partial Payment Approved" : "Payment Approved",
+              title: isPartial
+                ? "Partial Payment Approved"
+                : "Payment Approved",
               message: `Your payment of ₦${amountReceived.toLocaleString()} has been approved. Receipt ID: ${receiptId}`,
               type: "PAYMENT_APPROVED",
             },
@@ -523,7 +566,9 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           if (isPro) {
             await sendEmail(
               tenantEmail!,
-              isPartial ? "Partial Payment Approved - PropertyStack" : "Payment Approved - PropertyStack",
+              isPartial
+                ? "Partial Payment Approved - PropertyStack"
+                : "Payment Approved - PropertyStack",
               `Your payment of ₦${amountReceived.toLocaleString()} has been approved. Your Receipt ID is ${receiptId}. You can download your official receipt from the tenant portal.`,
             );
           }
@@ -575,6 +620,31 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           message:
             status === "PAID" ? "Payment approved" : "Payment proof rejected",
         });
+
+      if (status === "PAID") {
+        const amountReceived =
+          approvedAmountPaid !== undefined
+            ? approvedAmountPaid
+            : payment.amount - (payment.amountPaid || 0);
+
+        await logAction({
+          userId: request.userId!,
+          action: "APPROVE_PAYMENT",
+          entityType: "PAYMENT",
+          entityId: id,
+          details: `Approved proof of payment of ₦${amountReceived.toLocaleString()} for invoice ID "${id}".`,
+          workspaceId,
+        });
+      } else {
+        await logAction({
+          userId: request.userId!,
+          action: "REJECT_PAYMENT",
+          entityType: "PAYMENT",
+          entityId: id,
+          details: `Rejected proof of payment for invoice ID "${id}". Reason: "${rejectionReason}".`,
+          workspaceId,
+        });
+      }
 
       clearWorkspaceCache(workspaceId);
 
@@ -630,6 +700,58 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
       );
 
       return reply;
+    },
+  );
+
+  // Send reminder for a specific payment
+  server.post<{ Params: Static<typeof PaymentIdParams> }>(
+    "/:id/remind",
+    {
+      preHandler: requireManager,
+      schema: { params: PaymentIdParams },
+    },
+    async (request, reply) => {
+      const { workspaceId, id } = request.params;
+      const payment = await prisma.payment.findUnique({
+        where: { payment_workspace_id: { id, workspaceId } },
+        include: {
+          lease: {
+            include: {
+              tenant: true,
+              property: true,
+            },
+          },
+        },
+      });
+
+      if (!payment) {
+        return reply.status(404).send({ error: "Payment not found" });
+      }
+
+      const tenant = payment.lease.tenant;
+      if (!tenant.email) {
+        return reply
+          .status(400)
+          .send({ error: "Tenant has no registered email address" });
+      }
+
+      await sendEmail(
+        tenant.email,
+        `Rent Payment Reminder - ${payment.lease.property.name}`,
+        `Dear ${tenant.name},\n\nThis is a friendly reminder that your rent payment of ₦${payment.amount.toLocaleString()} for ${payment.lease.property.name} is due on ${new Date(payment.dueDate).toLocaleDateString()}.\n\nPlease log in to the tenant portal to view and complete your payment.\n\nBest regards,\nProperty Management Team`,
+      );
+
+      // Create a database notification for the tenant
+      await prisma.notification.create({
+        data: {
+          userId: tenant.id,
+          title: "Rent Payment Reminder",
+          message: `Your payment of ₦${payment.amount.toLocaleString()} is due on ${new Date(payment.dueDate).toLocaleDateString()}.`,
+          type: "PAYMENT_REMINDER",
+        },
+      });
+
+      return reply.send({ success: true });
     },
   );
 }

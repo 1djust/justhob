@@ -1,4 +1,5 @@
-if (process.env.NODE_ENV === "production") throw new Error("CRITICAL: Cannot run test scripts in production!");
+if (process.env.NODE_ENV === "production")
+  throw new Error("CRITICAL: Cannot run test scripts in production!");
 
 import * as dotenv from "dotenv";
 import { join } from "path";
@@ -19,8 +20,18 @@ async function setupProAndEntAccounts() {
 
   const password = "Test1234!";
   const accounts = [
-    { email: "manager_pro@justhob.com", name: "Pro Manager", plan: "PRO", workspaceName: "Pro Property Management" },
-    { email: "manager_ent@justhob.com", name: "Enterprise Manager", plan: "ENTERPRISE", workspaceName: "Enterprise Holdings" }
+    {
+      email: "manager_pro@justhob.com",
+      name: "Pro Manager",
+      plan: "PRO",
+      workspaceName: "Pro Property Management",
+    },
+    {
+      email: "manager_ent@justhob.com",
+      name: "Enterprise Manager",
+      plan: "ENTERPRISE",
+      workspaceName: "Enterprise Holdings",
+    },
   ];
 
   // Ensure Supabase Auth is ready
@@ -45,7 +56,9 @@ async function setupProAndEntAccounts() {
     }
 
     if (!userId) {
-      console.error(`❌ Failed to create or find Supabase user for ${acc.email}`);
+      console.error(
+        `❌ Failed to create or find Supabase user for ${acc.email}`,
+      );
       continue;
     }
 
@@ -71,10 +84,10 @@ async function setupProAndEntAccounts() {
         members: {
           create: {
             userId: prismaUser.id,
-            role: "PROPERTY_MANAGER"
-          }
-        }
-      }
+            role: "PROPERTY_MANAGER",
+          },
+        },
+      },
     });
     console.log(`✅ Created Workspace ${acc.workspaceName} (${acc.plan})`);
 
@@ -85,7 +98,7 @@ async function setupProAndEntAccounts() {
         address: "123 Test Ave, Lagos",
         workspaceId: workspace.id,
         ownerId: prismaUser.id,
-      }
+      },
     });
 
     const unit = await prisma.unit.create({
@@ -95,7 +108,7 @@ async function setupProAndEntAccounts() {
         status: "OCCUPIED",
         propertyId: property.id,
         workspaceId: workspace.id,
-      }
+      },
     });
 
     const tenant = await prisma.tenant.create({
@@ -104,7 +117,7 @@ async function setupProAndEntAccounts() {
         email: `tenant_${acc.plan.toLowerCase()}@justhob.com`,
         phone: "08012345678",
         workspaceId: workspace.id,
-      }
+      },
     });
 
     const startDate = new Date();
@@ -121,10 +134,12 @@ async function setupProAndEntAccounts() {
         endDate,
         yearlyRent: acc.plan === "PRO" ? 1500000 : 5000000,
         status: "ACTIVE",
-      }
+      },
     });
 
-    console.log(`✅ Seeded Property, Unit, Tenant, and Lease for ${acc.email}\n`);
+    console.log(
+      `✅ Seeded Property, Unit, Tenant, and Lease for ${acc.email}\n`,
+    );
   }
 
   console.log("✨ Pro and Enterprise scenarios ready!");

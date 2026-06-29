@@ -6,6 +6,7 @@ import {
   requireManager,
 } from "../lib/middleware";
 import { sendEmail } from "../lib/mailer";
+import { logAction } from "../lib/audit";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { MaintenanceStatus, MaintenancePriority } from "@prisma/client";
@@ -18,7 +19,7 @@ const MaintenanceParams = Type.Object({
   id: Type.String(),
 });
 const MessageBody = Type.Object({ content: Type.String() });
-const UpdateStatusBody = Type.Object({ 
+const UpdateStatusBody = Type.Object({
   status: Type.Optional(Type.Enum(MaintenanceStatus)),
   priority: Type.Optional(Type.Enum(MaintenancePriority)),
   vendor: Type.Optional(Type.String()),
@@ -32,7 +33,10 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
   // List all maintenance requests for a workspace
   server.get<{
     Params: Static<typeof WorkspaceParams>;
-    Querystring: Static<typeof MaintenanceQuery> & { page?: string, limit?: string };
+    Querystring: Static<typeof MaintenanceQuery> & {
+      page?: string;
+      limit?: string;
+    };
   }>(
     "/",
     {
@@ -42,7 +46,10 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
       const { workspaceId } = request.params;
       const { status, page = "1", limit = "20" } = request.query || {};
       const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
-      const limitNum = Math.max(1, Math.min(100, parseInt(limit as string, 10) || 20));
+      const limitNum = Math.max(
+        1,
+        Math.min(100, parseInt(limit as string, 10) || 20),
+      );
       const skip = (pageNum - 1) * limitNum;
 
       const userId = request.userId!;
@@ -69,17 +76,17 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
           skip,
           take: limitNum,
         }),
-        prisma.maintenanceRequest.count({ where: whereClause })
+        prisma.maintenanceRequest.count({ where: whereClause }),
       ]);
 
-      const responseBody = { 
+      const responseBody = {
         requests,
         pagination: {
           total,
           page: pageNum,
           pageSize: limitNum,
           totalPages: Math.ceil(total / limitNum),
-        }
+        },
       };
 
       maintenanceCache.set(cacheKey, {
@@ -187,7 +194,7 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
 
         const maintenanceRequest = await prisma.maintenanceRequest.update({
           where: { maintenance_workspace_id: { id, workspaceId } },
-          data: { 
+          data: {
             ...(status ? { status } : {}),
             ...(priority ? { priority } : {}),
             ...(vendor !== undefined ? { vendor } : {}),
@@ -225,6 +232,15 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
         (fastify as unknown as { io?: import("socket.io").Server }).io
           ?.to(`workspace:${workspaceId}`)
           .emit("MAINTENANCE_UPDATED", maintenanceRequest);
+
+        await logAction({
+          userId: request.userId!,
+          action: "UPDATE_MAINTENANCE",
+          entityType: "MAINTENANCE",
+          entityId: id,
+          details: `Updated maintenance ticket status/settings to ${status || "same"} (Priority: ${priority || "same"}).`,
+          workspaceId,
+        });
 
         clearWorkspaceCache(workspaceId);
 

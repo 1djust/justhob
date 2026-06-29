@@ -9,6 +9,7 @@ import { Prisma, PropertyType } from "@prisma/client";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { propertiesCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
+import { logAction } from "../lib/audit";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 const PropertyIdParams = Type.Object({
@@ -86,7 +87,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
           },
         },
       });
-      
+
       const responseBody = { properties };
       propertiesCache.set(cacheKey, {
         response: responseBody,
@@ -195,6 +196,15 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
           message: "A new property has been created.",
         });
 
+      await logAction({
+        userId: request.userId!,
+        action: "CREATE_PROPERTY",
+        entityType: "PROPERTY",
+        entityId: property.id,
+        details: `Created property "${property.name}" with ${units?.length || 0} units.`,
+        workspaceId,
+      });
+
       clearWorkspaceCache(workspaceId);
 
       return reply.status(201).send({ property });
@@ -225,6 +235,16 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
             ...(ownerId !== undefined ? { ownerId: ownerId || null } : {}),
           },
         });
+
+        await logAction({
+          userId: request.userId!,
+          action: "UPDATE_PROPERTY",
+          entityType: "PROPERTY",
+          entityId: property.id,
+          details: `Updated property settings for "${property.name}".`,
+          workspaceId,
+        });
+
         clearWorkspaceCache(workspaceId);
 
         return reply.send({ property });
@@ -232,6 +252,121 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: "Property not found" });
       }
     },
+  );
+
+  // Add Units to Property
+  const AddUnitsParams = Type.Object({
+    workspaceId: Type.String(),
+    propertyId: Type.String(),
+  });
+
+  const AddUnitsBody = Type.Object({
+    units: Type.Array(
+      Type.Object({
+        unitNumber: Type.String(),
+        type: Type.Union([
+          Type.Literal("ROOM_SELF_CONTAIN"),
+          Type.Literal("MINI_FLAT"),
+          Type.Literal("ROOM_PARLOUR_SELF_CONTAIN"),
+          Type.Literal("SINGLE_ROOM"),
+          Type.Literal("TWO_BEDROOM_FLAT"),
+          Type.Literal("THREE_BEDROOM_FLAT"),
+          Type.Literal("DUPLEX"),
+          Type.Literal("OTHERS"),
+        ]),
+      })
+    ),
+  });
+
+  server.post<{
+    Params: Static<typeof AddUnitsParams>;
+    Body: Static<typeof AddUnitsBody>;
+  }>(
+    "/:propertyId/units",
+    {
+      preHandler: requireManager,
+      schema: { params: AddUnitsParams, body: AddUnitsBody },
+    },
+    async (request, reply) => {
+      const { workspaceId, propertyId } = request.params;
+      const { units } = request.body;
+
+      if (!units || units.length === 0) {
+        return reply.status(400).send({ error: "At least one unit must be specified" });
+      }
+
+      const property = await prisma.property.findFirst({
+        where: { id: propertyId, workspaceId, deletedAt: null },
+      });
+      if (!property) {
+        return reply.status(404).send({ error: "Property not found" });
+      }
+
+      try {
+        await prisma.$transaction(async (tx) => {
+          const workspace = await tx.workspace.findUnique({
+            where: { id: workspaceId },
+          });
+          const plan = workspace?.plan || "FREE";
+
+          const newUnitsCount = units.length;
+          const currentUnitsCount = await tx.unit.count({
+            where: { workspaceId },
+          });
+
+          const limitUnits = plan === "FREE" ? 3 : 50;
+          if (currentUnitsCount + newUnitsCount > limitUnits) {
+            throw new Error(`LIMIT_UNITS:${limitUnits}`);
+          }
+
+          await tx.unit.createMany({
+            data: units.map((u) => ({
+              unitNumber: u.unitNumber,
+              type: u.type,
+              propertyId,
+              workspaceId,
+              status: "VACANT",
+            })),
+          });
+        });
+      } catch (err: unknown) {
+        const errorMsg = (err as Error).message;
+        if (errorMsg?.startsWith("LIMIT_UNITS")) {
+          const limit = errorMsg.split(":")[1];
+          return reply.status(402).send({
+            error: `Plan limit reached: Maximum ${limit} units allowed. Please upgrade your plan.`,
+          });
+        }
+        throw err;
+      }
+
+      (fastify as unknown as { io: import("socket.io").Server }).io
+        .to(`workspace:${workspaceId}`)
+        .emit("PROPERTY_CREATED", {
+          propertyId,
+          message: "New units have been added.",
+        });
+
+      await logAction({
+        userId: request.userId!,
+        action: "ADD_UNITS",
+        entityType: "PROPERTY",
+        entityId: propertyId,
+        details: `Added ${units.length} units to property "${property.name}".`,
+        workspaceId,
+      });
+
+      clearWorkspaceCache(workspaceId);
+
+      const updatedProperty = await prisma.property.findUnique({
+        where: { id: propertyId },
+        include: {
+          units: { orderBy: { unitNumber: "asc" } },
+        },
+      });
+
+      return reply.send({ property: updatedProperty });
+    }
   );
 
   // Delete Property (Soft Delete)
@@ -257,6 +392,15 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
             propertyId: id,
             message: "A property has been deleted.",
           });
+
+        await logAction({
+          userId: request.userId!,
+          action: "DELETE_PROPERTY",
+          entityType: "PROPERTY",
+          entityId: id,
+          details: `Soft-deleted property ID "${id}".`,
+          workspaceId,
+        });
 
         clearWorkspaceCache(workspaceId);
 

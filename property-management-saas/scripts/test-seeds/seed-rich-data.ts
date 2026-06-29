@@ -1,4 +1,5 @@
-if (process.env.NODE_ENV === "production") throw new Error("CRITICAL: Cannot run test scripts in production!");
+if (process.env.NODE_ENV === "production")
+  throw new Error("CRITICAL: Cannot run test scripts in production!");
 
 import * as dotenv from "dotenv";
 import { join } from "path";
@@ -14,16 +15,18 @@ async function seedRichData() {
 
   // Find the Pro Manager workspace
   const proManager = await prisma.user.findUnique({
-    where: { email: "manager_pro@justhob.com" }
+    where: { email: "manager_pro@justhob.com" },
   });
 
   if (!proManager) {
-    console.error("Pro Manager not found. Run setup-pro-ent-accounts.ts first.");
+    console.error(
+      "Pro Manager not found. Run setup-pro-ent-accounts.ts first.",
+    );
     return;
   }
 
   const workspaceMember = await prisma.workspaceMember.findFirst({
-    where: { userId: proManager.id }
+    where: { userId: proManager.id },
   });
 
   if (!workspaceMember) {
@@ -35,9 +38,17 @@ async function seedRichData() {
 
   // 1. Create multiple properties
   const propertiesData = [
-    { name: "Lekki Phase 1 Apartments", address: "Admiralty Way, Lekki", units: 6 },
+    {
+      name: "Lekki Phase 1 Apartments",
+      address: "Admiralty Way, Lekki",
+      units: 6,
+    },
     { name: "Victoria Island Towers", address: "Adeola Odeku, VI", units: 8 },
-    { name: "Ikoyi Luxury Villas", address: "Bourdillon Road, Ikoyi", units: 4 },
+    {
+      name: "Ikoyi Luxury Villas",
+      address: "Bourdillon Road, Ikoyi",
+      units: 4,
+    },
   ];
 
   for (const p of propertiesData) {
@@ -47,7 +58,7 @@ async function seedRichData() {
         address: p.address,
         workspaceId,
         ownerId: proManager.id,
-      }
+      },
     });
 
     // Create units for this property
@@ -61,28 +72,48 @@ async function seedRichData() {
           status: isOccupied ? "OCCUPIED" : "VACANT",
           propertyId: property.id,
           workspaceId,
-        }
+        },
       });
       units.push(unit);
 
       if (isOccupied) {
-        const realNames = ["Chinedu Okafor", "Aisha Bello", "Oluwaseun Adeyemi", "Ngozi Eze", "Tunde Bakare", "Emeka Nwosu", "Fatima Aliyu", "Damilola Coker", "Ifeanyi Okeke", "Zainab Usman", "Kehinde Ojo", "Babangida Musa", "Chioma Nnaji", "Abiola Johnson", "Samuel Kalu", "Ibrahim Yakubu"];
-        const randomName = realNames[Math.floor(Math.random() * realNames.length)];
+        const realNames = [
+          "Chinedu Okafor",
+          "Aisha Bello",
+          "Oluwaseun Adeyemi",
+          "Ngozi Eze",
+          "Tunde Bakare",
+          "Emeka Nwosu",
+          "Fatima Aliyu",
+          "Damilola Coker",
+          "Ifeanyi Okeke",
+          "Zainab Usman",
+          "Kehinde Ojo",
+          "Babangida Musa",
+          "Chioma Nnaji",
+          "Abiola Johnson",
+          "Samuel Kalu",
+          "Ibrahim Yakubu",
+        ];
+        const randomName =
+          realNames[Math.floor(Math.random() * realNames.length)];
         // Create Tenant
         const tenant = await prisma.tenant.create({
           data: {
             name: randomName,
-            email: `${randomName.toLowerCase().replace(' ', '.')}@example.com`,
+            email: `${randomName.toLowerCase().replace(" ", ".")}@example.com`,
             phone: `080${Math.floor(10000000 + Math.random() * 90000000)}`,
             workspaceId,
-          }
+          },
         });
 
         const startDate = new Date();
-        startDate.setMonth(startDate.getMonth() - Math.floor(Math.random() * 10)); // random start in past 10 months
+        startDate.setMonth(
+          startDate.getMonth() - Math.floor(Math.random() * 10),
+        ); // random start in past 10 months
         const endDate = new Date(startDate);
         endDate.setFullYear(endDate.getFullYear() + 1);
-        
+
         // Randomize lease status slightly, but mostly ACTIVE
         const leaseStatus = endDate < new Date() ? "EXPIRED" : "ACTIVE";
 
@@ -95,7 +126,7 @@ async function seedRichData() {
             endDate,
             yearlyRent: 2500000 + Math.random() * 1500000,
             status: leaseStatus,
-          }
+          },
         });
 
         // Generate payments
@@ -110,7 +141,7 @@ async function seedRichData() {
             dueDate: pastDate,
             paidDate: new Date(pastDate.getTime() + 86400000 * 2),
             note: "First year rent",
-          }
+          },
         });
 
         // 1 possible upcoming or overdue payment depending on random
@@ -127,7 +158,7 @@ async function seedRichData() {
               status: isOverdue ? "OVERDUE" : "PENDING",
               dueDate: targetDate,
               note: isOverdue ? "Overdue Rent" : "Upcoming Rent",
-            }
+            },
           });
         }
 
@@ -140,7 +171,7 @@ async function seedRichData() {
               tenantId: tenant.id,
               propertyId: property.id,
               workspaceId,
-            }
+            },
           });
         }
       }

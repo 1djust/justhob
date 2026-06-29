@@ -72,7 +72,8 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const userId = request.userId!;
       const { id } = request.params;
-      const { bankCode, accountNumber, accountName, allowPartialPayments } = request.body;
+      const { bankCode, accountNumber, accountName, allowPartialPayments } =
+        request.body;
 
       const membership = await prisma.workspaceMember.findFirst({
         where: { workspaceId: id, userId, role: "PROPERTY_MANAGER" },
@@ -338,7 +339,8 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
 
       if (existingPending) {
         return reply.status(400).send({
-          error: "You already have a pending upgrade request. Please wait for the admin to verify it.",
+          error:
+            "You already have a pending upgrade request. Please wait for the admin to verify it.",
         });
       }
 

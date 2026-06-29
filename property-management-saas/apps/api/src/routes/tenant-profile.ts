@@ -37,6 +37,10 @@ const OfferParams = Type.Object({
 });
 const OfferBody = Type.Object({ accept: Type.Boolean() });
 
+const LeaseIdParams = Type.Object({ leaseId: Type.String() });
+const ApproveLeaseBody = Type.Object({ signatureUrl: Type.String() });
+const RejectLeaseBody = Type.Object({ reason: Type.String() });
+
 export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
   server.addHook("preHandler", authenticate);
@@ -79,7 +83,23 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
               orderBy: { sentAt: "desc" },
             },
           },
-          where: { status: { in: ["ACTIVE", "PENDING_RENEWAL"] } },
+          where: {
+            status: {
+              in: [
+                "ACTIVE",
+                "PENDING_RENEWAL",
+                "PENDING_SIGNATURE",
+                "REJECTED",
+                "PENDING_LEGAL_UPLOAD",
+                "PENDING_LEGAL_VERIFICATION",
+              ],
+            },
+            NOT: {
+              legalLeaseRequest: {
+                status: "REJECTED",
+              },
+            },
+          },
         },
         maintenanceRequests: {
           orderBy: { createdAt: "desc" },
@@ -127,7 +147,8 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     );
 
     const globalAllow = tenant.workspace?.allowPartialPayments ?? true;
-    const effectiveAllowPartialPayments = globalAllow || tenant.allowPartialPayments === true;
+    const effectiveAllowPartialPayments =
+      globalAllow || tenant.allowPartialPayments === true;
 
     return reply.send({
       tenant: {
@@ -395,12 +416,17 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
         if (amountPaid && Number(amountPaid) < Number(amount)) {
           const globalAllow = workspace?.allowPartialPayments ?? true;
-          const canPartial = globalAllow || tenant.allowPartialPayments === true;
+          const canPartial =
+            globalAllow || tenant.allowPartialPayments === true;
           if (!canPartial) {
-            return reply.status(403).send({ error: "Partial payments are not enabled for this account" });
+            return reply.status(403).send({
+              error: "Partial payments are not enabled for this account",
+            });
           }
           if (!promiseDate) {
-            return reply.status(400).send({ error: "Promise date is required for partial payments" });
+            return reply
+              .status(400)
+              .send({ error: "Promise date is required for partial payments" });
           }
         }
 
@@ -468,12 +494,10 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       return reply.status(201).send({ paymentUrl, rrr: remitaResponse.rrr, paymentId: payment.id });
       */
 
-        return reply
-          .status(201)
-          .send({
-            message: "Payment record created (Gateway Bypass)",
-            paymentId: payment.id,
-          });
+        return reply.status(201).send({
+          message: "Payment record created (Gateway Bypass)",
+          paymentId: payment.id,
+        });
       } catch (e: unknown) {
         const errorMsg = (e as Error).message;
         request.log.error({ err: errorMsg }, "[Payment Sync Error]");
@@ -552,11 +576,14 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         await prisma.paymentTransaction.create({
           data: {
             paymentId: id,
-            amount: amountPaid !== undefined && amountPaid !== null ? Number(amountPaid) : (payment.amount - (payment.amountPaid || 0)),
+            amount:
+              amountPaid !== undefined && amountPaid !== null
+                ? Number(amountPaid)
+                : payment.amount - (payment.amountPaid || 0),
             status: "PENDING",
             proofUrl,
-            note: note || "Proof of payment submitted"
-          }
+            note: note || "Proof of payment submitted",
+          },
         });
 
         // Notify all managers in this workspace
@@ -925,6 +952,156 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       }
 
       return reply.send({ offer: updatedOffer });
+    },
+  );
+
+  // Approve lease agreement
+  server.post<{
+    Params: Static<typeof LeaseIdParams>;
+    Body: Static<typeof ApproveLeaseBody>;
+  }>(
+    "/leases/:leaseId/approve",
+    {
+      schema: { params: LeaseIdParams, body: ApproveLeaseBody },
+    },
+    async (request, reply) => {
+      const userId = request.userId!;
+      const { leaseId } = request.params;
+      const { signatureUrl } = request.body;
+
+      const membership = await prisma.workspaceMember.findFirst({
+        where: { userId, role: "TENANT" },
+      });
+      if (!membership)
+        return reply.status(403).send({ error: "No tenant profile found" });
+
+      const tenant = await prisma.tenant.findFirst({
+        where: {
+          workspaceId: membership.workspaceId,
+          deletedAt: null,
+          leases: { some: { id: leaseId } },
+        },
+      });
+      if (!tenant)
+        return reply.status(404).send({ error: "Tenant or lease not found" });
+
+      const lease = await prisma.lease.findFirst({
+        where: { id: leaseId, tenantId: tenant.id },
+      });
+      if (!lease) {
+        return reply.status(404).send({ error: "Lease not found" });
+      }
+
+      const updatedLease = await prisma.lease.update({
+        where: { id: leaseId },
+        data: {
+          status: "ACTIVE",
+          signatureUrl,
+          rejectionReason: null,
+        },
+      });
+
+      // Update unit status to OCCUPIED if unitId exists on the lease
+      if (lease.unitId) {
+        await prisma.unit.update({
+          where: { id: lease.unitId },
+          data: { status: "OCCUPIED" },
+        });
+      }
+
+      // Create notifications for managers
+      const managers = await prisma.workspaceMember.findMany({
+        where: {
+          workspaceId: membership.workspaceId,
+          role: { in: ["PROPERTY_MANAGER", "LANDLORD"] },
+        },
+      });
+      for (const m of managers) {
+        await prisma.notification.create({
+          data: {
+            userId: m.userId,
+            title: "Lease Agreement Signed",
+            message: `Tenant ${tenant.name} has signed the lease agreement.`,
+            type: "LEASE_RENEWED",
+          },
+        });
+      }
+
+      (fastify as unknown as { io: import("socket.io").Server }).io
+        .to(`workspace:${membership.workspaceId}`)
+        .emit("LEASE_UPDATED", {
+          leaseId,
+          message: "Lease status changed",
+        });
+
+      return reply.send({ success: true, lease: updatedLease });
+    },
+  );
+
+  // Reject lease agreement
+  server.post<{
+    Params: Static<typeof LeaseIdParams>;
+    Body: Static<typeof RejectLeaseBody>;
+  }>(
+    "/leases/:leaseId/reject",
+    {
+      schema: { params: LeaseIdParams, body: RejectLeaseBody },
+    },
+    async (request, reply) => {
+      const userId = request.userId!;
+      const { leaseId } = request.params;
+      const { reason } = request.body;
+
+      const membership = await prisma.workspaceMember.findFirst({
+        where: { userId, role: "TENANT" },
+      });
+      if (!membership)
+        return reply.status(403).send({ error: "No tenant profile found" });
+
+      const tenant = await prisma.tenant.findFirst({
+        where: {
+          workspaceId: membership.workspaceId,
+          deletedAt: null,
+          leases: { some: { id: leaseId } },
+        },
+      });
+      if (!tenant)
+        return reply.status(404).send({ error: "Tenant or lease not found" });
+
+      const updatedLease = await prisma.lease.update({
+        where: { id: leaseId },
+        data: {
+          status: "REJECTED",
+          rejectionReason: reason,
+        },
+      });
+
+      // Create notifications for managers
+      const managers = await prisma.workspaceMember.findMany({
+        where: {
+          workspaceId: membership.workspaceId,
+          role: { in: ["PROPERTY_MANAGER", "LANDLORD"] },
+        },
+      });
+      for (const m of managers) {
+        await prisma.notification.create({
+          data: {
+            userId: m.userId,
+            title: "Lease Agreement Rejected",
+            message: `Tenant ${tenant.name} has rejected the lease agreement. Reason: ${reason}`,
+            type: "LEASE_RENEWAL_REJECTED",
+          },
+        });
+      }
+
+      (fastify as unknown as { io: import("socket.io").Server }).io
+        .to(`workspace:${membership.workspaceId}`)
+        .emit("LEASE_UPDATED", {
+          leaseId,
+          message: "Lease status changed",
+        });
+
+      return reply.send({ success: true, lease: updatedLease });
     },
   );
 }

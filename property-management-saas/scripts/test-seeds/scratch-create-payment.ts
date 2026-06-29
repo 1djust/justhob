@@ -1,21 +1,26 @@
-if (process.env.NODE_ENV === "production") throw new Error("CRITICAL: Cannot run test scripts in production!");
+if (process.env.NODE_ENV === "production")
+  throw new Error("CRITICAL: Cannot run test scripts in production!");
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
   const tenant = await prisma.tenant.findFirst({
-    where: { email: 'djokn@gmail.com' },
-    include: { leases: true }
+    where: { email: "djokn@gmail.com" },
+    include: { leases: true },
   });
 
   if (!tenant) {
-    console.log("Tenant not found. Please log into the web dashboard and add this tenant first.");
+    console.log(
+      "Tenant not found. Please log into the web dashboard and add this tenant first.",
+    );
     return;
   }
-  
+
   if (tenant.leases.length === 0) {
-    console.log("Tenant has no lease. Please assign a lease first from the dashboard.");
+    console.log(
+      "Tenant has no lease. Please assign a lease first from the dashboard.",
+    );
     return;
   }
 
@@ -27,7 +32,7 @@ async function main() {
       workspaceId: tenant.workspaceId,
       amount: tenant.leases[0].yearlyRent,
       status: "PENDING",
-      dueDate: new Date(new Date().getTime() - 24*60*60*1000), // 1 day ago
+      dueDate: new Date(new Date().getTime() - 24 * 60 * 60 * 1000), // 1 day ago
       note: "Overdue Rent for Testing",
     },
   });
@@ -36,5 +41,5 @@ async function main() {
 }
 
 main()
-  .catch(e => console.error(e))
+  .catch((e) => console.error(e))
   .finally(() => prisma.$disconnect());

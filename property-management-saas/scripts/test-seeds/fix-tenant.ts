@@ -1,4 +1,5 @@
-if (process.env.NODE_ENV === "production") throw new Error("CRITICAL: Cannot run test scripts in production!");
+if (process.env.NODE_ENV === "production")
+  throw new Error("CRITICAL: Cannot run test scripts in production!");
 
 import crypto from "crypto";
 import { PrismaClient } from "@prisma/client";

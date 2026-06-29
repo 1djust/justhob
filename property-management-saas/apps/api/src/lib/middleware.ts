@@ -22,18 +22,21 @@ interface CachedWorkspaceAccess {
 const workspaceAccessCache = new Map<string, CachedWorkspaceAccess>();
 
 // Periodic garbage collection to prevent memory leaks
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, entry] of authCache.entries()) {
-    if (entry.expiresAt < now) authCache.delete(token);
-  }
-  for (const [key, entry] of workspaceAccessCache.entries()) {
-    if (entry.expiresAt < now) workspaceAccessCache.delete(key);
-  }
-  for (const [token, expiresAt] of verifiedAdminTokens.entries()) {
-    if (expiresAt < now) verifiedAdminTokens.delete(token);
-  }
-}, 5 * 60 * 1000).unref();
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [token, entry] of authCache.entries()) {
+      if (entry.expiresAt < now) authCache.delete(token);
+    }
+    for (const [key, entry] of workspaceAccessCache.entries()) {
+      if (entry.expiresAt < now) workspaceAccessCache.delete(key);
+    }
+    for (const [token, expiresAt] of verifiedAdminTokens.entries()) {
+      if (expiresAt < now) verifiedAdminTokens.delete(token);
+    }
+  },
+  5 * 60 * 1000,
+).unref();
 
 // Shared authenticate middleware — verifies Supabase JWT and attaches userId and globalRole
 export const authenticate = async (

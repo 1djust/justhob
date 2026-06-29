@@ -5,6 +5,7 @@ import { supabaseAdmin } from "../lib/supabase";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { PayoutStrategy } from "@prisma/client";
+import { logAction } from "../lib/audit";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 const CreateOwnerBody = Type.Object({
@@ -169,7 +170,8 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           // User doesn't exist, need to create in Supabase then Prisma
           // Note: We do this outside the transaction to avoid long locks during network calls
           const tempPassword = password || "TempPass123!";
-          const frontendUrl = process.env.FRONTEND_URL || "https://justhob.vercel.app";
+          const frontendUrl =
+            process.env.FRONTEND_URL || "https://justhob.vercel.app";
           const { data: linkData, error: linkError } =
             await supabaseAdmin.auth.admin.generateLink({
               type: "invite",
@@ -189,11 +191,9 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
             !linkDataAny ||
             !linkDataAny.properties?.action_link
           ) {
-            return reply
-              .status(400)
-              .send({
-                error: linkError?.message || "Failed to generate invite link",
-              });
+            return reply.status(400).send({
+              error: linkError?.message || "Failed to generate invite link",
+            });
           }
 
           // Actually set the temp password on the Supabase account so the landlord can log in
@@ -202,32 +202,40 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
             email_confirm: true,
           });
 
-          user = await prisma.user.create({
-            data: { id: linkDataAny.user.id, email, name, role: "LANDLORD" },
-          });
-
-          inviteLink = linkDataAny.properties.action_link;
-
+          // CRITICAL: User + WorkspaceMember MUST be created atomically.
+          // If WorkspaceMember creation fails, the User is rolled back too — preventing orphans.
           const { payoutStrategy, bankCode, accountNumber, accountName } =
             request.body;
 
-          await prisma.workspaceMember.create({
-            data: {
-              userId: user.id,
-              workspaceId,
-              role: "LANDLORD",
-              payoutStrategy: payoutStrategy as
-                | import("@prisma/client").PayoutStrategy
-                | undefined,
-              bankCode,
-              accountNumber,
-              accountName,
-            },
+          const txResult = await prisma.$transaction(async (tx) => {
+            const createdUser = await tx.user.create({
+              data: { id: linkDataAny.user.id, email, name, role: "LANDLORD" },
+            });
+
+            await tx.workspaceMember.create({
+              data: {
+                userId: createdUser.id,
+                workspaceId,
+                role: "LANDLORD",
+                payoutStrategy: payoutStrategy as
+                  | import("@prisma/client").PayoutStrategy
+                  | undefined,
+                bankCode,
+                accountNumber,
+                accountName,
+              },
+            });
+
+            return createdUser;
           });
+
+          user = txResult;
+          inviteLink = linkDataAny.properties.action_link;
         } else {
           // User already exists — generate a magic link so they can log in
           try {
-            const frontendUrl = process.env.FRONTEND_URL || "https://justhob.vercel.app";
+            const frontendUrl =
+              process.env.FRONTEND_URL || "https://justhob.vercel.app";
             const { data: mlData } =
               await supabaseAdmin.auth.admin.generateLink({
                 type: "magiclink",
@@ -245,6 +253,15 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           }
         }
 
+        await logAction({
+          userId: request.userId!,
+          action: "ADD_LANDLORD",
+          entityType: "LANDLORD",
+          entityId: user.id,
+          details: `Added landlord "${user.name}" (${user.email}) to the workspace.`,
+          workspaceId,
+        });
+
         return reply.status(201).send({
           owner: { id: user.id, name: user.name, email: user.email },
           inviteLink: inviteLink || null,
@@ -257,6 +274,73 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         return reply.status(500).send(error);
       }
     },
+  );
+
+  // Update Landlord Details
+  const UpdateOwnerParams = Type.Object({
+    workspaceId: Type.String(),
+    ownerId: Type.String(),
+  });
+
+  const UpdateOwnerBody = Type.Object({
+    payoutStrategy: Type.Optional(Type.Union([Type.Enum(PayoutStrategy), Type.Null()])),
+    bankCode: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+    accountNumber: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+    accountName: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  });
+
+  server.put<{
+    Params: Static<typeof UpdateOwnerParams>;
+    Body: Static<typeof UpdateOwnerBody>;
+  }>(
+    "/:ownerId",
+    {
+      schema: { params: UpdateOwnerParams, body: UpdateOwnerBody },
+    },
+    async (request, reply) => {
+      const { workspaceId, ownerId } = request.params;
+      const { payoutStrategy, bankCode, accountNumber, accountName } = request.body;
+
+      try {
+        const workspaceMember = await prisma.workspaceMember.findFirst({
+          where: { userId: ownerId, workspaceId, role: "LANDLORD" },
+        });
+
+        if (!workspaceMember) {
+          return reply.status(404).send({ error: "Landlord member not found" });
+        }
+
+        const updatedMember = await prisma.workspaceMember.update({
+          where: { id: workspaceMember.id },
+          data: {
+            ...(payoutStrategy !== undefined ? { payoutStrategy } : {}),
+            ...(bankCode !== undefined ? { bankCode } : {}),
+            ...(accountNumber !== undefined ? { accountNumber } : {}),
+            ...(accountName !== undefined ? { accountName } : {}),
+          },
+        });
+
+        (fastify as any).io
+          .to(`workspace:${workspaceId}`)
+          .emit("OWNER_UPDATED", {
+            ownerId,
+            workspaceId,
+          });
+
+        await logAction({
+          userId: request.userId!,
+          action: "UPDATE_LANDLORD",
+          entityType: "LANDLORD",
+          entityId: ownerId,
+          details: `Updated bank settlement/payout settings for landlord ID "${ownerId}".`,
+          workspaceId,
+        });
+
+        return reply.send({ success: true, member: updatedMember });
+      } catch (e) {
+        return reply.status(500).send({ error: "Failed to update landlord" });
+      }
+    }
   );
 
   // Remove a Landlord from the workspace
@@ -278,15 +362,28 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         });
 
         // Notify workspace members of the change
-        (fastify as any).io.to(`workspace:${workspaceId}`).emit("OWNER_DELETED", {
-          ownerId,
-          workspaceId,
-        });
+        (fastify as any).io
+          .to(`workspace:${workspaceId}`)
+          .emit("OWNER_DELETED", {
+            ownerId,
+            workspaceId,
+          });
 
         // Notify the deleted owner directly to trigger a dashboard reload
-        (fastify as any).io.to(`user:${ownerId}`).emit("WORKSPACE_MEMBER_REMOVED", {
+        (fastify as any).io
+          .to(`user:${ownerId}`)
+          .emit("WORKSPACE_MEMBER_REMOVED", {
+            workspaceId,
+            message: "You have been removed from this workspace.",
+          });
+
+        await logAction({
+          userId: request.userId!,
+          action: "REMOVE_LANDLORD",
+          entityType: "LANDLORD",
+          entityId: ownerId,
+          details: `Removed landlord ID "${ownerId}" from the workspace.`,
           workspaceId,
-          message: "You have been removed from this workspace.",
         });
 
         return reply.send({ success: true });

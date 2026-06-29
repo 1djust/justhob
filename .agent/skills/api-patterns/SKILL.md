@@ -64,6 +64,8 @@ Before designing an API:
 - Return inconsistent response formats
 - Expose internal errors to clients
 - Skip rate limiting
+- Filter global or admin audit listings (e.g., users, properties) by optional/relational tables (like workspace memberships) which could be empty or cause counts to mismatch.
+
 
 **DO:**
 - Choose API style based on context

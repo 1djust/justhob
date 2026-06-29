@@ -103,12 +103,12 @@ export function buildApp() {
     if (code === 401 || code === 403 || code === 429) {
       let eventType = "UNAUTHORIZED_API_ACCESS";
       if (code === 429) eventType = "RATE_LIMIT_EXCEEDED";
-      
-      SecurityService.logEvent(
-        request.ip,
-        eventType,
-        { url: request.url, method: request.method, userAgent: request.headers["user-agent"] }
-      ).catch(err => request.log.error({ err }, "[Security Hook Error]"));
+
+      SecurityService.logEvent(request.ip, eventType, {
+        url: request.url,
+        method: request.method,
+        userAgent: request.headers["user-agent"],
+      }).catch((err) => request.log.error({ err }, "[Security Hook Error]"));
     }
   });
 
@@ -135,7 +135,10 @@ export function buildApp() {
       // Hide raw Prisma stack traces
       errorMessage =
         "An unexpected database error occurred. Please try again later.";
-    } else if (errorMessage.includes("must match pattern") && errorMessage.includes("newPassword")) {
+    } else if (
+      errorMessage.includes("must match pattern") &&
+      errorMessage.includes("newPassword")
+    ) {
       errorMessage =
         "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.";
     }

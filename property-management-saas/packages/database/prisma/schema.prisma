@@ -45,6 +45,7 @@ model Workspace {
   units                 Unit[]
   members               WorkspaceMember[]
   upgradeRequests       UpgradeRequest[]
+  legalLeaseRequests    LegalLeaseRequest[]
 }
 
 model WorkspaceMember {
@@ -118,6 +119,7 @@ model Tenant {
   leases               Lease[]
   maintenanceRequests  MaintenanceRequest[]
   workspace            Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  legalLeaseRequests   LegalLeaseRequest[]
 
   @@unique([id, workspaceId], name: "tenant_workspace_id")
   @@index([workspaceId])
@@ -132,6 +134,11 @@ model Lease {
   endDate       DateTime?
   yearlyRent    Float               @default(0) @map("monthlyRent")
   status        LeaseStatus         @default(ACTIVE)
+  agreementText String?
+  rejectionReason String?
+  signatureUrl  String?
+  managerSignature String?
+  legalDocUrl   String?             @db.Text
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   unitId        String?
@@ -140,6 +147,7 @@ model Lease {
   unit          Unit?               @relation(fields: [unitId], references: [id])
   renewalOffers LeaseRenewalOffer[]
   payments      Payment[]
+  legalLeaseRequest LegalLeaseRequest?
 
   @@index([tenantId])
   @@index([propertyId])
@@ -352,6 +360,10 @@ enum LeaseStatus {
   EXPIRED
   TERMINATED
   PENDING_RENEWAL
+  PENDING_SIGNATURE
+  PENDING_LEGAL_VERIFICATION
+  PENDING_LEGAL_UPLOAD
+  REJECTED
 }
 
 enum PaymentStatus {
@@ -396,4 +408,45 @@ model UpgradeRequest {
   @@index([workspaceId])
   @@index([userId])
   @@index([status])
+}
+
+model LegalLeaseRequest {
+  id              String    @id @default(uuid())
+  workspaceId     String
+  tenantId        String?
+  leaseId         String    @unique
+  tenantName      String
+  tenantAddress   String
+  landlordName    String
+  landlordAddress String
+  feeAmount       Float
+  proofUrl        String    @db.Text
+  status          String    @default("PENDING") // PENDING, VERIFIED, REJECTED
+  rejectionReason String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  lease           Lease     @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([tenantId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String
+  actorName   String
+  actorEmail  String
+  action      String
+  entityType  String
+  entityId    String?
+  details     String   @db.Text
+  workspaceId String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([workspaceId])
+  @@index([createdAt])
 }

@@ -15,26 +15,51 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
 
   // Ensure "uploads" bucket exists in Supabase storage
   const bucketName = "uploads";
-  supabaseAdmin.storage.getBucket(bucketName).then(({ error }) => {
-    if (error) {
-      if (error.message.includes("not found") || error.message.includes("does not exist") || (error as any).status === 404 || (error as any).status === 400) {
-        fastify.log.info(`Supabase storage bucket '${bucketName}' not found. Creating it...`);
-        supabaseAdmin.storage.createBucket(bucketName, { public: true }).then(({ error: createError }) => {
-          if (createError) {
-            fastify.log.error({ err: createError }, `Failed to create Supabase storage bucket '${bucketName}'`);
-          } else {
-            fastify.log.info(`Successfully created public Supabase storage bucket '${bucketName}'`);
-          }
-        });
+  supabaseAdmin.storage
+    .getBucket(bucketName)
+    .then(({ error }) => {
+      if (error) {
+        if (
+          error.message.includes("not found") ||
+          error.message.includes("does not exist") ||
+          (error as any).status === 404 ||
+          (error as any).status === 400
+        ) {
+          fastify.log.info(
+            `Supabase storage bucket '${bucketName}' not found. Creating it...`,
+          );
+          supabaseAdmin.storage
+            .createBucket(bucketName, { public: true })
+            .then(({ error: createError }) => {
+              if (createError) {
+                fastify.log.error(
+                  { err: createError },
+                  `Failed to create Supabase storage bucket '${bucketName}'`,
+                );
+              } else {
+                fastify.log.info(
+                  `Successfully created public Supabase storage bucket '${bucketName}'`,
+                );
+              }
+            });
+        } else {
+          fastify.log.error(
+            { err: error },
+            `Error checking Supabase storage bucket '${bucketName}'`,
+          );
+        }
       } else {
-        fastify.log.error({ err: error }, `Error checking Supabase storage bucket '${bucketName}'`);
+        fastify.log.info(
+          `Supabase storage bucket '${bucketName}' already exists`,
+        );
       }
-    } else {
-      fastify.log.info(`Supabase storage bucket '${bucketName}' already exists`);
-    }
-  }).catch(err => {
-    fastify.log.error({ err }, "Unhandled error during Supabase storage bucket initialization");
-  });
+    })
+    .catch((err) => {
+      fastify.log.error(
+        { err },
+        "Unhandled error during Supabase storage bucket initialization",
+      );
+    });
 
   // Optional: Authenticate uploads if required. We can keep it public for tenants if needed,
   // or use the tenant ID for authorization. For now, this requires standard authentication.
@@ -50,12 +75,16 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { fileName, contentType } = request.body;
       const bucketName = "uploads"; // Security: Hardcode bucket to prevent exhaustion
-      
+
       // Basic extension check for safety
-      const allowedExts = ['.jpg', '.jpeg', '.png', '.pdf'];
-      const isAllowed = allowedExts.some(ext => fileName.toLowerCase().endsWith(ext));
+      const allowedExts = [".jpg", ".jpeg", ".png", ".pdf"];
+      const isAllowed = allowedExts.some((ext) =>
+        fileName.toLowerCase().endsWith(ext),
+      );
       if (!isAllowed) {
-        return reply.status(400).send({ error: "Only images and PDFs are allowed" });
+        return reply
+          .status(400)
+          .send({ error: "Only images and PDFs are allowed" });
       }
 
       const filePath = `secure/${request.userId}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.]/g, "_")}`;
@@ -93,10 +122,14 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
       const { fileName, contentType } = request.body;
       const bucketName = "uploads"; // Security: Hardcode bucket
 
-      const allowedExts = ['.jpg', '.jpeg', '.png', '.pdf'];
-      const isAllowed = allowedExts.some(ext => fileName.toLowerCase().endsWith(ext));
+      const allowedExts = [".jpg", ".jpeg", ".png", ".pdf"];
+      const isAllowed = allowedExts.some((ext) =>
+        fileName.toLowerCase().endsWith(ext),
+      );
       if (!isAllowed) {
-        return reply.status(400).send({ error: "Only images and PDFs are allowed" });
+        return reply
+          .status(400)
+          .send({ error: "Only images and PDFs are allowed" });
       }
 
       const filePath = `public/${request.userId}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.]/g, "_")}`;

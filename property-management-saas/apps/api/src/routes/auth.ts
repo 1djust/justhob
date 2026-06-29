@@ -1,12 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../lib/database";
 import { supabaseAdmin } from "../lib/supabase";
-import {
-  AppError,
-  UnauthorizedError,
-  ValidationError,
-  NotFoundError,
-} from "../lib/errors";
+import { AppError, UnauthorizedError } from "../lib/errors";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { meCache } from "../lib/cache";
@@ -26,9 +21,11 @@ const ChangePasswordBody = Type.Object({
 const ResetPasswordBody = Type.Object({ email: Type.String() });
 const CheckEmailBody = Type.Object({ email: Type.String() });
 
-function getPrimaryWorkspace(workspaces?: Array<{ role: string; workspaceId: string }>) {
+function getPrimaryWorkspace(
+  workspaces?: Array<{ role: string; workspaceId: string }>,
+) {
   if (!workspaces || workspaces.length === 0) return null;
-  
+
   const priority: Record<string, number> = {
     PROPERTY_MANAGER: 1,
     LANDLORD: 2,
@@ -104,10 +101,25 @@ export default async function authRoutes(fastify: FastifyInstance) {
             // Auto-Heal: The user exists in Prisma with a different ID (e.g. desynced local db).
             // Since the Supabase token is verified, this email is owned by the current request.
             // We safely update their User ID in Prisma to the new Supabase ID.
+            // CRITICAL: Must update ALL FK references in a transaction BEFORE changing User.id
+            // to prevent onDelete:Cascade from silently deleting workspace memberships.
+            const oldId = existingByEmail.id;
+            const newId = supaUser.id;
             console.log(
-              `[AUTH/SYNC] Mismatch detected: email ${supaUser.email} has Prisma ID ${existingByEmail.id} but Supabase ID ${supaUser.id}. Healing...`,
+              `[AUTH/SYNC] Mismatch detected: email ${supaUser.email} has Prisma ID ${oldId} but Supabase ID ${newId}. Healing with FK cascade...`,
             );
-            await prisma.$executeRaw`UPDATE "User" SET id = ${supaUser.id} WHERE email = ${supaUser.email || ""}`;
+            await prisma.$transaction(async (tx) => {
+              // Update all FK references FIRST to prevent cascade delete
+              await tx.$executeRaw`UPDATE "WorkspaceMember" SET "userId" = ${newId} WHERE "userId" = ${oldId}`;
+              await tx.$executeRaw`UPDATE "Notification" SET "userId" = ${newId} WHERE "userId" = ${oldId}`;
+              await tx.$executeRaw`UPDATE "MaintenanceMessage" SET "senderId" = ${newId} WHERE "senderId" = ${oldId}`;
+              await tx.$executeRaw`UPDATE "Property" SET "ownerId" = ${newId} WHERE "ownerId" = ${oldId}`;
+              // Now safe to update the User ID
+              await tx.$executeRaw`UPDATE "User" SET id = ${newId} WHERE email = ${supaUser.email || ""}`;
+            });
+            console.log(
+              `[AUTH/SYNC] Healed user ${supaUser.email}: ${oldId} → ${newId} (all FK references updated)`,
+            );
 
             // Fetch the updated user
             user = await prisma.user.findUnique({
@@ -159,7 +171,20 @@ export default async function authRoutes(fastify: FastifyInstance) {
               },
             });
           } else {
-            // Brand new user — create with default PROPERTY_MANAGER workspace
+            // GATEKEEPER: If Supabase metadata indicates TENANT or LANDLORD,
+            // this user must have been pre-registered by a manager with workspace
+            // memberships. Since they have none, reject — do NOT create a default workspace.
+            if (userRole === "TENANT" || userRole === "LANDLORD") {
+              console.warn(
+                `[AUTH/SYNC] REJECTED: ${supaUser.email} (${supaUser.id}) has role ${userRole} in metadata but no workspace memberships. Not registered by any manager.`,
+              );
+              throw new AppError(
+                "Your account has not been set up by a property manager yet. Please contact your property manager to register your access.",
+                403,
+                "ACCOUNT_NOT_REGISTERED",
+              );
+            }
+            // Brand new PROPERTY_MANAGER user — create with default workspace
             user = await prisma.user.create({
               data: {
                 id: supaUser.id,
@@ -180,7 +205,46 @@ export default async function authRoutes(fastify: FastifyInstance) {
               },
             });
           }
+
+          // Orphan Detection Guard: Only auto-repair PROPERTY_MANAGER users.
+          // TENANT/LANDLORD users without memberships must be registered by a manager.
+          if (user && user.role === "PROPERTY_MANAGER") {
+            const membershipCount = await prisma.workspaceMember.count({
+              where: { userId: user.id },
+            });
+            if (membershipCount === 0) {
+              console.error(
+                `[AUTH/SYNC] ORPHAN DETECTED: User ${user.email} (${user.id}) created with role ${user.role} but has 0 workspace memberships. Self-repairing...`,
+              );
+              // Self-repair: create a default workspace, then link the user to it
+              const repairWorkspace = await prisma.workspace.create({
+                data: { name: "My Properties" },
+              });
+              await prisma.workspaceMember.create({
+                data: {
+                  userId: user.id,
+                  workspaceId: repairWorkspace.id,
+                  role: user.role as "PROPERTY_MANAGER" | "TENANT" | "LANDLORD",
+                },
+              });
+              // Re-fetch user with the new workspace
+              user = await prisma.user.findUnique({
+                where: { id: user.id },
+                include: {
+                  workspaces: {
+                    include: { workspace: true },
+                  },
+                },
+              });
+              console.log(
+                `[AUTH/SYNC] Self-repaired orphaned user ${supaUser.email} — created default workspace membership.`,
+              );
+            }
+          }
         } catch (createErr: any) {
+          if (createErr instanceof AppError) {
+            throw createErr;
+          }
           throw new AppError(
             "Database profile setup failed.",
             500,
@@ -197,11 +261,33 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 email: user.email,
                 name: user.name,
               });
-              console.log(`[AUTH/SYNC] Broadcasted USER_REGISTERED event for user ${user.id}`);
+              console.log(
+                `[AUTH/SYNC] Broadcasted USER_REGISTERED event for user ${user.id}`,
+              );
             }
           } catch (ioErr) {
-            console.error("[AUTH/SYNC] Failed to emit USER_REGISTERED socket event:", ioErr);
+            console.error(
+              "[AUTH/SYNC] Failed to emit USER_REGISTERED socket event:",
+              ioErr,
+            );
           }
+        }
+      }
+
+      // GATEKEEPER: Reject existing TENANT/LANDLORD users with 0 workspace memberships
+      if (user && (user.role === "TENANT" || user.role === "LANDLORD")) {
+        const wsCount =
+          (user as unknown as { workspaces?: unknown[] }).workspaces?.length ||
+          0;
+        if (wsCount === 0) {
+          console.warn(
+            `[AUTH/SYNC] REJECTED: Existing ${user.role} user ${user.email} (${user.id}) has 0 workspace memberships.`,
+          );
+          throw new AppError(
+            "Your account has not been set up by a property manager yet. Please contact your property manager to register your access.",
+            403,
+            "ACCOUNT_NOT_REGISTERED",
+          );
         }
       }
 
@@ -229,15 +315,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const token = request.headers.authorization?.replace("Bearer ", "");
     if (!token) throw new UnauthorizedError();
 
-    const tokenShort = token.substring(0, 15);
-    console.log(`[AUTH/ME DEBUG] Token: ${tokenShort}...`);
     const now = Date.now();
     const cached = meCache.get(token);
     if (cached && cached.expiresAt > now) {
-      console.log(`[AUTH/ME DEBUG] CACHE HIT! returning cached profile`);
       return reply.send(cached.response);
     }
-    console.log(`[AUTH/ME DEBUG] CACHE MISS! performing user database fetch`);
 
     // First verify the token is valid
     const { data: supaData, error: supaError } =
@@ -272,8 +354,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
         : null,
     };
 
-    // Cache user profile response for 30 seconds
-    console.log(`[AUTH/ME DEBUG] Caching user profile for token ${tokenShort}`);
     meCache.set(token, {
       response: responseBody,
       expiresAt: now + 30 * 1000,
@@ -312,19 +392,55 @@ export default async function authRoutes(fastify: FastifyInstance) {
       });
 
       if (!user) {
-        // If the user exists in Supabase but not Prisma, sync it now
-        // This can happen if they were invited/created via admin but never synced
-        let role = data.user.user_metadata.role;
-        if (!role) {
-          const membership = await prisma.workspaceMember.findFirst({
-            where: { userId: data.user.id },
-            select: { role: true },
-          });
-          role = membership?.role || "TENANT";
+        // GATEKEEPER: Mobile app is for TENANT users only. Check Supabase metadata first.
+        const metadataRole = data.user.user_metadata?.role || "PROPERTY_MANAGER";
+        if (metadataRole !== "TENANT") {
+          console.warn(
+            `[AUTH/LOGIN] REJECTED: Unregistered user ${data.user.email} (${data.user.id}) has metadata role ${metadataRole} attempting mobile login.`,
+          );
+          throw new AppError(
+            "This mobile app is for tenants only. Property managers and landlords must log in via the web platform.",
+            403,
+            "TENANT_ONLY_APP",
+          );
         }
-        if (role === "SUPER_ADMIN") {
-          role = "TENANT";
+
+        // Check if this user was properly registered by a manager
+        // (i.e., has a WorkspaceMember record created during tenant/landlord invitation)
+        const existingMembership = await prisma.workspaceMember.findFirst({
+          where: { userId: data.user.id },
+          select: { role: true, workspaceId: true },
+        });
+
+        if (!existingMembership) {
+          // GATEKEEPER: This user authenticated with Supabase but was never
+          // registered by a property manager. Do NOT create a Prisma profile —
+          // reject them with a clear, actionable error message.
+          console.warn(
+            `[AUTH/LOGIN] REJECTED: ${data.user.email} (${data.user.id}) authenticated but has no workspace membership. Not registered by any manager.`,
+          );
+          throw new AppError(
+            "Your account has not been set up by a property manager yet. Please contact your property manager to register your access.",
+            403,
+            "ACCOUNT_NOT_REGISTERED",
+          );
         }
+
+        // GATEKEEPER: Mobile app is for TENANT users only. Reject managers/landlords.
+        if (existingMembership.role !== "TENANT") {
+          console.warn(
+            `[AUTH/LOGIN] REJECTED: New user ${data.user.email} (${data.user.id}) has role ${existingMembership.role} attempting mobile login.`,
+          );
+          throw new AppError(
+            "This mobile app is for tenants only. Property managers and landlords must log in via the web platform.",
+            403,
+            "TENANT_ONLY_APP",
+          );
+        }
+
+        // User WAS registered by a manager (has membership) but their Prisma
+        // profile doesn't exist yet — safe to create it now.
+        const role = existingMembership.role || data.user.user_metadata.role || "TENANT";
         const newUser = await prisma.user.create({
           data: {
             id: data.user.id,
@@ -346,17 +462,40 @@ export default async function authRoutes(fastify: FastifyInstance) {
             ...newUser,
             role,
             globalRole: newUser.role,
+            workspaceId: existingMembership.workspaceId,
             mustChangePassword: mustChange,
           },
         });
       }
 
+      // GATEKEEPER: Mobile app is for TENANT users only.
+      // Rejects managers, landlords, super admins, and tenants with 0 memberships.
+      if (user.role !== "TENANT") {
+        console.warn(
+          `[AUTH/LOGIN] REJECTED: ${user.email} (${user.id}) is ${user.role} — mobile app is tenant-only.`,
+        );
+        throw new AppError(
+          "This mobile app is for tenants only. Property managers and landlords must log in via the web platform.",
+          403,
+          "TENANT_ONLY_APP",
+        );
+      }
+
+      const wsCount = (user.workspaces as unknown[])?.length || 0;
+      if (wsCount === 0) {
+        console.warn(
+          `[AUTH/LOGIN] REJECTED: Tenant ${user.email} (${user.id}) has 0 workspace memberships.`,
+        );
+        throw new AppError(
+          "Your account has not been set up by a property manager yet. Please contact your property manager to register your access.",
+          403,
+          "ACCOUNT_NOT_REGISTERED",
+        );
+      }
+
       const mustChange = data.user.user_metadata?.mustChangePassword === true;
       const primaryWS = getPrimaryWorkspace(user.workspaces as any);
-      let role = primaryWS?.role || data.user.user_metadata.role || "USER";
-      if (role === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN") {
-        role = "USER";
-      }
+      const role = primaryWS?.role || "TENANT";
       const workspaceId = primaryWS?.workspaceId || null;
 
       return reply.send({
@@ -428,9 +567,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       const primaryWS = getPrimaryWorkspace(user?.workspaces as any);
       let role =
-        primaryWS?.role ||
-        supaData.user.user_metadata.role ||
-        "TENANT";
+        primaryWS?.role || supaData.user.user_metadata.role || "TENANT";
       if (role === "SUPER_ADMIN" && user?.role !== "SUPER_ADMIN") {
         role = "TENANT";
       }
@@ -484,10 +621,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
     { schema: { body: CheckEmailBody } },
     async (request, reply) => {
       const { email } = request.body;
-      
-      // Security: Prevent email enumeration. Always return true so attackers 
+
+      // Security: Prevent email enumeration. Always return true so attackers
       // cannot use this endpoint to scrape user data.
       return reply.send({ exists: true });
-    }
+    },
   );
 }

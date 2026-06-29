@@ -1,22 +1,27 @@
-if (process.env.NODE_ENV === "production") throw new Error("CRITICAL: Cannot run test scripts in production!");
+if (process.env.NODE_ENV === "production")
+  throw new Error("CRITICAL: Cannot run test scripts in production!");
 
 import * as dotenv from "dotenv";
 import { join } from "path";
 
 dotenv.config({ path: join(process.cwd(), "apps/api/.env") });
-dotenv.config({ path: join(process.cwd(), ".env") }); 
+dotenv.config({ path: join(process.cwd(), ".env") });
 
 const { prisma } = require("./apps/api/src/lib/database");
 const { hash } = require("bcryptjs");
 
 async function run() {
   const email = "djokn@gmail.com";
-  
+
   // Find Pro manager
-  const proManager = await prisma.user.findUnique({ where: { email: "manager_pro@justhob.com" } });
+  const proManager = await prisma.user.findUnique({
+    where: { email: "manager_pro@justhob.com" },
+  });
   if (!proManager) return console.log("Pro manager not found");
-  
-  const wm = await prisma.workspaceMember.findFirst({ where: { userId: proManager.id } });
+
+  const wm = await prisma.workspaceMember.findFirst({
+    where: { userId: proManager.id },
+  });
   if (!wm) return console.log("Workspace not found");
   const workspaceId = wm.workspaceId;
 
@@ -25,7 +30,9 @@ async function run() {
   if (!property) return console.log("No property found");
 
   // Find a unit
-  const unit = await prisma.unit.findFirst({ where: { propertyId: property.id } });
+  const unit = await prisma.unit.findFirst({
+    where: { propertyId: property.id },
+  });
   if (!unit) return console.log("No unit found");
 
   // Create Tenant record
@@ -37,7 +44,7 @@ async function run() {
         email,
         phone: "08012345678",
         workspaceId,
-      }
+      },
     });
     console.log("Created Tenant record");
   }
@@ -52,7 +59,7 @@ async function run() {
       endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
       yearlyRent: 1500000,
       status: "ACTIVE",
-    }
+    },
   });
   console.log("Created Lease");
 
@@ -63,24 +70,30 @@ async function run() {
       data: {
         email,
         name: "Mode Ola",
-        password: await hash("Test1234!", 10)
-      }
+        password: await hash("Test1234!", 10),
+      },
     });
   }
 
   // Link to workspace
-  const existingWm = await prisma.workspaceMember.findFirst({ where: { userId: user.id, workspaceId } });
+  const existingWm = await prisma.workspaceMember.findFirst({
+    where: { userId: user.id, workspaceId },
+  });
   if (!existingWm) {
     await prisma.workspaceMember.create({
       data: {
         userId: user.id,
         workspaceId,
-        role: "TENANT"
-      }
+        role: "TENANT",
+      },
     });
   }
-  
-  console.log("✅ Successfully set up djokn@gmail.com with tenant profile, lease, and workspace access!");
+
+  console.log(
+    "✅ Successfully set up djokn@gmail.com with tenant profile, lease, and workspace access!",
+  );
 }
 
-run().catch(console.error).finally(() => process.exit(0));
+run()
+  .catch(console.error)
+  .finally(() => process.exit(0));

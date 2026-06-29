@@ -8,7 +8,7 @@ import { SecurityService } from "../services/security";
 
 export default async function webhookRoutes(fastify: FastifyInstance) {
   const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
-  
+
   // Receive Supabase Auth Database Webhooks
   server.post("/supabase-auth", { schema: {} }, async (request, reply) => {
     try {
@@ -22,13 +22,13 @@ export default async function webhookRoutes(fastify: FastifyInstance) {
       const body = request.body as any;
       if (body?.type === "INSERT" && body?.table === "audit_log_entries") {
         const record = body.record;
-        
+
         // Supabase logs errors here
         if (record?.payload?.error || record?.payload?.code) {
           await SecurityService.logEvent(
             record.ip_address || "unknown",
             "FAILED_LOGIN",
-            record.payload
+            record.payload,
           );
         }
       }
@@ -44,7 +44,9 @@ export default async function webhookRoutes(fastify: FastifyInstance) {
   server.post("/remita", { schema: {} }, async (request, reply) => {
     try {
       // Security: Verify HMAC signature to prevent webhook spoofing
-      const signature = request.headers['x-remita-signature'] || request.headers['x-paystack-signature']; // depending on exact header used by provider
+      const signature =
+        request.headers["x-remita-signature"] ||
+        request.headers["x-paystack-signature"]; // depending on exact header used by provider
       const rawBody = JSON.stringify(request.body);
       const secret = process.env.REMITA_SECRET || process.env.WEBHOOK_SECRET;
 

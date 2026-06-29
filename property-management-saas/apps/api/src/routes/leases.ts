@@ -5,7 +5,10 @@ import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
-const LeaseIdParams = Type.Object({ workspaceId: Type.String(), id: Type.String() });
+const LeaseIdParams = Type.Object({
+  workspaceId: Type.String(),
+  id: Type.String(),
+});
 
 const UpdateLeaseBody = Type.Object({
   startDate: Type.Optional(Type.String()),
@@ -63,12 +66,15 @@ export default async function leaseRoutes(fastify: FastifyInstance) {
       });
 
       if (!existingLease) {
-        return reply.status(404).send({ error: "Lease not found in this workspace" });
+        return reply
+          .status(404)
+          .send({ error: "Lease not found in this workspace" });
       }
 
       const dataToUpdate: any = {};
       if (startDate !== undefined) dataToUpdate.startDate = new Date(startDate);
-      if (endDate !== undefined) dataToUpdate.endDate = endDate ? new Date(endDate) : null;
+      if (endDate !== undefined)
+        dataToUpdate.endDate = endDate ? new Date(endDate) : null;
       if (yearlyRent !== undefined) dataToUpdate.yearlyRent = yearlyRent;
       if (status !== undefined) dataToUpdate.status = status;
 
@@ -76,6 +82,13 @@ export default async function leaseRoutes(fastify: FastifyInstance) {
         where: { id },
         data: dataToUpdate,
       });
+
+      (fastify as unknown as { io: import("socket.io").Server }).io
+        .to(`workspace:${workspaceId}`)
+        .emit("LEASE_UPDATED", {
+          leaseId: id,
+          message: "Lease status changed",
+        });
 
       return reply.send({ lease });
     },

@@ -1,4 +1,5 @@
-if (process.env.NODE_ENV === "production") throw new Error("CRITICAL: Cannot run test scripts in production!");
+if (process.env.NODE_ENV === "production")
+  throw new Error("CRITICAL: Cannot run test scripts in production!");
 
 import { PrismaClient } from "@prisma/client";
 
@@ -8,13 +9,18 @@ async function main() {
   const payment = await prisma.payment.findFirst({
     where: {
       status: "UNDER_REVIEW",
-      lease: { tenant: { email: "djokn@gmail.com" } }
-    }
+      lease: { tenant: { email: "djokn@gmail.com" } },
+    },
   });
 
   if (payment) {
-    console.log("Found payment:", payment.id, "amountPaid:", payment.amountPaid);
-    
+    console.log(
+      "Found payment:",
+      payment.id,
+      "amountPaid:",
+      payment.amountPaid,
+    );
+
     // Create pending transaction
     if (payment.amountPaid && payment.amountPaid > 0) {
       await prisma.paymentTransaction.create({
@@ -23,8 +29,8 @@ async function main() {
           amount: payment.amountPaid,
           status: "PENDING",
           proofUrl: payment.proofUrl,
-          note: "Proof of payment submitted"
-        }
+          note: "Proof of payment submitted",
+        },
       });
       console.log("Created PENDING transaction for", payment.amountPaid);
     }
@@ -32,7 +38,7 @@ async function main() {
     // Reset amountPaid
     await prisma.payment.update({
       where: { id: payment.id },
-      data: { amountPaid: 0 }
+      data: { amountPaid: 0 },
     });
     console.log("Reset payment.amountPaid to 0");
   } else {
@@ -40,4 +46,6 @@ async function main() {
   }
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect());
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());

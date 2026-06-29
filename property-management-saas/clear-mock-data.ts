@@ -7,9 +7,14 @@ dotenv.config({ path: join(process.cwd(), ".env") }); // Fallback
 const { prisma } = require("./apps/api/src/lib/database");
 
 async function clearMockData() {
-  console.log("🧹 Clearing mock sample data from PRO and ENTERPRISE workspaces...");
+  console.log(
+    "🧹 Clearing mock sample data from PRO and ENTERPRISE workspaces...",
+  );
 
-  const mockPropertyNames = ["PRO Sample Property", "ENTERPRISE Sample Property"];
+  const mockPropertyNames = [
+    "PRO Sample Property",
+    "ENTERPRISE Sample Property",
+  ];
   const mockTenantNames = ["PRO Tenant", "ENTERPRISE Tenant"];
 
   // Find all leases attached to the mock properties to delete them first
@@ -19,19 +24,25 @@ async function clearMockData() {
   });
 
   for (const property of mockProperties) {
-    const units = await prisma.unit.findMany({ where: { propertyId: property.id } });
-    
+    const units = await prisma.unit.findMany({
+      where: { propertyId: property.id },
+    });
+
     for (const unit of units) {
-      const leases = await prisma.lease.findMany({ where: { unitId: unit.id } });
-      
+      const leases = await prisma.lease.findMany({
+        where: { unitId: unit.id },
+      });
+
       for (const lease of leases) {
         await prisma.payment.deleteMany({ where: { leaseId: lease.id } });
-        await prisma.maintenanceRequest.deleteMany({ where: { propertyId: property.id } });
+        await prisma.maintenanceRequest.deleteMany({
+          where: { propertyId: property.id },
+        });
       }
-      
+
       await prisma.lease.deleteMany({ where: { unitId: unit.id } });
     }
-    
+
     await prisma.unit.deleteMany({ where: { propertyId: property.id } });
     await prisma.property.delete({ where: { id: property.id } });
   }
