@@ -392,15 +392,19 @@ export default async function authRoutes(fastify: FastifyInstance) {
       });
 
       if (!user) {
-        // GATEKEEPER: Mobile app is for TENANT users only. Check Supabase metadata first.
+        // GATEKEEPER: Mobile app is for TENANT, LANDLORD, and PROPERTY_MANAGER users. Check Supabase metadata first.
         const metadataRole =
           data.user.user_metadata?.role || "PROPERTY_MANAGER";
-        if (metadataRole !== "TENANT") {
+        if (
+          metadataRole !== "TENANT" &&
+          metadataRole !== "LANDLORD" &&
+          metadataRole !== "PROPERTY_MANAGER"
+        ) {
           console.warn(
             `[AUTH/LOGIN] REJECTED: Unregistered user ${data.user.email} (${data.user.id}) has metadata role ${metadataRole} attempting mobile login.`,
           );
           throw new AppError(
-            "This mobile app is for tenants only. Property managers and landlords must log in via the web platform.",
+            "This mobile app is for tenants, landlords, and property managers only.",
             403,
             "TENANT_ONLY_APP",
           );
@@ -427,13 +431,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
           );
         }
 
-        // GATEKEEPER: Mobile app is for TENANT users only. Reject managers/landlords.
-        if (existingMembership.role !== "TENANT") {
+        // GATEKEEPER: Mobile app is for TENANT, LANDLORD, and PROPERTY_MANAGER users. Reject other roles.
+        if (
+          existingMembership.role !== "TENANT" &&
+          existingMembership.role !== "LANDLORD" &&
+          existingMembership.role !== "PROPERTY_MANAGER"
+        ) {
           console.warn(
             `[AUTH/LOGIN] REJECTED: New user ${data.user.email} (${data.user.id}) has role ${existingMembership.role} attempting mobile login.`,
           );
           throw new AppError(
-            "This mobile app is for tenants only. Property managers and landlords must log in via the web platform.",
+            "This mobile app is for tenants, landlords, and property managers only.",
             403,
             "TENANT_ONLY_APP",
           );
@@ -470,14 +478,18 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // GATEKEEPER: Mobile app is for TENANT users only.
-      // Rejects managers, landlords, super admins, and tenants with 0 memberships.
-      if (user.role !== "TENANT") {
+      // GATEKEEPER: Mobile app is for TENANT, LANDLORD, and PROPERTY_MANAGER users.
+      // Rejects super admins and tenants/managers with 0 memberships.
+      if (
+        user.role !== "TENANT" &&
+        user.role !== "LANDLORD" &&
+        user.role !== "PROPERTY_MANAGER"
+      ) {
         console.warn(
-          `[AUTH/LOGIN] REJECTED: ${user.email} (${user.id}) is ${user.role} — mobile app is tenant-only.`,
+          `[AUTH/LOGIN] REJECTED: ${user.email} (${user.id}) is ${user.role} — mobile app does not support this role.`,
         );
         throw new AppError(
-          "This mobile app is for tenants only. Property managers and landlords must log in via the web platform.",
+          "This mobile app is for tenants, landlords, and property managers only.",
           403,
           "TENANT_ONLY_APP",
         );
