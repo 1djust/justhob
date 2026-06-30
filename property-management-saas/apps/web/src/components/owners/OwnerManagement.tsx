@@ -162,7 +162,9 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
           onClose={() => setEditingOwner(null)}
           onSuccess={() => {
             setEditingOwner(null);
-            queryClient.invalidateQueries({ queryKey: ["owners", workspaceId] });
+            queryClient.invalidateQueries({
+              queryKey: ["owners", workspaceId],
+            });
           }}
         />
       )}
@@ -681,9 +683,13 @@ function EditOwnerModal({
   onClose,
   onSuccess,
 }: EditOwnerModalProps) {
-  const [payoutStrategy, setPayoutStrategy] = React.useState(owner.payoutStrategy || "DIRECT_TO_LANDLORD");
+  const [payoutStrategy, setPayoutStrategy] = React.useState(
+    owner.payoutStrategy || "DIRECT_TO_LANDLORD",
+  );
   const [bankCode, setBankCode] = React.useState(owner.bankCode || "");
-  const [accountNumber, setAccountNumber] = React.useState(owner.accountNumber || "");
+  const [accountNumber, setAccountNumber] = React.useState(
+    owner.accountNumber || "",
+  );
   const [accountName, setAccountName] = React.useState(owner.accountName || "");
   const [isSaving, setIsSaving] = React.useState(false);
 
@@ -741,7 +747,10 @@ function EditOwnerModal({
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form
+          onSubmit={handleSave}
+          className="flex-1 overflow-y-auto p-6 space-y-6"
+        >
           <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/60 dark:border-zinc-800 p-4 rounded-2xl space-y-3">
             <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
               Profile Information

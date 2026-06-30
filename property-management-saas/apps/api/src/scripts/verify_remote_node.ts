@@ -4,7 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
 
 async function run() {
-  const envPath = "/home/djust/projects/justhub/property-management-saas/apps/api/.env";
+  const envPath =
+    "/home/djust/projects/justhub/property-management-saas/apps/api/.env";
   console.log(`Reading .env from: ${envPath}`);
 
   if (!fs.existsSync(envPath)) {
@@ -14,7 +15,9 @@ async function run() {
 
   const envContent = fs.readFileSync(envPath, "utf8");
   const getEnvVal = (key: string) => {
-    const match = envContent.match(new RegExp(`^${key}\\s*=\\s*["']?([^"'\n]+)["']?`, "m"));
+    const match = envContent.match(
+      new RegExp(`^${key}\\s*=\\s*["']?([^"'\n]+)["']?`, "m"),
+    );
     return match ? match[1] : null;
   };
 
@@ -63,12 +66,15 @@ async function run() {
   let createdUserId: string | null = null;
 
   try {
-    console.log(`Creating temporary admin user in Supabase Auth: ${tempEmail}...`);
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: tempEmail,
-      password: tempPassword,
-      email_confirm: true,
-    });
+    console.log(
+      `Creating temporary admin user in Supabase Auth: ${tempEmail}...`,
+    );
+    const { data: authData, error: authError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: tempEmail,
+        password: tempPassword,
+        email_confirm: true,
+      });
 
     if (authError || !authData?.user) {
       throw new Error(`Failed to create auth user: ${authError?.message}`);
@@ -89,10 +95,11 @@ async function run() {
     });
 
     console.log("Signing in as temporary admin to get access token...");
-    const { data: loginData, error: loginError } = await supabaseAdmin.auth.signInWithPassword({
-      email: tempEmail,
-      password: tempPassword,
-    });
+    const { data: loginData, error: loginError } =
+      await supabaseAdmin.auth.signInWithPassword({
+        email: tempEmail,
+        password: tempPassword,
+      });
 
     if (loginError || !loginData?.session) {
       throw new Error(`Login failed: ${loginError?.message}`);

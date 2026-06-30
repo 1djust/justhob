@@ -1,6 +1,6 @@
 {
-  "latestVersion": "0.2.1",
-  "latestBuildNumber": 17,
+  "latestVersion": "0.2.2",
+  "latestBuildNumber": 18,
   "isMandatory": true,
   "downloadUrl": "https://justhob.vercel.app/downloads/justhub-tenant.apk",
   "releaseNotes": "• Added help & support, notification settings, privacy & security screens\n• Updated domain models and improved biometric service\n• Refined all feature screens and notifiers"

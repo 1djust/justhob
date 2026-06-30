@@ -60,7 +60,9 @@ export function LeaseForm({
     agreementText: initialData?.agreementText || "",
     managerSignature: initialData?.managerSignature || managerName || "",
   });
-  const [customLeaseDocUrl, setCustomLeaseDocUrl] = React.useState(initialData?.legalDocUrl || "");
+  const [customLeaseDocUrl, setCustomLeaseDocUrl] = React.useState(
+    initialData?.legalDocUrl || "",
+  );
   const [uploadingCustomLease, setUploadingCustomLease] = React.useState(false);
   const [leaseOption, setLeaseOption] = React.useState<"free" | "paid">("free");
   const [legalDetails, setLegalDetails] = React.useState({
@@ -695,7 +697,7 @@ export function LeaseForm({
 
                   setUploadingCustomLease(true);
                   try {
-                    const res = await apiFetch(
+                    const res = (await apiFetch(
                       `${API_BASE_URL}/api/uploads/presigned-url`,
                       {
                         method: "POST",
@@ -705,8 +707,8 @@ export function LeaseForm({
                           contentType: file.type,
                           bucket: "uploads",
                         }),
-                      }
-                    ) as { signedUrl: string; publicUrl: string };
+                      },
+                    )) as { signedUrl: string; publicUrl: string };
 
                     const uploadRes = await fetch(res.signedUrl, {
                       method: "PUT",
@@ -715,11 +717,15 @@ export function LeaseForm({
                     });
 
                     if (!uploadRes.ok) {
-                      throw new Error("Failed to upload file to storage server");
+                      throw new Error(
+                        "Failed to upload file to storage server",
+                      );
                     }
 
                     setCustomLeaseDocUrl(res.publicUrl);
-                    toast.success("Lease agreement document uploaded successfully!");
+                    toast.success(
+                      "Lease agreement document uploaded successfully!",
+                    );
                   } catch (err: any) {
                     toast.error(err.message || "Failed to upload file");
                   } finally {

@@ -8,6 +8,7 @@ import { statsCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
 const CreateWorkspaceBody = Type.Object({ name: Type.String() });
 const UpdateWorkspaceParams = Type.Object({ id: Type.String() });
 const UpdateWorkspaceBody = Type.Object({
+  name: Type.Optional(Type.String()),
   bankCode: Type.Optional(Type.String()),
   accountNumber: Type.Optional(Type.String()),
   accountName: Type.Optional(Type.String()),
@@ -72,8 +73,13 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const userId = request.userId!;
       const { id } = request.params;
-      const { bankCode, accountNumber, accountName, allowPartialPayments } =
-        request.body;
+      const {
+        name,
+        bankCode,
+        accountNumber,
+        accountName,
+        allowPartialPayments,
+      } = request.body;
 
       const membership = await prisma.workspaceMember.findFirst({
         where: { workspaceId: id, userId, role: "PROPERTY_MANAGER" },
@@ -87,6 +93,7 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
       const workspace = await prisma.workspace.update({
         where: { id },
         data: {
+          name,
           bankCode,
           accountNumber,
           accountName,

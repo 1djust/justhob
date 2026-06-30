@@ -59,7 +59,7 @@ model WorkspaceMember {
   bankCode       String?
   payoutStrategy PayoutStrategy?
   accountName    String?
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Restrict)
   workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])

@@ -393,7 +393,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       if (!user) {
         // GATEKEEPER: Mobile app is for TENANT users only. Check Supabase metadata first.
-        const metadataRole = data.user.user_metadata?.role || "PROPERTY_MANAGER";
+        const metadataRole =
+          data.user.user_metadata?.role || "PROPERTY_MANAGER";
         if (metadataRole !== "TENANT") {
           console.warn(
             `[AUTH/LOGIN] REJECTED: Unregistered user ${data.user.email} (${data.user.id}) has metadata role ${metadataRole} attempting mobile login.`,
@@ -440,7 +441,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
         // User WAS registered by a manager (has membership) but their Prisma
         // profile doesn't exist yet — safe to create it now.
-        const role = existingMembership.role || data.user.user_metadata.role || "TENANT";
+        const role =
+          existingMembership.role || data.user.user_metadata.role || "TENANT";
         const newUser = await prisma.user.create({
           data: {
             id: data.user.id,
@@ -622,9 +624,16 @@ export default async function authRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { email } = request.body;
 
-      // Security: Prevent email enumeration. Always return true so attackers
-      // cannot use this endpoint to scrape user data.
-      return reply.send({ exists: true });
+      if (!prisma) {
+        throw new AppError("Database client failed to initialize.", 500);
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase().trim() },
+        select: { id: true },
+      });
+
+      return reply.send({ exists: !!user });
     },
   );
 }

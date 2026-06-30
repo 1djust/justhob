@@ -733,9 +733,9 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       });
 
       if (existingLease) {
-        return reply
-          .status(400)
-          .send({ error: "Tenant already has an active or pending lease request." });
+        return reply.status(400).send({
+          error: "Tenant already has an active or pending lease request.",
+        });
       }
 
       // Verify workspace, tenant & property access

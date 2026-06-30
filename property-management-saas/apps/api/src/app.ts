@@ -31,6 +31,7 @@ import uploadRoutes from "./routes/upload";
 import socketPlugin from "./plugins/socket";
 import { setupOverdueChecker } from "./cron/overdue-checker";
 import { setupLeaseExpiryReminder } from "./cron/lease-expiry-reminder";
+import { setupIntegrityChecker } from "./cron/integrity-checker";
 
 interface FastifyErrorWithMeta extends Error {
   statusCode?: number;
@@ -95,6 +96,9 @@ export function buildApp() {
   );
   setupLeaseExpiryReminder(
     fastify as unknown as Parameters<typeof setupLeaseExpiryReminder>[0],
+  );
+  setupIntegrityChecker(
+    fastify as unknown as Parameters<typeof setupIntegrityChecker>[0],
   );
 
   // Global Security Hook to monitor anomalous events
@@ -186,13 +190,13 @@ export function buildApp() {
   // These clients still look at onrender.com/downloads/version.json due to hardcoded logic.
   fastify.get("/downloads/version.json", { schema: {} }, async () => {
     return {
-      latestVersion: "0.1.4",
-      latestBuildNumber: 5,
+      latestVersion: "0.2.2",
+      latestBuildNumber: 18,
       isMandatory: true,
       downloadUrl:
-        "https://justhob.vercel.app/downloads/propertystack-tenant.apk",
+        "https://justhob.vercel.app/downloads/justhub-tenant.apk",
       releaseNotes:
-        "• Fixed silent authentication failure on physical devices\n• Added precise login error messages\n• Enhanced hardware secure storage configuration\n• Fixed update system URL",
+        "• Added help & support, notification settings, privacy & security screens\n• Updated domain models and improved biometric service\n• Refined all feature screens and notifiers",
     };
   });
 

@@ -22,7 +22,7 @@ import {
   Paperclip,
   Check,
   Activity,
-  DollarSign
+  DollarSign,
 } from "lucide-react";
 
 interface Payment {
@@ -75,7 +75,8 @@ export default function TenantProfilePage() {
   });
 
   // Record Payment Modal State
-  const [showRecordPaymentModal, setShowRecordPaymentModal] = React.useState(false);
+  const [showRecordPaymentModal, setShowRecordPaymentModal] =
+    React.useState(false);
   const [recordPaymentFormData, setRecordPaymentFormData] = React.useState({
     leaseId: "",
     amount: "",
@@ -84,12 +85,18 @@ export default function TenantProfilePage() {
     status: "PAID",
     note: "",
   });
-  const [recordPaymentError, setRecordPaymentError] = React.useState<string | null>(null);
+  const [recordPaymentError, setRecordPaymentError] = React.useState<
+    string | null
+  >(null);
   const [submittingPayment, setSubmittingPayment] = React.useState(false);
 
   // Send Reminder State
-  const [sendingReminderId, setSendingReminderId] = React.useState<string | null>(null);
-  const [reminderSuccessId, setReminderSuccessId] = React.useState<string | null>(null);
+  const [sendingReminderId, setSendingReminderId] = React.useState<
+    string | null
+  >(null);
+  const [reminderSuccessId, setReminderSuccessId] = React.useState<
+    string | null
+  >(null);
 
   // Pagination limit for payments
   const [paymentsLimit, setPaymentsLimit] = React.useState(10);
@@ -122,7 +129,8 @@ export default function TenantProfilePage() {
 
   React.useEffect(() => {
     if (tenant?.leases && tenant.leases.length > 0) {
-      const activeLease = tenant.leases.find((l) => l.status === "ACTIVE") || tenant.leases[0];
+      const activeLease =
+        tenant.leases.find((l) => l.status === "ACTIVE") || tenant.leases[0];
       setRecordPaymentFormData((prev) => ({
         ...prev,
         leaseId: activeLease.id,
@@ -161,7 +169,10 @@ export default function TenantProfilePage() {
           leaseId: recordPaymentFormData.leaseId,
           amount: Number(recordPaymentFormData.amount),
           dueDate: new Date(recordPaymentFormData.dueDate).toISOString(),
-          paidDate: recordPaymentFormData.status === "PAID" ? new Date(recordPaymentFormData.paidDate).toISOString() : null,
+          paidDate:
+            recordPaymentFormData.status === "PAID"
+              ? new Date(recordPaymentFormData.paidDate).toISOString()
+              : null,
           status: recordPaymentFormData.status,
           note: recordPaymentFormData.note,
         }),
@@ -171,7 +182,8 @@ export default function TenantProfilePage() {
       fetchTenant();
     } catch (err) {
       console.error(err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to record payment.";
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to record payment.";
       setRecordPaymentError(errorMessage);
     } finally {
       setSubmittingPayment(false);
@@ -183,15 +195,20 @@ export default function TenantProfilePage() {
     setSendingReminderId(paymentId);
     setReminderSuccessId(null);
     try {
-      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/payments/${paymentId}/remind`, {
-        method: "POST",
-        credentials: "include",
-      });
+      await apiFetch(
+        `${API_BASE_URL}/api/workspaces/${workspaceId}/payments/${paymentId}/remind`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
       setReminderSuccessId(paymentId);
       setTimeout(() => setReminderSuccessId(null), 3000);
     } catch (err) {
       console.error(err);
-      alert("Failed to send reminder. Please verify the tenant has a registered email.");
+      alert(
+        "Failed to send reminder. Please verify the tenant has a registered email.",
+      );
     } finally {
       setSendingReminderId(null);
     }
@@ -207,8 +224,7 @@ export default function TenantProfilePage() {
         })),
       )
       .sort(
-        (a, b) =>
-          new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime(),
+        (a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime(),
       );
   }, [tenant]);
 
@@ -298,7 +314,10 @@ export default function TenantProfilePage() {
             <form onSubmit={handleUpdate} className="p-6 space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <label htmlFor="edit-tenant-name" className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  <label
+                    htmlFor="edit-tenant-name"
+                    className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300"
+                  >
                     Name
                   </label>
                   <input
@@ -312,7 +331,10 @@ export default function TenantProfilePage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="edit-tenant-email" className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  <label
+                    htmlFor="edit-tenant-email"
+                    className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300"
+                  >
                     Email
                   </label>
                   <input
@@ -326,7 +348,10 @@ export default function TenantProfilePage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="edit-tenant-phone" className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  <label
+                    htmlFor="edit-tenant-phone"
+                    className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300"
+                  >
                     Phone
                   </label>
                   <input
@@ -355,8 +380,12 @@ export default function TenantProfilePage() {
                   <Mail className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Email</p>
-                  <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{tenant?.email || "—"}</p>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                    Email
+                  </p>
+                  <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">
+                    {tenant?.email || "—"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -364,8 +393,12 @@ export default function TenantProfilePage() {
                   <Phone className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Phone</p>
-                  <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{tenant?.phone || "—"}</p>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                    Phone
+                  </p>
+                  <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">
+                    {tenant?.phone || "—"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -373,9 +406,12 @@ export default function TenantProfilePage() {
                   <Activity className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Active Leases</p>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                    Active Leases
+                  </p>
                   <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">
-                    {tenant?.leases?.filter((l) => l.status === "ACTIVE").length || 0}
+                    {tenant?.leases?.filter((l) => l.status === "ACTIVE")
+                      .length || 0}
                   </p>
                 </div>
               </div>
@@ -389,7 +425,9 @@ export default function TenantProfilePage() {
             <div className="p-6 border-b border-border bg-zinc-50/50 dark:bg-zinc-900/10 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-zinc-500" />
-                <h3 className="font-semibold text-lg">Current Lease Overview</h3>
+                <h3 className="font-semibold text-lg">
+                  Current Lease Overview
+                </h3>
               </div>
               <span className="text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 px-2.5 py-1 rounded-full uppercase tracking-wider">
                 Active Tenancy
@@ -412,7 +450,9 @@ export default function TenantProfilePage() {
                   Unit details
                 </p>
                 <p className="font-semibold text-zinc-900 dark:text-white">
-                  {activeLease.unit ? `Unit ${activeLease.unit.unitNumber}` : "—"}
+                  {activeLease.unit
+                    ? `Unit ${activeLease.unit.unitNumber}`
+                    : "—"}
                 </p>
                 <p className="text-xs text-zinc-500 mt-0.5">
                   {activeLease.unit?.type ? `${activeLease.unit.type}` : "—"}
@@ -441,15 +481,20 @@ export default function TenantProfilePage() {
                   })}{" "}
                   →{" "}
                   {activeLease.endDate
-                    ? new Date(activeLease.endDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
+                    ? new Date(activeLease.endDate).toLocaleDateString(
+                        "en-US",
+                        {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        },
+                      )
                     : "Ongoing"}
                 </p>
                 <p className="text-[10px] text-zinc-500 mt-1">
-                  {activeLease.endDate ? `${Math.ceil((new Date(activeLease.endDate).getTime() - new Date(activeLease.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30))} months total` : "Open-ended"}
+                  {activeLease.endDate
+                    ? `${Math.ceil((new Date(activeLease.endDate).getTime() - new Date(activeLease.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30))} months total`
+                    : "Open-ended"}
                 </p>
               </div>
             </div>
@@ -457,9 +502,12 @@ export default function TenantProfilePage() {
         ) : (
           <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/10 p-8 flex flex-col items-center justify-center text-center">
             <Building2 className="w-10 h-10 text-zinc-300 dark:text-zinc-700 mb-3" />
-            <h4 className="font-semibold text-zinc-800 dark:text-zinc-200">No Active Lease</h4>
+            <h4 className="font-semibold text-zinc-800 dark:text-zinc-200">
+              No Active Lease
+            </h4>
             <p className="text-sm text-zinc-500 max-w-sm mt-1">
-              This tenant currently does not have an active lease assignment in this workspace.
+              This tenant currently does not have an active lease assignment in
+              this workspace.
             </p>
           </div>
         )}
@@ -476,7 +524,9 @@ export default function TenantProfilePage() {
                 onClick={() => {
                   setRecordPaymentFormData({
                     leaseId: activeLease.id,
-                    amount: activeLease.yearlyRent ? String(activeLease.yearlyRent) : "",
+                    amount: activeLease.yearlyRent
+                      ? String(activeLease.yearlyRent)
+                      : "",
                     dueDate: new Date().toISOString().split("T")[0],
                     paidDate: new Date().toISOString().split("T")[0],
                     status: "PAID",
@@ -510,14 +560,21 @@ export default function TenantProfilePage() {
                       {visiblePayments.map((p) => {
                         const statusColors = {
                           PAID: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
-                          PENDING: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
-                          OVERDUE: "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300",
-                          PARTIALLY_PAID: "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
-                          UNDER_REVIEW: "bg-cyan-100 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300",
+                          PENDING:
+                            "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+                          OVERDUE:
+                            "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300",
+                          PARTIALLY_PAID:
+                            "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
+                          UNDER_REVIEW:
+                            "bg-cyan-100 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300",
                         };
 
                         return (
-                          <tr key={p.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors">
+                          <tr
+                            key={p.id}
+                            className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors"
+                          >
                             <td className="py-4 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                               {new Date(p.dueDate).toLocaleDateString("en-US", {
                                 month: "short",
@@ -529,21 +586,27 @@ export default function TenantProfilePage() {
                               ₦{p.amount.toLocaleString()}
                             </td>
                             <td className="py-4">
-                              <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${statusColors[p.status] || ""}`}>
+                              <span
+                                className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${statusColors[p.status] || ""}`}
+                              >
                                 {p.status.replace("_", " ")}
                               </span>
                             </td>
                             <td className="py-4 text-xs text-zinc-500">
                               {p.paidDate
-                                ? new Date(p.paidDate).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  })
+                                ? new Date(p.paidDate).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    },
+                                  )
                                 : "—"}
                             </td>
                             <td className="py-4 text-xs font-semibold text-zinc-950 dark:text-white">
-                              {p.amountPaid !== null && p.amountPaid !== undefined
+                              {p.amountPaid !== null &&
+                              p.amountPaid !== undefined
                                 ? `₦${p.amountPaid.toLocaleString()}`
                                 : p.status === "PAID"
                                   ? `₦${p.amount.toLocaleString()}`
@@ -561,11 +624,13 @@ export default function TenantProfilePage() {
                                 >
                                   {sendingReminderId === p.id ? (
                                     <>
-                                      <Clock className="w-3 h-3 animate-spin" /> Reminding...
+                                      <Clock className="w-3 h-3 animate-spin" />{" "}
+                                      Reminding...
                                     </>
                                   ) : reminderSuccessId === p.id ? (
                                     <>
-                                      <Check className="w-3 h-3 text-emerald-500" /> Sent!
+                                      <Check className="w-3 h-3 text-emerald-500" />{" "}
+                                      Sent!
                                     </>
                                   ) : (
                                     <>
@@ -588,7 +653,8 @@ export default function TenantProfilePage() {
                       onClick={() => setPaymentsLimit((prev) => prev + 10)}
                       className="text-xs font-semibold text-zinc-500 hover:text-zinc-800 dark:hover:text-white flex items-center gap-1 transition-colors"
                     >
-                      <ChevronDown className="w-4 h-4 animate-bounce" /> Show More Payments
+                      <ChevronDown className="w-4 h-4 animate-bounce" /> Show
+                      More Payments
                     </button>
                   </div>
                 )}
@@ -626,7 +692,9 @@ export default function TenantProfilePage() {
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold text-zinc-900 dark:text-white">{lease.property?.name}</p>
+                        <p className="font-semibold text-zinc-900 dark:text-white">
+                          {lease.property?.name}
+                        </p>
                         {lease.unit && (
                           <span className="text-[10px] font-bold bg-zinc-200/60 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded">
                             Unit {lease.unit.unitNumber}
@@ -638,7 +706,11 @@ export default function TenantProfilePage() {
                       </p>
                       {lease.yearlyRent > 0 && (
                         <p className="text-xs text-zinc-700 dark:text-zinc-400 mt-2 font-medium">
-                          Rent: <span className="font-semibold text-zinc-900 dark:text-white">₦{lease.yearlyRent.toLocaleString()}</span> / year
+                          Rent:{" "}
+                          <span className="font-semibold text-zinc-900 dark:text-white">
+                            ₦{lease.yearlyRent.toLocaleString()}
+                          </span>{" "}
+                          / year
                         </p>
                       )}
                     </div>
@@ -678,7 +750,9 @@ export default function TenantProfilePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white dark:bg-zinc-950 border border-border rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-border flex items-center justify-between">
-              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Record Offline Payment</h3>
+              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
+                Record Offline Payment
+              </h3>
               <button
                 onClick={() => setShowRecordPaymentModal(false)}
                 className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
@@ -686,7 +760,10 @@ export default function TenantProfilePage() {
                 ✕
               </button>
             </div>
-            <form onSubmit={handleRecordPaymentSubmit} className="p-6 space-y-4">
+            <form
+              onSubmit={handleRecordPaymentSubmit}
+              className="p-6 space-y-4"
+            >
               {recordPaymentError && (
                 <div className="p-3.5 bg-rose-50 text-rose-800 dark:bg-rose-950/20 dark:text-rose-300 rounded-xl text-xs flex items-center gap-2 border border-rose-200 dark:border-rose-900/40">
                   <AlertCircle className="w-4 h-4 shrink-0" />
@@ -695,7 +772,10 @@ export default function TenantProfilePage() {
               )}
 
               <div className="space-y-1">
-                <label htmlFor="payment-lease" className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                <label
+                  htmlFor="payment-lease"
+                  className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest"
+                >
                   Select Lease
                 </label>
                 <select
@@ -703,25 +783,33 @@ export default function TenantProfilePage() {
                   required
                   value={recordPaymentFormData.leaseId}
                   onChange={(e) => {
-                    const l = tenant?.leases?.find((x) => x.id === e.target.value);
+                    const l = tenant?.leases?.find(
+                      (x) => x.id === e.target.value,
+                    );
                     setRecordPaymentFormData((prev) => ({
                       ...prev,
                       leaseId: e.target.value,
-                      amount: l?.yearlyRent ? String(l.yearlyRent) : prev.amount,
+                      amount: l?.yearlyRent
+                        ? String(l.yearlyRent)
+                        : prev.amount,
                     }));
                   }}
                   className="w-full px-3 py-2.5 border border-border rounded-lg bg-white dark:bg-zinc-950 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/20"
                 >
                   {tenant?.leases?.map((l) => (
                     <option key={l.id} value={l.id}>
-                      {l.property?.name} {l.unit ? `(Unit ${l.unit.unitNumber})` : ""} - {l.status}
+                      {l.property?.name}{" "}
+                      {l.unit ? `(Unit ${l.unit.unitNumber})` : ""} - {l.status}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="payment-amount" className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                <label
+                  htmlFor="payment-amount"
+                  className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest"
+                >
                   Amount (₦)
                 </label>
                 <input
@@ -730,14 +818,22 @@ export default function TenantProfilePage() {
                   step="0.01"
                   required
                   value={recordPaymentFormData.amount}
-                  onChange={(e) => setRecordPaymentFormData({ ...recordPaymentFormData, amount: e.target.value })}
+                  onChange={(e) =>
+                    setRecordPaymentFormData({
+                      ...recordPaymentFormData,
+                      amount: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2.5 border border-border rounded-lg bg-white dark:bg-zinc-950 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/20"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label htmlFor="payment-due-date" className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                  <label
+                    htmlFor="payment-due-date"
+                    className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest"
+                  >
                     Due Date
                   </label>
                   <input
@@ -745,18 +841,31 @@ export default function TenantProfilePage() {
                     type="date"
                     required
                     value={recordPaymentFormData.dueDate}
-                    onChange={(e) => setRecordPaymentFormData({ ...recordPaymentFormData, dueDate: e.target.value })}
+                    onChange={(e) =>
+                      setRecordPaymentFormData({
+                        ...recordPaymentFormData,
+                        dueDate: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2.5 border border-border rounded-lg bg-white dark:bg-zinc-950 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/20"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="payment-status" className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                  <label
+                    htmlFor="payment-status"
+                    className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest"
+                  >
                     Status
                   </label>
                   <select
                     id="payment-status"
                     value={recordPaymentFormData.status}
-                    onChange={(e) => setRecordPaymentFormData({ ...recordPaymentFormData, status: e.target.value })}
+                    onChange={(e) =>
+                      setRecordPaymentFormData({
+                        ...recordPaymentFormData,
+                        status: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2.5 border border-border rounded-lg bg-white dark:bg-zinc-950 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/20"
                   >
                     <option value="PAID">Paid</option>
@@ -768,7 +877,10 @@ export default function TenantProfilePage() {
 
               {recordPaymentFormData.status === "PAID" && (
                 <div className="space-y-1">
-                  <label htmlFor="payment-paid-date" className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                  <label
+                    htmlFor="payment-paid-date"
+                    className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest"
+                  >
                     Payment Date
                   </label>
                   <input
@@ -776,20 +888,33 @@ export default function TenantProfilePage() {
                     type="date"
                     required
                     value={recordPaymentFormData.paidDate}
-                    onChange={(e) => setRecordPaymentFormData({ ...recordPaymentFormData, paidDate: e.target.value })}
+                    onChange={(e) =>
+                      setRecordPaymentFormData({
+                        ...recordPaymentFormData,
+                        paidDate: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2.5 border border-border rounded-lg bg-white dark:bg-zinc-950 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/20"
                   />
                 </div>
               )}
 
               <div className="space-y-1">
-                <label htmlFor="payment-note" className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                <label
+                  htmlFor="payment-note"
+                  className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest"
+                >
                   Memo / Note
                 </label>
                 <textarea
                   id="payment-note"
                   value={recordPaymentFormData.note}
-                  onChange={(e) => setRecordPaymentFormData({ ...recordPaymentFormData, note: e.target.value })}
+                  onChange={(e) =>
+                    setRecordPaymentFormData({
+                      ...recordPaymentFormData,
+                      note: e.target.value,
+                    })
+                  }
                   placeholder="Record payment details (e.g. Bank transfer, Check number)"
                   className="w-full px-3 py-2 border border-border rounded-lg bg-white dark:bg-zinc-950 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/20 h-20"
                 />

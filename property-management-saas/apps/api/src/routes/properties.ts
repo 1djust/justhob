@@ -274,7 +274,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
           Type.Literal("DUPLEX"),
           Type.Literal("OTHERS"),
         ]),
-      })
+      }),
     ),
   });
 
@@ -292,7 +292,9 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
       const { units } = request.body;
 
       if (!units || units.length === 0) {
-        return reply.status(400).send({ error: "At least one unit must be specified" });
+        return reply
+          .status(400)
+          .send({ error: "At least one unit must be specified" });
       }
 
       const property = await prisma.property.findFirst({
@@ -366,7 +368,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
       });
 
       return reply.send({ property: updatedProperty });
-    }
+    },
   );
 
   // Delete Property (Soft Delete)

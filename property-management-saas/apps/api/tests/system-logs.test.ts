@@ -74,7 +74,8 @@ describe("Super Admin System Logs Flow & Telemetry Redaction", () => {
     const log2 = await prisma.errorLog.create({
       data: {
         level: "error",
-        message: "Failed to connect to database at postgresql://postgres:password123@aws-db-instance.pooler.supabase.com:5432/postgres",
+        message:
+          "Failed to connect to database at postgresql://postgres:password123@aws-db-instance.pooler.supabase.com:5432/postgres",
         source: "DATABASE_TEST",
       },
     });
@@ -154,9 +155,11 @@ describe("Super Admin System Logs Flow & Telemetry Redaction", () => {
     expect(response.statusCode).toBe(200);
     const data = response.json();
 
-    const dbTestLog = data.errors.find((err: any) => err.id === createdLogIds[1]);
+    const dbTestLog = data.errors.find(
+      (err: any) => err.id === createdLogIds[1],
+    );
     expect(dbTestLog).toBeDefined();
-    
+
     // Ensure raw db credentials like password123 are redacted
     expect(dbTestLog.message).not.toContain("password123");
     expect(dbTestLog.message).toContain("[REDACTED]");
@@ -174,9 +177,11 @@ describe("Super Admin System Logs Flow & Telemetry Redaction", () => {
     expect(response.statusCode).toBe(200);
     const data = response.json();
 
-    const securityLog = data.errors.find((err: any) => err.id === createdLogIds[2]);
+    const securityLog = data.errors.find(
+      (err: any) => err.id === createdLogIds[2],
+    );
     expect(securityLog).toBeDefined();
-    
+
     // Check that top level secret token is redacted
     expect(securityLog.context.secretToken).toBe("[REDACTED]");
     // Check that nested API key is redacted

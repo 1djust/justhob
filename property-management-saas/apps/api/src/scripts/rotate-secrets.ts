@@ -29,7 +29,10 @@ function rotate() {
   ];
 
   keysToRotate.forEach((key) => {
-    const regex = new RegExp(`^(${key.name}\\s*=\\s*["']?)[^"'\n]*([\x22\x27]?)`, "m");
+    const regex = new RegExp(
+      `^(${key.name}\\s*=\\s*["']?)[^"'\n]*([\x22\x27]?)`,
+      "m",
+    );
     if (regex.test(content)) {
       content = content.replace(regex, `$1${key.value}$2`);
       console.log(`Updated ${key.name} successfully.`);

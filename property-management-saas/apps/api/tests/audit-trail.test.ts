@@ -99,7 +99,9 @@ describe("Manager Operations Audit Trail Flow", () => {
       });
       await prisma.user.deleteMany({ where: { id: createdOwnerId } });
     }
-    await prisma.auditLog.deleteMany({ where: { workspaceId: testWorkspaceId } });
+    await prisma.auditLog.deleteMany({
+      where: { workspaceId: testWorkspaceId },
+    });
     await prisma.workspaceMember.deleteMany({
       where: { userId: testManagerUserId, workspaceId: testWorkspaceId },
     });
@@ -148,10 +150,11 @@ describe("Manager Operations Audit Trail Flow", () => {
     expect(response.statusCode).toBe(200);
     const data = response.json();
     expect(data.logs).toBeDefined();
-    
+
     // Check that our recorded log is present
     const testLog = data.logs.find(
-      (l: any) => l.workspaceId === testWorkspaceId && l.action === "ADD_LANDLORD"
+      (l: any) =>
+        l.workspaceId === testWorkspaceId && l.action === "ADD_LANDLORD",
     );
     expect(testLog).toBeDefined();
     expect(testLog.actorName).toBe("Test Manager");

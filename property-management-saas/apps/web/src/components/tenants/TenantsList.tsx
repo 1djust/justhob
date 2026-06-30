@@ -631,15 +631,17 @@ export function TenantsList({
             <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
               {filteredTenants.map((t) => {
                 const primary = getPrimaryLease(t);
-                const isPendingLease = primary && [
-                  "PENDING_LEGAL_VERIFICATION",
-                  "PENDING_LEGAL_UPLOAD",
-                  "PENDING_SIGNATURE",
-                  "ACTIVE",
-                  "PENDING_RENEWAL",
-                ].includes(primary.status);
-                const isActionsDisabled = primary &&
-                  primary.status === "PENDING_LEGAL_VERIFICATION";
+                const isPendingLease =
+                  primary &&
+                  [
+                    "PENDING_LEGAL_VERIFICATION",
+                    "PENDING_LEGAL_UPLOAD",
+                    "PENDING_SIGNATURE",
+                    "ACTIVE",
+                    "PENDING_RENEWAL",
+                  ].includes(primary.status);
+                const isActionsDisabled =
+                  primary && primary.status === "PENDING_LEGAL_VERIFICATION";
                 const status = getTenantStatus(primary);
                 const shortId = t.id.split("-")[0].toUpperCase();
                 const attachmentName =
@@ -878,7 +880,9 @@ export function TenantsList({
                       </div>
                       <div>
                         <p className="text-[11px] text-zinc-500 font-medium mb-1">
-                          {primary?.status === "ACTIVE" ? "Rent Status" : "Status"}
+                          {primary?.status === "ACTIVE"
+                            ? "Rent Status"
+                            : "Status"}
                         </p>
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${status.color}`}
@@ -973,7 +977,9 @@ export function TenantsList({
                     <th className="px-6 py-5 font-semibold">Tenant Name</th>
                     <th className="px-6 py-5 font-semibold">Location</th>
                     <th className="px-6 py-5 font-semibold">Attachment</th>
-                    <th className="px-6 py-5 font-semibold">Rent / Lease Status</th>
+                    <th className="px-6 py-5 font-semibold">
+                      Rent / Lease Status
+                    </th>
                     <th className="px-6 py-5 font-semibold text-center">
                       Partial Pmt
                     </th>
@@ -985,14 +991,17 @@ export function TenantsList({
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
                   {filteredTenants.map((t) => {
                     const primary = getPrimaryLease(t);
-                    const isPendingLease = primary && [
-                      "PENDING_LEGAL_VERIFICATION",
-                      "PENDING_LEGAL_UPLOAD",
-                      "PENDING_SIGNATURE",
-                      "ACTIVE",
-                      "PENDING_RENEWAL",
-                    ].includes(primary.status);
-                    const isActionsDisabled = primary &&
+                    const isPendingLease =
+                      primary &&
+                      [
+                        "PENDING_LEGAL_VERIFICATION",
+                        "PENDING_LEGAL_UPLOAD",
+                        "PENDING_SIGNATURE",
+                        "ACTIVE",
+                        "PENDING_RENEWAL",
+                      ].includes(primary.status);
+                    const isActionsDisabled =
+                      primary &&
                       primary.status === "PENDING_LEGAL_VERIFICATION";
                     const status = getTenantStatus(primary);
                     const shortId = t.id.split("-")[0].toUpperCase();
@@ -1075,7 +1084,10 @@ export function TenantsList({
                               <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-600 peer-checked:bg-zinc-900 dark:peer-checked:bg-white shadow-inner peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
                             </label>
                           </td>
-                          <td className="px-6 py-4 text-right relative" data-actions-menu>
+                          <td
+                            className="px-6 py-4 text-right relative"
+                            data-actions-menu
+                          >
                             <button
                               disabled={isActionsDisabled}
                               onClick={(e) => {
@@ -1229,16 +1241,19 @@ export function TenantsList({
                                     </button>
                                   </div>
                                 )}
-                              {assigningTenantId === t.id && !isPendingLease && (
-                                <LeaseForm
-                                  workspaceId={workspaceId}
-                                  tenantId={t.id}
-                                  tenantName={t.name}
-                                  managerName={managerName}
-                                  properties={properties}
-                                  onComplete={() => setAssigningTenantId(null)}
-                                />
-                              )}
+                              {assigningTenantId === t.id &&
+                                !isPendingLease && (
+                                  <LeaseForm
+                                    workspaceId={workspaceId}
+                                    tenantId={t.id}
+                                    tenantName={t.name}
+                                    managerName={managerName}
+                                    properties={properties}
+                                    onComplete={() =>
+                                      setAssigningTenantId(null)
+                                    }
+                                  />
+                                )}
                               {uploadingLeaseTenant &&
                                 uploadingLeaseTenant.tenantId === t.id && (
                                   <UploadLegalLeaseForm
@@ -1288,8 +1303,8 @@ export function TenantsList({
                                         editingLeaseTenant.lease
                                           .managerSignature || "",
                                       legalDocUrl:
-                                        editingLeaseTenant.lease
-                                          .legalDocUrl || "",
+                                        editingLeaseTenant.lease.legalDocUrl ||
+                                        "",
                                     }}
                                   />
                                 )}

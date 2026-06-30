@@ -105,8 +105,10 @@ export function SecurityLogs() {
       GET: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
       POST: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
       PUT: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-      PATCH: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-      DELETE: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+      PATCH:
+        "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+      DELETE:
+        "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
     };
     return (
       <span
@@ -122,7 +124,11 @@ export function SecurityLogs() {
 
   const getUserAgentBadge = (ua?: string) => {
     if (!ua) return null;
-    if (ua.includes("Dart") || ua.includes("Flutter") || ua.includes("Mobile")) {
+    if (
+      ua.includes("Dart") ||
+      ua.includes("Flutter") ||
+      ua.includes("Mobile")
+    ) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 text-[11px] font-medium">
           <Smartphone className="w-3 h-3" /> Mobile Client
@@ -248,7 +254,8 @@ export function SecurityLogs() {
             All Systems Secure
           </h4>
           <p className="text-[11px] text-muted-foreground mt-1 max-w-md mx-auto">
-            No network security anomalies or unauthorized events match your active filters.
+            No network security anomalies or unauthorized events match your
+            active filters.
           </p>
         </div>
       ) : (
@@ -296,7 +303,12 @@ export function SecurityLogs() {
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium self-end sm:self-auto">
                     {getUserAgentBadge(userAgent)}
                     <span className="text-muted-foreground/40">•</span>
-                    <span title={format(new Date(log.createdAt), "yyyy-MM-dd HH:mm:ss")}>
+                    <span
+                      title={format(
+                        new Date(log.createdAt),
+                        "yyyy-MM-dd HH:mm:ss",
+                      )}
+                    >
                       {formatDistanceToNow(new Date(log.createdAt), {
                         addSuffix: true,
                       })}
@@ -343,8 +355,9 @@ export function SecurityLogs() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-2 px-1">
               <span className="text-xs text-muted-foreground font-medium">
-                Showing page <strong className="text-foreground">{page}</strong> of{" "}
-                <strong className="text-foreground">{totalPages}</strong> ({filteredLogs.length} total events)
+                Showing page <strong className="text-foreground">{page}</strong>{" "}
+                of <strong className="text-foreground">{totalPages}</strong> (
+                {filteredLogs.length} total events)
               </span>
               <div className="flex items-center gap-2">
                 <button

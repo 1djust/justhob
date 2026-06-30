@@ -298,7 +298,9 @@ describe("Paid Legal Lease Agreement Flow", () => {
     });
 
     expect(duplicateRequestRes.statusCode).toBe(400);
-    expect(duplicateRequestRes.json().error).toContain("already has an active or pending lease request");
+    expect(duplicateRequestRes.json().error).toContain(
+      "already has an active or pending lease request",
+    );
 
     // Attempting to create a standard lease for the same tenant
     const duplicateStandardLeaseRes = await app.inject({
@@ -315,6 +317,8 @@ describe("Paid Legal Lease Agreement Flow", () => {
     });
 
     expect(duplicateStandardLeaseRes.statusCode).toBe(400);
-    expect(duplicateStandardLeaseRes.json().error).toContain("already has an active or pending lease");
+    expect(duplicateStandardLeaseRes.json().error).toContain(
+      "already has an active or pending lease",
+    );
   });
 });

@@ -86,7 +86,12 @@ export function ResetPasswordForm() {
       )}
 
       <div className="space-y-2">
-        <label htmlFor="new-password" className="text-sm font-medium leading-none">New Password</label>
+        <label
+          htmlFor="new-password"
+          className="text-sm font-medium leading-none"
+        >
+          New Password
+        </label>
         <input
           id="new-password"
           type="password"
@@ -100,7 +105,10 @@ export function ResetPasswordForm() {
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="confirm-password" className="text-sm font-medium leading-none">
+        <label
+          htmlFor="confirm-password"
+          className="text-sm font-medium leading-none"
+        >
           Confirm New Password
         </label>
         <input

@@ -169,39 +169,68 @@ describe("Subscription Limits and Feature Gating", () => {
     await prisma.workspaceMember.deleteMany({
       where: {
         workspaceId: {
-          in: [freeWorkspaceId, unitWorkspaceId, proWorkspaceId, enterpriseWorkspaceId],
+          in: [
+            freeWorkspaceId,
+            unitWorkspaceId,
+            proWorkspaceId,
+            enterpriseWorkspaceId,
+          ],
         },
       },
     });
     await prisma.user.deleteMany({
       where: {
-        id: { in: [freeManagerId, unitManagerId, proManagerId, enterpriseManagerId] },
+        id: {
+          in: [freeManagerId, unitManagerId, proManagerId, enterpriseManagerId],
+        },
       },
     });
     await prisma.tenant.deleteMany({
       where: {
         workspaceId: {
-          in: [freeWorkspaceId, unitWorkspaceId, proWorkspaceId, enterpriseWorkspaceId],
+          in: [
+            freeWorkspaceId,
+            unitWorkspaceId,
+            proWorkspaceId,
+            enterpriseWorkspaceId,
+          ],
         },
       },
     });
     await prisma.unit.deleteMany({
       where: {
         workspaceId: {
-          in: [freeWorkspaceId, unitWorkspaceId, proWorkspaceId, enterpriseWorkspaceId],
+          in: [
+            freeWorkspaceId,
+            unitWorkspaceId,
+            proWorkspaceId,
+            enterpriseWorkspaceId,
+          ],
         },
       },
     });
     await prisma.property.deleteMany({
       where: {
         workspaceId: {
-          in: [freeWorkspaceId, unitWorkspaceId, proWorkspaceId, enterpriseWorkspaceId],
+          in: [
+            freeWorkspaceId,
+            unitWorkspaceId,
+            proWorkspaceId,
+            enterpriseWorkspaceId,
+          ],
         },
       },
     });
     await prisma.workspace.deleteMany({
       where: {
-        id: { in: [freeWorkspaceId, unitWorkspaceId, proWorkspaceId, enterpriseWorkspaceId] },
+        id: {
+          in: [
+            freeWorkspaceId,
+            unitWorkspaceId,
+            proWorkspaceId,
+            enterpriseWorkspaceId,
+          ],
+        },
       },
     });
   }, 30000);
@@ -232,7 +261,9 @@ describe("Subscription Limits and Feature Gating", () => {
         },
       });
       expect(res2.statusCode).toBe(402);
-      expect(res2.json().error.message).toContain("Plan limit reached: Maximum 1 property allowed");
+      expect(res2.json().error.message).toContain(
+        "Plan limit reached: Maximum 1 property allowed",
+      );
     });
 
     it("FREE plan: permits exactly 3 units, rejects 4th with 402", async () => {
@@ -254,7 +285,9 @@ describe("Subscription Limits and Feature Gating", () => {
       });
       // Should fail since 4 units exceeds the limit of 3
       expect(res.statusCode).toBe(402);
-      expect(res.json().error.message).toContain("Plan limit reached: Maximum 3 units allowed");
+      expect(res.json().error.message).toContain(
+        "Plan limit reached: Maximum 3 units allowed",
+      );
     });
 
     it("PRO plan: allows creating up to 10 properties", async () => {
@@ -283,7 +316,9 @@ describe("Subscription Limits and Feature Gating", () => {
         },
       });
       expect(resBlocked.statusCode).toBe(402);
-      expect(resBlocked.json().error.message).toContain("Plan limit reached: Maximum 10 property allowed");
+      expect(resBlocked.json().error.message).toContain(
+        "Plan limit reached: Maximum 10 property allowed",
+      );
     }, 90000);
   });
 
@@ -316,7 +351,9 @@ describe("Subscription Limits and Feature Gating", () => {
         },
       });
       expect(resBlocked.statusCode).toBe(402);
-      expect(resBlocked.json().error.message).toContain("Plan limit reached: Maximum 3 tenants allowed");
+      expect(resBlocked.json().error.message).toContain(
+        "Plan limit reached: Maximum 3 tenants allowed",
+      );
     }, 60000);
   });
 
@@ -328,7 +365,9 @@ describe("Subscription Limits and Feature Gating", () => {
         headers: { authorization: `Bearer ${freeToken}` },
       });
       expect(resFree.statusCode).toBe(402);
-      expect(resFree.json().error).toContain("Data Export is an Enterprise-only feature");
+      expect(resFree.json().error).toContain(
+        "Data Export is an Enterprise-only feature",
+      );
 
       const resPro = await app.inject({
         method: "GET",
@@ -336,7 +375,9 @@ describe("Subscription Limits and Feature Gating", () => {
         headers: { authorization: `Bearer ${proToken}` },
       });
       expect(resPro.statusCode).toBe(402);
-      expect(resPro.json().error).toContain("Data Export is an Enterprise-only feature");
+      expect(resPro.json().error).toContain(
+        "Data Export is an Enterprise-only feature",
+      );
     });
 
     it("ENTERPRISE plan: allows accessing export endpoint", async () => {

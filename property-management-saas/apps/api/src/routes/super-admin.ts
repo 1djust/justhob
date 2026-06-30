@@ -59,6 +59,7 @@ const PaginationQuery = Type.Object({
   page: Type.Optional(Type.Number({ minimum: 1 })),
   limit: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
   search: Type.Optional(Type.String({ maxLength: 200 })),
+  showTestUsers: Type.Optional(Type.Boolean()),
 });
 
 // Security: status and plan filters restricted to known enum values only
@@ -86,6 +87,7 @@ const WorkspaceFilterQuery = Type.Object({
     Type.Union(VALID_WORKSPACE_STATUSES.map((s) => Type.Literal(s))),
   ),
   plan: Type.Optional(Type.Union(VALID_PLANS.map((s) => Type.Literal(s)))),
+  showTestWorkspaces: Type.Optional(Type.Boolean()),
 });
 
 const ErrorLogQuery = Type.Object({
@@ -397,24 +399,68 @@ export default async function superAdminRoutes(
       schema: { querystring: WorkspaceFilterQuery },
     },
     async (request) => {
-      const { page = 1, limit = 20, search, status, plan } = request.query;
+      const { page = 1, limit = 20, search, status, plan, showTestWorkspaces = false } = request.query;
       const skip = (page - 1) * limit;
 
-      const where: Record<string, unknown> = {};
-      if (search) {
-        where.OR = [
-          { name: { contains: search, mode: "insensitive" } },
+      const where: Record<string, any> = {};
+      const andFilters: any[] = [];
+
+      if (!showTestWorkspaces) {
+        andFilters.push(
+          { name: { not: { contains: "Test" } } },
+          { name: { not: { contains: "test" } } },
+          { name: { not: { contains: "Plan" } } },
+          { name: { not: { contains: "plan" } } },
           {
-            members: {
-              some: {
-                user: { email: { contains: search, mode: "insensitive" } },
+            OR: [
+              {
+                members: {
+                  some: {
+                    user: {
+                      AND: [
+                        { email: { not: { contains: "e2e-" } } },
+                        { email: { not: { contains: "test-" } } },
+                        { email: { not: { endsWith: "@test-gatekeeper.com" } } },
+                        { email: { not: { endsWith: "@limits.com" } } },
+                        { email: { not: { endsWith: "@preparmy.com" } } },
+                        { email: { not: { endsWith: "@example.com" } } },
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                AND: [
+                  { members: { none: {} } },
+                  { name: { not: "My Properties" } }
+                ]
+              }
+            ]
+          }
+        );
+      }
+
+      if (search) {
+        andFilters.push({
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            {
+              members: {
+                some: {
+                  user: { email: { contains: search, mode: "insensitive" } },
+                },
               },
             },
-          },
-        ];
+          ]
+        });
       }
+
       if (status) where.status = status;
       if (plan) where.plan = plan;
+
+      if (andFilters.length > 0) {
+        where.AND = andFilters;
+      }
 
       const [workspaces, total] = await Promise.all([
         prisma.workspace.findMany({
@@ -551,21 +597,37 @@ export default async function superAdminRoutes(
       schema: { querystring: PaginationQuery },
     },
     async (request) => {
-      const { page = 1, limit = 20, search } = request.query;
+      const { page = 1, limit = 20, search, showTestUsers = false } = request.query;
       const skip = (page - 1) * limit;
 
       const where: Record<string, any> = {
         role: "PROPERTY_MANAGER",
       };
+
+      const andFilters: any[] = [];
+
+      if (!showTestUsers) {
+        andFilters.push(
+          { email: { not: { contains: "e2e-" } } },
+          { email: { not: { contains: "test-" } } },
+          { email: { not: { endsWith: "@test-gatekeeper.com" } } },
+          { email: { not: { endsWith: "@limits.com" } } },
+          { email: { not: { endsWith: "@preparmy.com" } } },
+          { email: { not: { endsWith: "@example.com" } } },
+        );
+      }
+
       if (search) {
-        where.AND = [
-          {
-            OR: [
-              { email: { contains: search, mode: "insensitive" } },
-              { name: { contains: search, mode: "insensitive" } },
-            ],
-          },
-        ];
+        andFilters.push({
+          OR: [
+            { email: { contains: search, mode: "insensitive" } },
+            { name: { contains: search, mode: "insensitive" } },
+          ],
+        });
+      }
+
+      if (andFilters.length > 0) {
+        where.AND = andFilters;
       }
 
       const [users, total] = await Promise.all([
@@ -798,54 +860,64 @@ export default async function superAdminRoutes(
       }
 
       return {
-        user: user ? {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          isActive: user.isActive,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-        } : {
-          id: tenantRecord!.id,
-          name: tenantRecord!.name,
-          email: tenantRecord!.email || "No email",
-          role: "TENANT",
-          isActive: true,
-          createdAt: tenantRecord!.createdAt,
-          updatedAt: tenantRecord!.updatedAt,
-        },
-        workspaces: user ? user.workspaces.map((w) => ({
-          workspaceId: w.workspaceId,
-          name: w.workspace.name,
-          role: w.role,
-          plan: w.workspace.plan,
-        })) : [{
-          workspaceId: tenantRecord!.workspaceId,
-          name: tenantRecord!.workspace?.name || "Unknown Workspace",
-          role: "TENANT",
-          plan: tenantRecord!.workspace?.plan || "FREE",
-        }],
-        propertiesOwned: user ? user.propertiesOwned.map((p) => ({
-          id: p.id,
-          name: p.name,
-          address: p.address,
-        })) : [],
-        tenantDetails: tenantRecord ? {
-          id: tenantRecord.id,
-          workspace: tenantRecord.workspace,
-          leases: tenantRecord.leases.map((l) => ({
-            id: l.id,
-            property: l.property.name,
-            unit: l.unit?.unitNumber || "None",
-            startDate: l.startDate,
-            endDate: l.endDate,
-            yearlyRent: l.yearlyRent,
-            status: l.status,
-            payments: l.payments,
-          })),
-          maintenanceRequests: tenantRecord.maintenanceRequests,
-        } : null,
+        user: user
+          ? {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              isActive: user.isActive,
+              createdAt: user.createdAt,
+              updatedAt: user.updatedAt,
+            }
+          : {
+              id: tenantRecord!.id,
+              name: tenantRecord!.name,
+              email: tenantRecord!.email || "No email",
+              role: "TENANT",
+              isActive: true,
+              createdAt: tenantRecord!.createdAt,
+              updatedAt: tenantRecord!.updatedAt,
+            },
+        workspaces: user
+          ? user.workspaces.map((w) => ({
+              workspaceId: w.workspaceId,
+              name: w.workspace.name,
+              role: w.role,
+              plan: w.workspace.plan,
+            }))
+          : [
+              {
+                workspaceId: tenantRecord!.workspaceId,
+                name: tenantRecord!.workspace?.name || "Unknown Workspace",
+                role: "TENANT",
+                plan: tenantRecord!.workspace?.plan || "FREE",
+              },
+            ],
+        propertiesOwned: user
+          ? user.propertiesOwned.map((p) => ({
+              id: p.id,
+              name: p.name,
+              address: p.address,
+            }))
+          : [],
+        tenantDetails: tenantRecord
+          ? {
+              id: tenantRecord.id,
+              workspace: tenantRecord.workspace,
+              leases: tenantRecord.leases.map((l) => ({
+                id: l.id,
+                property: l.property.name,
+                unit: l.unit?.unitNumber || "None",
+                startDate: l.startDate,
+                endDate: l.endDate,
+                yearlyRent: l.yearlyRent,
+                status: l.status,
+                payments: l.payments,
+              })),
+              maintenanceRequests: tenantRecord.maintenanceRequests,
+            }
+          : null,
       };
     },
   );
@@ -1327,8 +1399,15 @@ export default async function superAdminRoutes(
         ...(search
           ? {
               OR: [
-                { actorName: { contains: search, mode: "insensitive" as const } },
-                { actorEmail: { contains: search, mode: "insensitive" as const } },
+                {
+                  actorName: { contains: search, mode: "insensitive" as const },
+                },
+                {
+                  actorEmail: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
                 { details: { contains: search, mode: "insensitive" as const } },
               ],
             }

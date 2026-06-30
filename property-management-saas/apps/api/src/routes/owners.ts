@@ -283,7 +283,9 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
   });
 
   const UpdateOwnerBody = Type.Object({
-    payoutStrategy: Type.Optional(Type.Union([Type.Enum(PayoutStrategy), Type.Null()])),
+    payoutStrategy: Type.Optional(
+      Type.Union([Type.Enum(PayoutStrategy), Type.Null()]),
+    ),
     bankCode: Type.Optional(Type.Union([Type.String(), Type.Null()])),
     accountNumber: Type.Optional(Type.Union([Type.String(), Type.Null()])),
     accountName: Type.Optional(Type.Union([Type.String(), Type.Null()])),
@@ -299,7 +301,8 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { workspaceId, ownerId } = request.params;
-      const { payoutStrategy, bankCode, accountNumber, accountName } = request.body;
+      const { payoutStrategy, bankCode, accountNumber, accountName } =
+        request.body;
 
       try {
         const workspaceMember = await prisma.workspaceMember.findFirst({
@@ -340,7 +343,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
       } catch (e) {
         return reply.status(500).send({ error: "Failed to update landlord" });
       }
-    }
+    },
   );
 
   // Remove a Landlord from the workspace

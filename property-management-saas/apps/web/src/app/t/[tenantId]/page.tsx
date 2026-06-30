@@ -533,7 +533,10 @@ export default function TenantPortalPage() {
             </div>
 
             <div>
-              <label htmlFor="image-upload" className="block text-sm font-medium mb-1.5">
+              <label
+                htmlFor="image-upload"
+                className="block text-sm font-medium mb-1.5"
+              >
                 Photo (Optional)
               </label>
               <input

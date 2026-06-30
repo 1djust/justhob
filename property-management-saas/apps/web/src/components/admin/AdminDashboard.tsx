@@ -1647,7 +1647,9 @@ function ErrorsTab() {
               </div>
               <div>
                 <h4 className="text-sm font-bold text-foreground">
-                  {level ? `No ${level.toUpperCase()} Log Entries` : "All Systems Operational"}
+                  {level
+                    ? `No ${level.toUpperCase()} Log Entries`
+                    : "All Systems Operational"}
                 </h4>
                 <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
                   {level
@@ -1746,7 +1748,9 @@ function PaymentsTab() {
           </div>
           <div>
             <h4 className="text-sm font-bold text-foreground">
-              {status ? `No ${status.replace(/_/g, " ")} Payments` : "No Payment Records Found"}
+              {status
+                ? `No ${status.replace(/_/g, " ")} Payments`
+                : "No Payment Records Found"}
             </h4>
             <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
               {status
@@ -2688,7 +2692,9 @@ interface UserAudit {
 function UsersTab() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [page, setPage] = React.useState(1);
-  const [selectedProfileId, setSelectedProfileId] = React.useState<string | null>(null);
+  const [selectedProfileId, setSelectedProfileId] = React.useState<
+    string | null
+  >(null);
 
   const { data: profileDetails, isLoading: isProfileLoading } = useQuery({
     queryKey: ["super-admin-user-profile", selectedProfileId],
@@ -3113,7 +3119,9 @@ function UsersTab() {
                                             {t.propertyName}
                                           </span>
                                           <button
-                                            onClick={() => setSelectedProfileId(t.id)}
+                                            onClick={() =>
+                                              setSelectedProfileId(t.id)
+                                            }
                                             className="p-1 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-all cursor-pointer"
                                             title="View Tenant Profile Details"
                                           >
@@ -3143,7 +3151,9 @@ function UsersTab() {
               </div>
               <div>
                 <h4 className="text-sm font-bold text-foreground">
-                  {searchTerm ? "No Matching Users Found" : "No Registered Users"}
+                  {searchTerm
+                    ? "No Matching Users Found"
+                    : "No Registered Users"}
                 </h4>
                 <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
                   {searchTerm
@@ -3236,10 +3246,11 @@ function UsersTab() {
       {selectedProfileId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-card border border-border rounded-3xl shadow-2xl p-6 max-w-2xl w-full animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
-              <h3 className="text-lg font-bold text-foreground">User Profile Details</h3>
+              <h3 className="text-lg font-bold text-foreground">
+                User Profile Details
+              </h3>
               <button
                 onClick={() => setSelectedProfileId(null)}
                 className="p-1 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-all cursor-pointer"
@@ -3252,52 +3263,99 @@ function UsersTab() {
             <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-thin">
               {isProfileLoading ? (
                 <div className="flex items-center gap-2 py-12 justify-center text-xs text-muted-foreground font-bold">
-                  <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin h-5 w-5 text-primary"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   <span>Loading Profile...</span>
                 </div>
               ) : !profileDetails ? (
-                <p className="text-center text-muted-foreground text-xs py-8">Failed to load profile details.</p>
+                <p className="text-center text-muted-foreground text-xs py-8">
+                  Failed to load profile details.
+                </p>
               ) : (
                 <>
                   {/* Basic Stats Block */}
                   <div className="bg-muted/20 border border-border/60 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Name</p>
-                      <p className="text-sm font-bold text-foreground">{profileDetails.user.name || "Unnamed"}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        Name
+                      </p>
+                      <p className="text-sm font-bold text-foreground">
+                        {profileDetails.user.name || "Unnamed"}
+                      </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email</p>
-                      <p className="text-sm font-bold text-foreground">{profileDetails.user.email}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        Email
+                      </p>
+                      <p className="text-sm font-bold text-foreground">
+                        {profileDetails.user.email}
+                      </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Role</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        Role
+                      </p>
                       <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-700/60 mt-1">
                         {profileDetails.user.role}
                       </span>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Registered At</p>
-                      <p className="text-xs font-semibold text-muted-foreground">{new Date(profileDetails.user.createdAt).toLocaleString()}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        Registered At
+                      </p>
+                      <p className="text-xs font-semibold text-muted-foreground">
+                        {new Date(
+                          profileDetails.user.createdAt,
+                        ).toLocaleString()}
+                      </p>
                     </div>
                   </div>
 
                   {/* Workspaces Section */}
                   <div className="space-y-2">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Workspaces ({profileDetails.workspaces.length})</h4>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                      Workspaces ({profileDetails.workspaces.length})
+                    </h4>
                     {profileDetails.workspaces.length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic">No workspaces linked.</p>
+                      <p className="text-xs text-muted-foreground italic">
+                        No workspaces linked.
+                      </p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {profileDetails.workspaces.map((w: any) => (
-                          <div key={w.workspaceId} className="p-3 bg-muted/30 border border-border/50 rounded-xl flex items-center justify-between">
+                          <div
+                            key={w.workspaceId}
+                            className="p-3 bg-muted/30 border border-border/50 rounded-xl flex items-center justify-between"
+                          >
                             <div>
-                              <p className="text-xs font-bold text-foreground">{w.name}</p>
-                              <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">Role: {w.role}</p>
+                              <p className="text-xs font-bold text-foreground">
+                                {w.name}
+                              </p>
+                              <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">
+                                Role: {w.role}
+                              </p>
                             </div>
-                            <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-primary/10 text-primary border border-primary/15">{w.plan}</span>
+                            <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-primary/10 text-primary border border-primary/15">
+                              {w.plan}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -3307,12 +3365,22 @@ function UsersTab() {
                   {/* Properties Owned Section (For Landlords / Managers) */}
                   {profileDetails.propertiesOwned.length > 0 && (
                     <div className="space-y-2">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Properties Owned ({profileDetails.propertiesOwned.length})</h4>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                        Properties Owned (
+                        {profileDetails.propertiesOwned.length})
+                      </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {profileDetails.propertiesOwned.map((p: any) => (
-                          <div key={p.id} className="p-3 bg-muted/30 border border-border/50 rounded-xl">
-                            <p className="text-xs font-bold text-foreground">{p.name}</p>
-                            <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{p.address}</p>
+                          <div
+                            key={p.id}
+                            className="p-3 bg-muted/30 border border-border/50 rounded-xl"
+                          >
+                            <p className="text-xs font-bold text-foreground">
+                              {p.name}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
+                              {p.address}
+                            </p>
                           </div>
                         ))}
                       </div>
@@ -3322,31 +3390,50 @@ function UsersTab() {
                   {/* Tenant Details (Leases, Payments, Maintenance) */}
                   {profileDetails.tenantDetails && (
                     <div className="space-y-6 pt-4 border-t border-border">
-                      <h4 className="text-sm font-bold text-foreground">Tenant Leases & Records</h4>
-                      
+                      <h4 className="text-sm font-bold text-foreground">
+                        Tenant Leases & Records
+                      </h4>
+
                       {/* Leases & Invoices */}
                       {profileDetails.tenantDetails.leases.map((lease: any) => (
-                        <div key={lease.id} className="p-4 border border-border/80 bg-muted/10 rounded-2xl space-y-4">
+                        <div
+                          key={lease.id}
+                          className="p-4 border border-border/80 bg-muted/10 rounded-2xl space-y-4"
+                        >
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                              <p className="text-xs font-bold text-foreground">{lease.property} — Unit {lease.unit}</p>
+                              <p className="text-xs font-bold text-foreground">
+                                {lease.property} — Unit {lease.unit}
+                              </p>
                               <p className="text-[10px] text-muted-foreground font-semibold">
-                                {new Date(lease.startDate).toLocaleDateString()} to {lease.endDate ? new Date(lease.endDate).toLocaleDateString() : "Present"}
+                                {new Date(lease.startDate).toLocaleDateString()}{" "}
+                                to{" "}
+                                {lease.endDate
+                                  ? new Date(lease.endDate).toLocaleDateString()
+                                  : "Present"}
                               </p>
                             </div>
-                            <span className={cn(
-                              "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border",
-                              lease.status === "ACTIVE" ? "bg-emerald-50 text-emerald-700 border-emerald-200/50" : "bg-zinc-100 text-zinc-600 border-zinc-200"
-                            )}>
+                            <span
+                              className={cn(
+                                "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border",
+                                lease.status === "ACTIVE"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200/50"
+                                  : "bg-zinc-100 text-zinc-600 border-zinc-200",
+                              )}
+                            >
                               Lease: {lease.status}
                             </span>
                           </div>
 
                           {/* Payments List */}
                           <div className="space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Invoices / Rent Payments</p>
+                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                              Invoices / Rent Payments
+                            </p>
                             {lease.payments.length === 0 ? (
-                              <p className="text-[10px] text-muted-foreground italic">No invoice records found for this lease.</p>
+                              <p className="text-[10px] text-muted-foreground italic">
+                                No invoice records found for this lease.
+                              </p>
                             ) : (
                               <div className="border border-border/60 rounded-xl overflow-hidden text-xs">
                                 <div className="grid grid-cols-3 bg-muted/40 p-2.5 font-bold border-b border-border/60 text-muted-foreground text-[10px] uppercase">
@@ -3356,15 +3443,28 @@ function UsersTab() {
                                 </div>
                                 <div className="divide-y divide-border/60 max-h-[150px] overflow-y-auto">
                                   {lease.payments.map((pay: any) => (
-                                    <div key={pay.id} className="grid grid-cols-3 p-2.5 font-semibold text-foreground items-center">
-                                      <span>{new Date(pay.dueDate).toLocaleDateString()}</span>
-                                      <span>₦{pay.amount.toLocaleString()}</span>
-                                      <span className={cn(
-                                        "text-[9px] font-bold max-w-fit px-1.5 py-0.5 rounded",
-                                        pay.status === "PAID" ? "bg-emerald-100 text-emerald-800" :
-                                        pay.status === "PENDING" ? "bg-amber-100 text-amber-800" :
-                                        "bg-rose-100 text-rose-800"
-                                      )}>
+                                    <div
+                                      key={pay.id}
+                                      className="grid grid-cols-3 p-2.5 font-semibold text-foreground items-center"
+                                    >
+                                      <span>
+                                        {new Date(
+                                          pay.dueDate,
+                                        ).toLocaleDateString()}
+                                      </span>
+                                      <span>
+                                        ₦{pay.amount.toLocaleString()}
+                                      </span>
+                                      <span
+                                        className={cn(
+                                          "text-[9px] font-bold max-w-fit px-1.5 py-0.5 rounded",
+                                          pay.status === "PAID"
+                                            ? "bg-emerald-100 text-emerald-800"
+                                            : pay.status === "PENDING"
+                                              ? "bg-amber-100 text-amber-800"
+                                              : "bg-rose-100 text-rose-800",
+                                        )}
+                                      >
                                         {pay.status}
                                       </span>
                                     </div>
@@ -3378,26 +3478,49 @@ function UsersTab() {
 
                       {/* Maintenance Requests */}
                       <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Maintenance Requests</p>
-                        {profileDetails.tenantDetails.maintenanceRequests.length === 0 ? (
-                          <p className="text-xs text-muted-foreground italic">No maintenance requests submitted.</p>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                          Maintenance Requests
+                        </p>
+                        {profileDetails.tenantDetails.maintenanceRequests
+                          .length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic">
+                            No maintenance requests submitted.
+                          </p>
                         ) : (
                           <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                            {profileDetails.tenantDetails.maintenanceRequests.map((req: any) => (
-                              <div key={req.id} className="p-3 border border-border/60 rounded-xl bg-card flex items-start justify-between gap-3">
-                                <div>
-                                  <p className="text-xs font-bold text-foreground">{req.title || "Untitled Issue"}</p>
-                                  <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{req.description}</p>
-                                  <p className="text-[9px] text-muted-foreground/60 font-semibold mt-1">Submitted: {new Date(req.createdAt).toLocaleDateString()}</p>
+                            {profileDetails.tenantDetails.maintenanceRequests.map(
+                              (req: any) => (
+                                <div
+                                  key={req.id}
+                                  className="p-3 border border-border/60 rounded-xl bg-card flex items-start justify-between gap-3"
+                                >
+                                  <div>
+                                    <p className="text-xs font-bold text-foreground">
+                                      {req.title || "Untitled Issue"}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                                      {req.description}
+                                    </p>
+                                    <p className="text-[9px] text-muted-foreground/60 font-semibold mt-1">
+                                      Submitted:{" "}
+                                      {new Date(
+                                        req.createdAt,
+                                      ).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <span
+                                    className={cn(
+                                      "text-[9px] font-bold px-1.5 py-0.5 rounded",
+                                      req.status === "RESOLVED"
+                                        ? "bg-emerald-100 text-emerald-800"
+                                        : "bg-amber-100 text-amber-800",
+                                    )}
+                                  >
+                                    {req.status}
+                                  </span>
                                 </div>
-                                <span className={cn(
-                                  "text-[9px] font-bold px-1.5 py-0.5 rounded",
-                                  req.status === "RESOLVED" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
-                                )}>
-                                  {req.status}
-                                </span>
-                              </div>
-                            ))}
+                              ),
+                            )}
                           </div>
                         )}
                       </div>
@@ -3528,7 +3651,8 @@ function LegalLeaseRequestsTab() {
             No Legal Lease Requests
           </h4>
           <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-            There are currently no legal lease drafting or verification requests submitted by property managers.
+            There are currently no legal lease drafting or verification requests
+            submitted by property managers.
           </p>
         </div>
       </div>
@@ -3568,101 +3692,101 @@ function LegalLeaseRequestsTab() {
             </thead>
             <tbody className="divide-y divide-border/60">
               {requests.map((req) => (
-                  <tr
-                    key={req.id}
-                    className="hover:bg-muted/10 transition-colors"
-                  >
-                    <td className="p-4 text-muted-foreground">
-                      {new Date(req.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="p-4">
-                      <span className="font-bold text-foreground">
-                        {req.workspace?.name}
+                <tr
+                  key={req.id}
+                  className="hover:bg-muted/10 transition-colors"
+                >
+                  <td className="p-4 text-muted-foreground">
+                    {new Date(req.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="p-4">
+                    <span className="font-bold text-foreground">
+                      {req.workspace?.name}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="space-y-0.5">
+                      <p className="font-bold">{req.landlordName}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {req.landlordAddress}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="space-y-0.5">
+                      <p className="font-bold">{req.tenantName}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {req.tenantAddress}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="p-4 font-bold text-right">
+                    ₦
+                    {req.feeAmount.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "px-2 py-1 rounded-full text-[10px] font-bold",
+                          req.status === "PENDING"
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
+                            : req.status === "VERIFIED"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                              : "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400",
+                        )}
+                      >
+                        {req.status}
                       </span>
-                    </td>
-                    <td className="p-4">
-                      <div className="space-y-0.5">
-                        <p className="font-bold">{req.landlordName}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {req.landlordAddress}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="space-y-0.5">
-                        <p className="font-bold">{req.tenantName}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {req.tenantAddress}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="p-4 font-bold text-right">
-                      ₦
-                      {req.feeAmount.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                      })}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "px-2 py-1 rounded-full text-[10px] font-bold",
-                            req.status === "PENDING"
-                              ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
-                              : req.status === "VERIFIED"
-                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
-                                : "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400",
-                          )}
-                        >
-                          {req.status}
-                        </span>
-                        {req.status === "REJECTED" && req.rejectionReason && (
-                          <div className="group relative">
-                            <Info className="w-3.5 h-3.5 text-rose-500 cursor-pointer" />
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 bg-zinc-900 text-white dark:bg-card dark:text-foreground text-[10px] p-2.5 rounded-xl shadow-xl border border-zinc-800 dark:border-border z-[100] text-left leading-relaxed font-semibold">
-                              Reason: {req.rejectionReason}
-                            </div>
+                      {req.status === "REJECTED" && req.rejectionReason && (
+                        <div className="group relative">
+                          <Info className="w-3.5 h-3.5 text-rose-500 cursor-pointer" />
+                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 bg-zinc-900 text-white dark:bg-card dark:text-foreground text-[10px] p-2.5 rounded-xl shadow-xl border border-zinc-800 dark:border-border z-[100] text-left leading-relaxed font-semibold">
+                            Reason: {req.rejectionReason}
                           </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => setPreviewProofUrl(req.proofUrl)}
-                          className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                          title="View Payment Proof"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        {req.status === "PENDING" && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setSelectedRequest(req);
-                                setActionType("verify");
-                              }}
-                              className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg text-emerald-600 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors cursor-pointer"
-                              title="Verify Payment"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedRequest(req);
-                                setActionType("reject");
-                              }}
-                              className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg text-rose-600 hover:text-rose-700 dark:hover:text-rose-400 transition-colors cursor-pointer"
-                              title="Reject Request"
-                            >
-                              <Ban className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-4 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => setPreviewProofUrl(req.proofUrl)}
+                        className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        title="View Payment Proof"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {req.status === "PENDING" && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setSelectedRequest(req);
+                              setActionType("verify");
+                            }}
+                            className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg text-emerald-600 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                            title="Verify Payment"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedRequest(req);
+                              setActionType("reject");
+                            }}
+                            className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg text-rose-600 hover:text-rose-700 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                            title="Reject Request"
+                          >
+                            <Ban className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

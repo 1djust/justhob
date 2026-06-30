@@ -1396,9 +1396,9 @@ function AddUnitsModal({
   onConfirm: (units: { unitNumber: string; type: string }[]) => void;
   onClose: () => void;
 }) {
-  const [units, setUnits] = React.useState<{ unitNumber: string; type: string }[]>([
-    { unitNumber: "", type: "MINI_FLAT" },
-  ]);
+  const [units, setUnits] = React.useState<
+    { unitNumber: string; type: string }[]
+  >([{ unitNumber: "", type: "MINI_FLAT" }]);
 
   const addUnit = () =>
     setUnits([...units, { unitNumber: "", type: "MINI_FLAT" }]);
@@ -1461,7 +1461,10 @@ function AddUnitsModal({
               </label>
               <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto border border-zinc-200/60 dark:border-zinc-800 p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/10">
                 {property.units.map((u) => (
-                  <span key={u.id} className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-700/40">
+                  <span
+                    key={u.id}
+                    className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-700/40"
+                  >
                     Unit {u.unitNumber}
                   </span>
                 ))}
@@ -1492,14 +1495,18 @@ function AddUnitsModal({
                       required
                       placeholder="Unit Number (e.g. A1)"
                       value={unit.unitNumber}
-                      onChange={(e) => updateUnit(index, "unitNumber", e.target.value)}
+                      onChange={(e) =>
+                        updateUnit(index, "unitNumber", e.target.value)
+                      }
                       className="w-full px-3.5 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/10"
                     />
                   </div>
                   <div className="flex-1 relative">
                     <select
                       value={unit.type}
-                      onChange={(e) => updateUnit(index, "type", e.target.value)}
+                      onChange={(e) =>
+                        updateUnit(index, "type", e.target.value)
+                      }
                       className="w-full pl-3.5 pr-8 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer"
                     >
                       {Object.entries(propertyTypeConfig).map(([key, val]) => (

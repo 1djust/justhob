@@ -36,7 +36,12 @@ const plans = [
   {
     name: "Pro",
     prices: {
-      monthly: { price: "₦5,000", period: "/mo", total: "₦5,000", sublabel: "" },
+      monthly: {
+        price: "₦5,000",
+        period: "/mo",
+        total: "₦5,000",
+        sublabel: "",
+      },
       yearly: {
         price: "₦54,000",
         period: "/yr",
@@ -69,7 +74,12 @@ const plans = [
   {
     name: "Enterprise",
     prices: {
-      monthly: { price: "₦10,000", period: "/mo", total: "₦10,000", sublabel: "" },
+      monthly: {
+        price: "₦10,000",
+        period: "/mo",
+        total: "₦10,000",
+        sublabel: "",
+      },
       yearly: {
         price: "₦108,000",
         period: "/yr",
@@ -102,7 +112,9 @@ const plans = [
 ];
 
 export function PricingSection() {
-  const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("monthly");
+  const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">(
+    "monthly",
+  );
   const [selectedPlan, setSelectedPlan] = useState<{
     name: string;
     price: string;
@@ -123,7 +135,7 @@ export function PricingSection() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleUpgradeClick = (plan: typeof plans[0]) => {
+  const handleUpgradeClick = (plan: (typeof plans)[0]) => {
     const currentPrices = plan.prices[billingInterval];
     setSelectedPlan({
       name: plan.name,
@@ -328,9 +340,16 @@ export function PricingSection() {
                 <CreditCard className="h-8 w-8" />
               </div>
 
-              <h3 className="text-2xl font-bold mb-2">Upgrade to {selectedPlan.name}</h3>
+              <h3 className="text-2xl font-bold mb-2">
+                Upgrade to {selectedPlan.name}
+              </h3>
               <p className="text-slate-600 dark:text-slate-400 mb-6 text-sm leading-relaxed">
-                To activate the <strong>{selectedPlan.name} ({selectedPlan.interval === "monthly" ? "Monthly" : "Yearly"})</strong> plan, please make a bank transfer to the account details below.
+                To activate the{" "}
+                <strong>
+                  {selectedPlan.name} (
+                  {selectedPlan.interval === "monthly" ? "Monthly" : "Yearly"})
+                </strong>{" "}
+                plan, please make a bank transfer to the account details below.
               </p>
 
               <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 mb-6">
@@ -341,7 +360,9 @@ export function PricingSection() {
                         <Building className="h-3.5 w-3.5" />
                         <span>Bank Name</span>
                       </p>
-                      <p className="font-bold text-sm text-foreground">{bankDetails.bank}</p>
+                      <p className="font-bold text-sm text-foreground">
+                        {bankDetails.bank}
+                      </p>
                     </div>
 
                     <div>
@@ -349,7 +370,9 @@ export function PricingSection() {
                         Billing Period
                       </p>
                       <p className="font-bold text-sm text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
-                        {selectedPlan.interval === "monthly" ? "Monthly" : "Yearly"}
+                        {selectedPlan.interval === "monthly"
+                          ? "Monthly"
+                          : "Yearly"}
                       </p>
                     </div>
                   </div>
@@ -391,7 +414,9 @@ export function PricingSection() {
                         Transfer Amount
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {selectedPlan.interval === "yearly" ? "Billed annually" : "Billed monthly"}
+                        {selectedPlan.interval === "yearly"
+                          ? "Billed annually"
+                          : "Billed monthly"}
                       </p>
                     </div>
                     <p className="font-black text-2xl text-indigo-600 dark:text-indigo-400 font-mono">

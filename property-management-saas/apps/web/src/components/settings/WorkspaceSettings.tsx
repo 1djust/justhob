@@ -78,9 +78,14 @@ interface UpgradeRequestData {
 }
 
 export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
-  const [activeTab, setActiveTab] = React.useState<"payout" | "billing">(
-    "payout",
-  );
+  const [activeTab, setActiveTab] = React.useState<
+    "general" | "payout" | "billing"
+  >("general");
+
+  // General Settings State
+  const [workspaceName, setWorkspaceName] = React.useState("");
+  const [generalLoading, setGeneralLoading] = React.useState(false);
+  const [generalSuccess, setGeneralSuccess] = React.useState(false);
 
   // Payout Settings State
   const [bankCode, setBankCode] = React.useState("");
@@ -133,6 +138,7 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
         );
         if (ws) {
           const targetWs = ws.workspace;
+          setWorkspaceName(targetWs?.name || "");
           setBankCode(targetWs?.bankCode || ws.bankCode || "");
           setAccountNumber(targetWs?.accountNumber || ws.accountNumber || "");
           setAccountName(targetWs?.accountName || ws.accountName || "");
@@ -163,6 +169,32 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
       toast.error("Failed to update payout settings");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGeneralSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!workspaceName.trim()) return;
+    setGeneralLoading(true);
+    setGeneralSuccess(false);
+    try {
+      await apiFetch(`${API_BASE_URL}/api/workspaces/${workspaceId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: workspaceName.trim() }),
+        credentials: "include",
+      });
+      setGeneralSuccess(true);
+      setTimeout(() => setGeneralSuccess(false), 3000);
+      toast.success("Workspace name updated successfully");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to update workspace name");
+    } finally {
+      setGeneralLoading(false);
     }
   };
 
@@ -249,6 +281,16 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
         {/* Navigation Tabs */}
         <div className="flex border-b border-zinc-200 dark:border-zinc-800 mb-8">
           <button
+            onClick={() => setActiveTab("general")}
+            className={`pb-4 px-6 text-sm font-bold transition-all border-b-2 ${
+              activeTab === "general"
+                ? "border-primary text-zinc-900 dark:text-white"
+                : "border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+            }`}
+          >
+            General Settings
+          </button>
+          <button
             onClick={() => setActiveTab("payout")}
             className={`pb-4 px-6 text-sm font-bold transition-all border-b-2 ${
               activeTab === "payout"
@@ -269,6 +311,70 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
             Billing & Subscriptions
           </button>
         </div>
+
+        {activeTab === "general" && (
+          <div>
+            <div className="mb-10">
+              <h3 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-zinc-50 dark:to-zinc-400 bg-clip-text text-transparent">
+                General Settings
+              </h3>
+              <p className="text-sm text-zinc-500 mt-2 font-medium">
+                Manage your workspace identity and profile.
+              </p>
+            </div>
+
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-zinc-100 to-zinc-50 dark:from-zinc-900 dark:to-zinc-950 rounded-[3rem] blur-xl opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+
+              <form
+                onSubmit={handleGeneralSubmit}
+                className="relative p-10 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] bg-white dark:bg-zinc-950 shadow-sm space-y-10"
+              >
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+                    Workspace Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter workspace name"
+                    value={workspaceName}
+                    onChange={(e) => setWorkspaceName(e.target.value)}
+                    className="w-full px-5 py-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-all font-bold placeholder:font-normal text-foreground"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-4">
+                  <div className="flex items-center gap-2">
+                    {generalSuccess && (
+                      <div className="animate-in fade-in slide-in-from-left-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50 text-[10px] font-black uppercase tracking-widest">
+                        <CheckCircle2 className="w-3 h-3" /> Saved successfully
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={generalLoading || !workspaceName.trim()}
+                    isLoading={generalLoading}
+                    variant="primary"
+                    size="lg"
+                    className="group flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em]"
+                  >
+                    {generalLoading ? (
+                      "Saving..."
+                    ) : (
+                      <>
+                        Save Changes
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {activeTab === "payout" && (
           <div>

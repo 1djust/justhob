@@ -52,7 +52,7 @@ export function AuditTrail() {
     try {
       const searchParam = query ? `&search=${encodeURIComponent(query)}` : "";
       const data = (await apiFetch(
-        `${API_BASE_URL}/api/super-admin/audit-logs?page=${currentPage}&limit=15${searchParam}`
+        `${API_BASE_URL}/api/super-admin/audit-logs?page=${currentPage}&limit=15${searchParam}`,
       )) as {
         logs: AuditLogEntry[];
         pagination: {
@@ -103,7 +103,11 @@ export function AuditTrail() {
     if (action.includes("CREATE")) {
       return "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-900/30";
     }
-    if (action.includes("DELETE") || action.includes("REMOVE") || action.includes("REJECT")) {
+    if (
+      action.includes("DELETE") ||
+      action.includes("REMOVE") ||
+      action.includes("REJECT")
+    ) {
       return "bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border-rose-200/50 dark:border-rose-900/30";
     }
     if (action.includes("UPDATE")) {
@@ -116,7 +120,10 @@ export function AuditTrail() {
     <div className="space-y-6" aria-label="Manager Audit Trail Container">
       {/* Control Bar (Search + Refresh) */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <form onSubmit={handleSearchSubmit} className="flex gap-2 w-full md:max-w-2xl">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="flex gap-2 w-full md:max-w-2xl"
+        >
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
@@ -142,7 +149,7 @@ export function AuditTrail() {
           <RefreshCw
             className={cn(
               "w-3.5 h-3.5 text-muted-foreground",
-              isLoading && "animate-spin"
+              isLoading && "animate-spin",
             )}
           />
           Refresh Audit Trail
@@ -171,7 +178,8 @@ export function AuditTrail() {
                 No Logs Recorded
               </h4>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                No manager operations matching the specified filters have been registered.
+                No manager operations matching the specified filters have been
+                registered.
               </p>
             </div>
           ) : (
@@ -206,7 +214,7 @@ export function AuditTrail() {
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border",
-                            getActionBadgeClass(log.action)
+                            getActionBadgeClass(log.action),
                           )}
                         >
                           {getActionIcon(log.action)}

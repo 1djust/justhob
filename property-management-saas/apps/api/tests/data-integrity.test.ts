@@ -145,12 +145,24 @@ describe("Fix 2: Owner Creation Atomic Transaction", () => {
     });
 
     const result = await mockPrisma.$transaction(
-      async (tx: { user: typeof mockPrisma.user; workspaceMember: typeof mockPrisma.workspaceMember }) => {
+      async (tx: {
+        user: typeof mockPrisma.user;
+        workspaceMember: typeof mockPrisma.workspaceMember;
+      }) => {
         const createdUser = await tx.user.create({
-          data: { id: "user-123", email: "landlord@test.com", name: "Test Landlord", role: "LANDLORD" },
+          data: {
+            id: "user-123",
+            email: "landlord@test.com",
+            name: "Test Landlord",
+            role: "LANDLORD",
+          },
         });
         await tx.workspaceMember.create({
-          data: { userId: createdUser.id, workspaceId: "ws-123", role: "LANDLORD" },
+          data: {
+            userId: createdUser.id,
+            workspaceId: "ws-123",
+            role: "LANDLORD",
+          },
         });
         return createdUser;
       },
@@ -177,9 +189,17 @@ describe("Fix 2: Owner Creation Atomic Transaction", () => {
 
     await expect(
       mockPrisma.$transaction(
-        async (tx: { user: typeof mockPrisma.user; workspaceMember: typeof mockPrisma.workspaceMember }) => {
+        async (tx: {
+          user: typeof mockPrisma.user;
+          workspaceMember: typeof mockPrisma.workspaceMember;
+        }) => {
           const user = await tx.user.create({
-            data: { id: "user-123", email: "test@test.com", name: "Test", role: "LANDLORD" },
+            data: {
+              id: "user-123",
+              email: "test@test.com",
+              name: "Test",
+              role: "LANDLORD",
+            },
           });
           // This should fail and rollback the user creation
           await tx.workspaceMember.create({
