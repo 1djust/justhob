@@ -119,6 +119,16 @@ async function seed() {
       // B. Prisma User
       let dbUser = await prisma.user.findUnique({ where: { id: supaUser.id } });
       if (!dbUser) {
+        // If a user with the same email already exists (e.g. from an old Supabase project),
+        // delete it first to prevent unique email constraint violation.
+        const existingByEmail = await prisma.user.findUnique({
+          where: { email: supaUser.email! },
+        });
+        if (existingByEmail) {
+          console.log(`Deleting old Prisma profile for ${supaUser.email}`);
+          await prisma.user.delete({ where: { id: existingByEmail.id } });
+        }
+
         dbUser = await prisma.user.create({
           data: {
             id: supaUser.id,
