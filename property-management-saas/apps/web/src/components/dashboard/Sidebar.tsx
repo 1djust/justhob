@@ -69,6 +69,7 @@ interface SidebarProps {
   onLogout: () => void;
   workspaceId?: string | null;
   isSuperAdmin?: boolean;
+  userRole?: string;
 }
 
 interface Notification {
@@ -89,6 +90,7 @@ export function Sidebar({
   onLogout,
   workspaceId,
   isSuperAdmin,
+  userRole,
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = React.useState(false);
@@ -257,7 +259,18 @@ export function Sidebar({
 
   const filteredItems = isSuperAdmin
     ? []
-    : navItems.filter((item) => !item.managerOnly || isPropertyManager);
+    : navItems.filter((item) => {
+        if (userRole === "LANDLORD") {
+          return [
+            "dashboard",
+            "properties",
+            "payments",
+            "occupancy",
+            "maintenance",
+          ].includes(item.id);
+        }
+        return !item.managerOnly || isPropertyManager;
+      });
 
   const adminItems = [
     { id: "admin-overview", label: "Overview", icon: Activity },

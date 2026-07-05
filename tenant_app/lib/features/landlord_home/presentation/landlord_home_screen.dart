@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import '../../../../core/theme/app_theme.dart';
 
@@ -147,10 +148,13 @@ class LandlordHomeScreen extends ConsumerWidget {
                     children: [
                       _buildFeatureCard(
                         context,
-                        title: 'Rent Payments',
+                        title: 'Payments',
                         subtitle: 'Verify transactions',
                         icon: Icons.payments_outlined,
                         color: const Color(0xFF10B981),
+                        onTap: () {
+                          context.push('/landlord/payments');
+                        },
                       ),
                       _buildFeatureCard(
                         context,
@@ -168,7 +172,7 @@ class LandlordHomeScreen extends ConsumerWidget {
                       ),
                       _buildFeatureCard(
                         context,
-                        title: 'Tenant Directory',
+                        title: 'Occupancy',
                         subtitle: 'Contact & leases',
                         icon: Icons.people_outline,
                         color: Colors.indigo,
@@ -196,11 +200,12 @@ class LandlordHomeScreen extends ConsumerWidget {
     required String subtitle,
     required IconData icon,
     required Color color,
+    VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
 
     return InkWell(
-      onTap: () {
+      onTap: onTap ?? () {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('$title dashboard is coming soon in mobile app!'),

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tenant_app/features/auth/domain/user.dart';
 import 'package:tenant_app/features/auth/domain/workspace.dart';
 import 'package:tenant_app/features/auth/presentation/auth_notifier.dart';
@@ -409,10 +410,10 @@ void main() {
       final c = _makeContainer(AsyncValue.data(_landlordUser()));
       await tester.pumpWidget(_wrap(child: const LandlordHomeScreen(), container: c));
       await tester.pump();
-      expect(find.text('Rent Payments'), findsOneWidget);
+      expect(find.text('Payments'), findsOneWidget);
       expect(find.text('Maintenance'), findsOneWidget);
       expect(find.text('Properties'), findsOneWidget);
-      expect(find.text('Tenant Directory'), findsOneWidget);
+      expect(find.text('Occupancy'), findsOneWidget);
     });
 
     testWidgets('TC-35: All 4 feature card subtitles rendered', (tester) async {
@@ -435,18 +436,43 @@ void main() {
       expect(find.byIcon(Icons.people_outline), findsOneWidget);
     });
 
-    testWidgets('TC-37: Tapping "Rent Payments" shows coming soon snackbar',
+    testWidgets('TC-37: Tapping "Payments" routes to payments dashboard',
         (tester) async {
       final c = _makeContainer(AsyncValue.data(_landlordUser()));
-      await tester.pumpWidget(_wrap(child: const LandlordHomeScreen(), container: c));
-      await tester.pump();
-      // Card may be below the fold in the 800×600 test viewport — scroll it into view
-      await tester.ensureVisible(find.text('Rent Payments'));
+      final router = GoRouter(
+        initialLocation: '/landlord',
+        routes: [
+          GoRoute(
+            path: '/landlord',
+            builder: (context, state) => const LandlordHomeScreen(),
+          ),
+          GoRoute(
+            path: '/landlord/payments',
+            builder: (context, state) => const Scaffold(
+              body: Text('Landlord Payments Screen'),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: c,
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme,
+            routerConfig: router,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Rent Payments'));
-      await tester.pump();
+
+      // Card may be below the fold in the 800×600 test viewport — scroll it into view
+      await tester.ensureVisible(find.text('Payments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Payments'));
+      await tester.pumpAndSettle();
       expect(
-        find.text('Rent Payments dashboard is coming soon in mobile app!'),
+        find.text('Landlord Payments Screen'),
         findsOneWidget,
       );
     });

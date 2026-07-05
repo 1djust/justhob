@@ -80,7 +80,8 @@ export default function DashboardPage() {
   const activeRole = user?.workspaces?.find(
     (w) => w.workspace.id === selectedWorkspaceId,
   )?.role;
-  const isPropertyManager = activeRole === "PROPERTY_MANAGER";
+  const isPropertyManager =
+    activeRole === "PROPERTY_MANAGER" || activeRole === "LANDLORD";
 
   React.useEffect(() => {
     apiFetch(`${API_BASE_URL}/api/auth/me`)
@@ -311,7 +312,8 @@ export default function DashboardPage() {
                           <span
                             className={`text-[10px] font-medium ${selectedWorkspaceId === member.workspace?.id ? "text-zinc-400" : "text-zinc-500"}`}
                           >
-                            {member.role === "PROPERTY_MANAGER"
+                            {member.role === "PROPERTY_MANAGER" ||
+                            member.role === "LANDLORD"
                               ? "Full Access"
                               : "View Only"}
                           </span>
@@ -423,6 +425,7 @@ export default function DashboardPage() {
           onLogout={handleLogout}
           workspaceId={selectedWorkspaceId}
           isSuperAdmin={user?.globalRole === "SUPER_ADMIN"}
+          userRole={activeRole}
         />
 
         <main className="flex-1 lg:ml-64 transition-all duration-300 min-h-screen">

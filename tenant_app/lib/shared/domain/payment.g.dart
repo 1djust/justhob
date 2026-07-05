@@ -36,6 +36,7 @@ _$PaymentImpl _$$PaymentImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => Transaction.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
+      lease: json['lease'] as Map<String, dynamic>?,
     );
 
 Map<String, dynamic> _$$PaymentImplToJson(_$PaymentImpl instance) =>
@@ -57,4 +58,5 @@ Map<String, dynamic> _$$PaymentImplToJson(_$PaymentImpl instance) =>
       'paymentPlanStatus': instance.paymentPlanStatus,
       'evictionDate': instance.evictionDate?.toIso8601String(),
       'transactions': instance.transactions,
+      'lease': instance.lease,
     };

@@ -14,6 +14,9 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/home/presentation/home_notifier.dart';
 import '../../features/auth/presentation/lease_review_screen.dart';
 import '../../features/landlord_home/presentation/landlord_home_screen.dart';
+import '../../features/landlord_home/presentation/landlord_payments_screen.dart';
+import '../../features/landlord_home/presentation/landlord_payment_review_screen.dart';
+import '../../shared/domain/payment.dart';
 
 /// A notifier that communicates auth changes to GoRouter without rebuilding the Router instance itself.
 class RouterNotifier extends ChangeNotifier {
@@ -57,17 +60,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         (m) => m.role == 'LANDLORD' || m.role == 'PROPERTY_MANAGER',
       );
 
-      final isLandlordScreen = state.matchedLocation == '/landlord';
+      final isLandlordPath = state.matchedLocation.startsWith('/landlord');
 
       if (isLandlord) {
-        if (!isLandlordScreen) {
+        if (!isLandlordPath && state.matchedLocation != '/change-password') {
           return '/landlord';
         }
         return null;
       }
 
       // Tenant-specific redirects
-      if (isLandlordScreen) {
+      if (isLandlordPath) {
         return '/';
       }
 
@@ -121,6 +124,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/landlord',
         builder: (context, state) => const LandlordHomeScreen(),
+      ),
+      GoRoute(
+        path: '/landlord/payments',
+        builder: (context, state) => const LandlordPaymentsScreen(),
+      ),
+      GoRoute(
+        path: '/landlord/payments/review',
+        builder: (context, state) {
+          final extra = state.extra;
+          final payment = extra is Payment
+              ? extra
+              : Payment.fromJson(extra as Map<String, dynamic>);
+          return LandlordPaymentReviewScreen(payment: payment);
+        },
       ),
       GoRoute(
         path: '/lockout',

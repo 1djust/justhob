@@ -25,6 +25,7 @@ class Payment with _$Payment {
     String? paymentPlanStatus,
     DateTime? evictionDate,
     @Default([]) List<Transaction> transactions,
+    Map<String, dynamic>? lease,
   }) = _Payment;
 
   factory Payment.fromJson(Map<String, dynamic> json) => _$PaymentFromJson(json);

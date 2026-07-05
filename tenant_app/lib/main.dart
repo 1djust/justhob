@@ -19,6 +19,7 @@ void main() async {
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
     debugPrint('[GlobalErrorBoundary] Flutter error caught: ${details.exceptionAsString()}');
+    debugPrint('[GlobalErrorBoundary] Stack trace:\n${details.stack}');
   };
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
@@ -62,6 +63,10 @@ void main() async {
   );
 }
 
+final socketEventStreamProvider = StreamProvider<Map<String, dynamic>>((ref) {
+  return SocketService().eventStream;
+});
+
 class MainApp extends ConsumerWidget {
   const MainApp({super.key});
 
@@ -73,8 +78,7 @@ class MainApp extends ConsumerWidget {
     ref.watch(lifecycleServiceProvider);
 
     // Listen for socket events and refresh global state if needed
-    ref.listen(StreamProvider((ref) => SocketService().eventStream),
-        (prev, next) {
+    ref.listen(socketEventStreamProvider, (prev, next) {
       if (next.hasValue) {
         final type = next.value!['type'];
         debugPrint('[MainApp] Global Socket Event: $type');

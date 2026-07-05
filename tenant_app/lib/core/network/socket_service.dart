@@ -113,9 +113,6 @@ class SocketService {
     if (_socket?.connected ?? false) {
       _socket?.emit('join-workspace', workspaceId);
       debugPrint('[Socket] Joined workspace room: $workspaceId');
-    } else {
-      // If not yet connected, retry after a short delay
-      Future.delayed(const Duration(seconds: 2), () => joinWorkspace(workspaceId));
     }
   }
 
