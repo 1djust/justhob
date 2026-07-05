@@ -52,7 +52,7 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
     final bool isPropertyManager = authState.maybeWhen(
       data: (user) {
         if (user == null) return false;
-        return user.workspaces.any((m) => m.role == 'PROPERTY_MANAGER');
+        return user.workspaces.any((m) => m.role == 'PROPERTY_MANAGER' || m.role == 'LANDLORD');
       },
       orElse: () => false,
     );

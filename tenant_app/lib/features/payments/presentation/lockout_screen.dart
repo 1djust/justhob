@@ -64,19 +64,20 @@ class _LockoutScreenState extends ConsumerState<LockoutScreen> {
                     if (controller.text.trim().isEmpty) return;
                     Navigator.pop(context);
                     setState(() => _isSubmitting = true);
+                    final messenger = ScaffoldMessenger.of(this.context);
                     try {
                       await ref.read(paymentsProvider.notifier).requestPaymentPlan(
                             payment.id,
                             controller.text.trim(),
                           );
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(content: Text('Payment plan requested successfully.')),
                         );
                       }
                     } catch (e) {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(content: Text(e.toString())),
                         );
                       }

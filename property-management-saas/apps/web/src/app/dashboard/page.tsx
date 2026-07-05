@@ -88,7 +88,8 @@ export default function DashboardPage() {
       .then(async (data) => {
         if (
           data.user?.mustChangePassword &&
-          data.user?.role !== "PROPERTY_MANAGER"
+          data.user?.role !== "PROPERTY_MANAGER" &&
+          data.user?.role !== "LANDLORD"
         ) {
           router.push("/login");
           return;

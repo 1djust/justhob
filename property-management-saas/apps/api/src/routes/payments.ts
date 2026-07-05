@@ -4,6 +4,7 @@ import {
   authenticate,
   verifyWorkspaceAccess,
   requireManager,
+  requireManagement,
 } from "../lib/middleware";
 import { logAction } from "../lib/audit";
 import { Prisma, PaymentStatus } from "@prisma/client";
@@ -473,7 +474,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   }>(
     "/:id/review",
     {
-      preHandler: requireManager,
+      preHandler: requireManagement,
       schema: { params: PaymentIdParams, body: ReviewPaymentBody },
     },
     async (request, reply) => {
