@@ -22,17 +22,16 @@ const host = "aws-1-eu-north-1.pooler.supabase.com";
 try {
   const ips = await dns.resolve4(host);
   if (ips && ips.length > 0) {
-    let ip = ips[0];
-    if (ips.includes("51.21.189.77")) {
-      ip = "51.21.189.77";
-    } else if (ip === "51.21.18.29" && ips.length > 1) {
-      ip = ips[1];
-    }
+    // DATABASE_URL uses port 6543 (pooler) which listens on 51.21.18.29
+    const dbIp = ips.includes("51.21.18.29") ? "51.21.18.29" : ips[0];
+    // DIRECT_URL uses port 5432 (direct) which listens on 51.21.189.77
+    const directIp = ips.includes("51.21.189.77") ? "51.21.189.77" : ips[0];
+
     if (process.env.DATABASE_URL) {
-      process.env.DATABASE_URL = process.env.DATABASE_URL.replace(host, ip);
+      process.env.DATABASE_URL = process.env.DATABASE_URL.replace(host, dbIp);
     }
     if (process.env.DIRECT_URL) {
-      process.env.DIRECT_URL = process.env.DIRECT_URL.replace(host, ip);
+      process.env.DIRECT_URL = process.env.DIRECT_URL.replace(host, directIp);
     }
   }
 } catch (err) {
