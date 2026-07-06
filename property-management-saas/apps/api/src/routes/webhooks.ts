@@ -15,7 +15,8 @@ export default async function webhookRoutes(fastify: FastifyInstance) {
       const authHeader = request.headers.authorization;
       const expectedSecret = process.env.SUPABASE_WEBHOOK_SECRET;
 
-      if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+      // Security: Fail CLOSED — reject if secret is not configured or doesn't match
+      if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
 

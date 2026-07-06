@@ -48,6 +48,12 @@ export default async function publicLogRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ error: "Stack trace too long" });
         }
 
+        // Security: Limit context object size to prevent database storage exhaustion
+        const contextStr = context ? JSON.stringify(context) : null;
+        if (contextStr && contextStr.length > 5000) {
+          return reply.status(400).send({ error: "Context object too large" });
+        }
+
         const log = await prisma.errorLog.create({
           data: {
             level: level || "error",

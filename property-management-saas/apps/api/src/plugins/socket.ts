@@ -50,14 +50,14 @@ const socketPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       const userId = data.user.id;
       const userEmail = data.user.email;
       console.log(
-        `[Socket] User connected: ${userId} (${userEmail}) - Socket: ${socket.id}`,
+        `[Socket] User connected: ${userId} - Socket: ${socket.id}`,
       );
 
       // Join user-specific rooms for direct notifications
       socket.join(`user:${userId}`);
       if (userEmail) {
         socket.join(`user:${userEmail}`);
-        console.log(`[Socket] ${userId} joined room user:${userEmail}`);
+        console.log(`[Socket] ${userId} joined email-based room`);
       }
       console.log(`[Socket] ${userId} joined personal room user:${userId}`);
 

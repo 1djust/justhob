@@ -418,8 +418,9 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         (payment.amountPaid || 0) + parseFloat(amountPaid.toString());
 
       if (newAmountPaid >= payment.amount) {
+        // Security: Use compound key to ensure workspace-scoped update (prevents IDOR)
         const updated = await prisma.payment.update({
-          where: { id },
+          where: { payment_workspace_id: { id, workspaceId } },
           data: {
             status: "PAID",
             amountPaid: payment.amount,
@@ -437,8 +438,9 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         return reply.send({ payment: updated, fullyPaid: true });
       }
 
+      // Security: Use compound key to ensure workspace-scoped update (prevents IDOR)
       const updated = await prisma.payment.update({
-        where: { id },
+        where: { payment_workspace_id: { id, workspaceId } },
         data: {
           status: "PARTIALLY_PAID",
           amountPaid: newAmountPaid,

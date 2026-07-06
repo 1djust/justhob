@@ -110,6 +110,7 @@ export default async function publicRoutes(fastify: FastifyInstance) {
   }>(
     "/tenants/:tenantId/maintenance",
     {
+      preHandler: authenticate, // Security: Require authentication to prevent IDOR/spam
       schema: { params: TenantParams, body: MaintenanceBody },
     },
     async (request, reply) => {
@@ -133,6 +134,22 @@ export default async function publicRoutes(fastify: FastifyInstance) {
 
       if (!tenant) {
         return reply.status(404).send({ error: "Tenant not found" });
+      }
+
+      // Security: Verify the requester is either this tenant (by email) or a member of the workspace
+      const requestUser = await prisma.user.findUnique({
+        where: { id: request.userId! },
+        select: { email: true },
+      });
+      const isSelf = requestUser?.email === tenant.email;
+      const isWorkspaceMember = await prisma.workspaceMember.findFirst({
+        where: { userId: request.userId!, workspaceId: tenant.workspaceId },
+      });
+
+      if (!isSelf && !isWorkspaceMember) {
+        return reply
+          .status(403)
+          .send({ error: "You are not authorized to submit requests for this tenant" });
       }
 
       // Determine the workspace

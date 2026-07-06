@@ -142,10 +142,11 @@ export const requireSuperAdmin = async (
     return reply.status(403).send({ error: "Super Admin privileges required" });
   }
 
-  // Security: Enforce Two-Factor Authentication (AAL2) for Super Admins
-  // This blocks access to God Mode routes if they haven't verified 2FA.
-  // In development/test environments, we bypass this check to simplify testing.
-  if (process.env.NODE_ENV === "production" && !request.isAAL2) {
+  // Security: Enforce Two-Factor Authentication (AAL2) for Super Admins.
+  // M-2 fix: Default to requiring MFA. Only skip if explicitly opted out
+  // via DISABLE_MFA_CHECK=true (for local development/testing).
+  const isMfaDisabled = process.env.DISABLE_MFA_CHECK === "true";
+  if (!isMfaDisabled && !request.isAAL2) {
     return reply.status(403).send({
       error:
         "Multi-Factor Authentication required. Please complete 2FA setup or verification.",

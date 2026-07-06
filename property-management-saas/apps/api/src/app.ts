@@ -47,8 +47,10 @@ export function buildApp() {
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   // Security: Restrict CORS to known frontend origins only
+  // M-1 fix: Only include localhost in development to prevent CORS abuse in production
+  const isProd = process.env.NODE_ENV === "production";
   const allowedOrigins = [
-    "http://localhost:3000",
+    ...(isProd ? [] : ["http://localhost:3000"]),
     "https://justhob.vercel.app",
     "https://propertystack.vercel.app",
     process.env.FRONTEND_URL,
@@ -60,7 +62,6 @@ export function buildApp() {
   });
 
   // PRODUCTION HARDENING: Check for mandatory secrets
-  const isProd = process.env.NODE_ENV === "production";
   const cookieSecret = process.env.COOKIE_SECRET;
 
   if (isProd && (!cookieSecret || cookieSecret === "super-secret-cookie-key")) {
@@ -70,7 +71,8 @@ export function buildApp() {
   }
 
   fastify.register(cookie, {
-    secret: cookieSecret || "super-secret-cookie-key",
+    // L-4 fix: Dev-only fallback is clearly scoped; production enforced above
+    secret: cookieSecret || (isProd ? undefined : "dev-only-cookie-secret"),
   });
 
   // Security: HTTP security headers (CSP, X-Frame-Options, HSTS, etc.)

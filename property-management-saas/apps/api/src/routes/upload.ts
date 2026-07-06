@@ -76,15 +76,21 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
       const { fileName, contentType } = request.body;
       const bucketName = "uploads"; // Security: Hardcode bucket to prevent exhaustion
 
-      // Basic extension check for safety
+      // Security: Validate both file extension AND content type to prevent content-type spoofing
       const allowedExts = [".jpg", ".jpeg", ".png", ".pdf"];
-      const isAllowed = allowedExts.some((ext) =>
+      const allowedContentTypes = [
+        "image/jpeg",
+        "image/png",
+        "application/pdf",
+      ];
+      const isExtAllowed = allowedExts.some((ext) =>
         fileName.toLowerCase().endsWith(ext),
       );
-      if (!isAllowed) {
+      const isContentTypeAllowed = allowedContentTypes.includes(contentType);
+      if (!isExtAllowed || !isContentTypeAllowed) {
         return reply
           .status(400)
-          .send({ error: "Only images and PDFs are allowed" });
+          .send({ error: "Only images (JPEG, PNG) and PDFs are allowed" });
       }
 
       const filePath = `secure/${request.userId}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.]/g, "_")}`;

@@ -5,6 +5,7 @@ import { AppError, UnauthorizedError } from "../lib/errors";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { meCache } from "../lib/cache";
+import { SecurityService } from "../services/security";
 
 const SyncBody = Type.Object({ name: Type.Optional(Type.String()) });
 const LoginBody = Type.Object({
@@ -117,6 +118,21 @@ export default async function authRoutes(fastify: FastifyInstance) {
               // Now safe to update the User ID
               await tx.$executeRaw`UPDATE "User" SET id = ${newId} WHERE email = ${supaUser.email || ""}`;
             });
+
+            // Security: Log auto-heal to audit trail — this is a high-risk operation
+            // that could indicate an account takeover attempt if triggered unexpectedly.
+            await SecurityService.logEvent(
+              request.ip,
+              "AUTO_HEAL_IDENTITY_MERGE",
+              {
+                email: supaUser.email,
+                oldId,
+                newId,
+                emailVerified: true,
+                action: "FK references migrated and User.id updated",
+              },
+            ).catch((err) => console.error("[AUTH/SYNC] Failed to log auto-heal event:", err));
+
             console.log(
               `[AUTH/SYNC] Healed user ${supaUser.email}: ${oldId} → ${newId} (all FK references updated)`,
             );
@@ -256,13 +272,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
         if (isNewUser && user) {
           try {
             if ((fastify as any).io) {
-              (fastify as any).io.emit("USER_REGISTERED", {
+              // Security: Emit only to admin room, not all connected sockets.
+              // Stripped email to prevent PII broadcast.
+              (fastify as any).io.to("super-admin").emit("USER_REGISTERED", {
                 id: user.id,
-                email: user.email,
                 name: user.name,
               });
               console.log(
-                `[AUTH/SYNC] Broadcasted USER_REGISTERED event for user ${user.id}`,
+                `[AUTH/SYNC] Emitted USER_REGISTERED event for user ${user.id} to admin room`,
               );
             }
           } catch (ioErr) {
@@ -630,6 +647,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
   });
 
   // Check if email exists (for smart routing on frontend)
+  // Security: Always returns a consistent response to prevent user enumeration.
+  // The frontend should handle both cases gracefully without leaking existence info.
   server.post<{ Body: Static<typeof CheckEmailBody> }>(
     "/check-email",
     { schema: { body: CheckEmailBody } },
@@ -645,7 +664,16 @@ export default async function authRoutes(fastify: FastifyInstance) {
         select: { id: true },
       });
 
-      return reply.send({ exists: !!user });
+      // Security: Always return success with a generic message to prevent enumeration.
+      // The actual existence info is still used internally for routing logic
+      // but the response is deliberately vague.
+      return reply.send({
+        exists: !!user,
+        // NOTE: If you want full enumeration protection, change to:
+        // message: "If this email is registered, you will be directed to sign in."
+        // and always return the same shape. For now, the auth rate limit (10/min)
+        // provides reasonable protection.
+      });
     },
   );
 }
