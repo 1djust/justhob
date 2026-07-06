@@ -192,13 +192,13 @@ export function buildApp() {
   // These clients still look at onrender.com/downloads/version.json due to hardcoded logic.
   fastify.get("/downloads/version.json", { schema: {} }, async () => {
     return {
-      latestVersion: "0.2.2",
+      latestVersion: "0.3.0",
       latestBuildNumber: 18,
       isMandatory: true,
       downloadUrl:
         "https://justhob.vercel.app/downloads/justhub-tenant.apk",
       releaseNotes:
-        "• Added help & support, notification settings, privacy & security screens\n• Updated domain models and improved biometric service\n• Refined all feature screens and notifiers",
+        "• Added Landlord & Property Manager role login redirection\n• Implemented LandlordHomeScreen dashboard for operational oversight\n• Verified security constraints isolating tenant screens from landlord routes",
     };
   });
 
