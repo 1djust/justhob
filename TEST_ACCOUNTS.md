@@ -12,6 +12,7 @@ All test accounts have been synchronized with the following password for ease of
 | **Property Manager (Free)** | `manager@justhob.com` | Manage properties, approve payments, and send lease renewal offers (Free Plan). |
 | **Property Manager (Pro)** | `manager_pro@justhob.com` | Pro tier test account with pre-seeded data. |
 | **Property Manager (Enterprise)** | `manager_ent@justhob.com` | Enterprise tier test account with pre-seeded data. |
+| **Landlord** | `landlord@justhob.com` | Access Landlord dashboard views, properties, payments, and occupancy (associated with free workspace). |
 | **Tenant** | `tenant@justhob.com` | Used for testing all lease expiry and payment overdue notifications based on the scenario script. |
 | **Custom Tester** | `djokn@gmail.com` | Additional user account utilized for active manual testing. |
 
