@@ -12,9 +12,19 @@ class LandlordHomeScreen extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
     final theme = Theme.of(context);
 
+    final user = authState.valueOrNull;
+    final landlordWorkspaces = user?.workspaces
+            .where((m) => m.role == 'LANDLORD' || m.role == 'PROPERTY_MANAGER')
+            .toList() ??
+        [];
+    final activeWorkspace =
+        landlordWorkspaces.isNotEmpty ? landlordWorkspaces.first : null;
+    final isPropertyManager = activeWorkspace?.role == 'PROPERTY_MANAGER';
+    final titleText = isPropertyManager ? 'Manager Dashboard' : 'Landlord Dashboard';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Landlord Dashboard'),
+        title: Text(titleText),
         actions: [
           IconButton(
             onPressed: () async {
