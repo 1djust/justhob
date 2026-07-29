@@ -7,10 +7,12 @@ import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 
 class ApiConfig {
-  static const bool isProduction = false;
+  static const String _env = String.fromEnvironment('ENVIRONMENT', defaultValue: '');
+  static bool get isProduction => _env == 'production' || kReleaseMode;
+
   static const String prodUrl = 'https://propertystack.onrender.com/api';
   static const String devUrl = 'http://10.0.2.2:3001/api'; // Android Emulator alias
-  
+
   static String get baseUrl {
     if (isProduction) return prodUrl;
     if (Platform.isAndroid) return devUrl;

@@ -399,7 +399,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       // Get the user profile from Prisma to include roles/workspaces
-      const user = await prisma.user.findUnique({
+      let user = await prisma.user.findUnique({
         where: { id: data.user.id },
         include: {
           workspaces: {
@@ -512,7 +512,33 @@ export default async function authRoutes(fastify: FastifyInstance) {
         );
       }
 
-      const wsCount = (user.workspaces as unknown[])?.length || 0;
+      let wsCount = (user.workspaces as unknown[])?.length || 0;
+
+      // Auto-repair: If PROPERTY_MANAGER has 0 workspace memberships, create default workspace
+      if (user.role === "PROPERTY_MANAGER" && wsCount === 0) {
+        console.log(
+          `[AUTH/LOGIN] Auto-repairing PROPERTY_MANAGER ${user.email} (${user.id}) with default workspace...`,
+        );
+        const repairWorkspace = await prisma.workspace.create({
+          data: { name: "My Properties" },
+        });
+        await prisma.workspaceMember.create({
+          data: {
+            userId: user.id,
+            workspaceId: repairWorkspace.id,
+            role: "PROPERTY_MANAGER",
+          },
+        });
+        const reFetchedUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          include: { workspaces: { include: { workspace: true } } },
+        });
+        if (reFetchedUser) {
+          user = reFetchedUser;
+          wsCount = (user.workspaces as unknown[])?.length || 0;
+        }
+      }
+
       if (wsCount === 0) {
         console.warn(
           `[AUTH/LOGIN] REJECTED: Tenant ${user.email} (${user.id}) has 0 workspace memberships.`,

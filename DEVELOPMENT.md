@@ -109,6 +109,7 @@ We have provided helper scripts to manage Super Admin accounts (God Mode privile
 | Action | Command | Description |
 | :--- | :--- | :--- |
 | **Create / Promote Super Admin** | `npx tsx src/promote-admin.ts <email_or_id> [password]` | Promotes an existing user, or creates a new Super Admin from scratch in both Supabase Auth and Prisma database. Password defaults to `Test1234!`. |
+| **Reset User / Admin Password** | `npx tsx src/reset-password.ts <email_or_id> <new_password>` | Directly updates the password for any user or admin in Supabase Auth via Admin API. |
 | **Permanently Delete User** | `npx tsx src/remove-user.ts <email_or_id>` | Permanently purges a user profile and credentials from both Supabase Auth and the Prisma database. |
 
 ### Examples:
@@ -116,6 +117,11 @@ We have provided helper scripts to manage Super Admin accounts (God Mode privile
   ```bash
   cd property-management-saas/apps/api
   npx tsx src/promote-admin.ts admin@example.com MyPass123!
+  ```
+* **Reset password for an admin or user account**:
+  ```bash
+  cd property-management-saas/apps/api
+  npx tsx src/reset-password.ts admin@example.com NewSecurePassword123!
   ```
 * **Permanently delete an admin or user account**:
   ```bash
