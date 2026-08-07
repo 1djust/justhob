@@ -437,128 +437,128 @@ export function Sidebar({
               })}
             </div>
           )}
+        </nav>
 
-          {/* Notification Bell */}
-          {!isSuperAdmin && (
-            <div
-              ref={notifRef}
-              className="relative mt-4 pt-4 border-t border-border"
+        {/* Notification Bell Section */}
+        {!isSuperAdmin && (
+          <div
+            ref={notifRef}
+            className="relative px-4 py-2 border-t border-border"
+          >
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+                "text-muted-foreground hover:text-foreground dark:hover:text-zinc-200 hover:bg-secondary dark:hover:bg-card",
+              )}
             >
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-                  "text-muted-foreground hover:text-foreground dark:hover:text-zinc-200 hover:bg-secondary dark:hover:bg-card",
-                )}
-              >
-                <div className="relative">
-                  <Bell className="h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-destructive text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-bounce">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </div>
-                {!isCollapsed && (
-                  <span className="font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis">
-                    Notifications
+              <div className="relative">
+                <Bell className="h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-destructive text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-bounce">
+                    {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
-              </button>
-
-              {/* Notification Dropdown */}
-              {showNotifications && (
-                <div
-                  className={cn(
-                    "absolute z-[60] bg-white dark:bg-background border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-left-2 duration-200",
-                    isCollapsed
-                      ? "left-full ml-2 top-0 w-80"
-                      : "left-0 bottom-full mb-2 w-full",
-                  )}
-                >
-                  <div className="flex items-center justify-between p-4 border-b border-border">
-                    <h4 className="text-sm font-bold text-foreground">
-                      Notifications
-                    </h4>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={markAllRead}
-                        className="text-[10px] font-bold text-primary hover:text-primary uppercase tracking-wider"
-                      >
-                        Mark all read
-                      </button>
-                    )}
-                  </div>
-                  <div className="max-h-72 overflow-y-auto custom-scrollbar">
-                    {notifications.length === 0 ? (
-                      <div className="p-6 text-center text-muted-foreground text-sm">
-                        <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                        No notifications yet
-                      </div>
-                    ) : (
-                      notifications.slice(0, 10).map((n) => (
-                        <div
-                          key={n.id}
-                          onClick={() => {
-                            markAsRead(n.id);
-                            if (n.type === "PAYMENT_SUBMITTED") {
-                              onViewChange("payments");
-                            } else if (n.type === "MAINTENANCE_CREATED") {
-                              onViewChange("maintenance");
-                            } else if (
-                              n.type === "PAYMENT_APPROVED" ||
-                              n.type === "PAYMENT_REJECTED"
-                            ) {
-                              onViewChange("payments");
-                            }
-                            setSelectedNotification(n);
-                            setShowNotifications(false);
-                          }}
-                          className={cn(
-                            "flex items-start gap-3 p-3.5 border-b border-zinc-50 dark:border-zinc-900 transition-colors cursor-pointer",
-                            !n.isRead
-                              ? "bg-primary/5/50 dark:bg-blue-950/10 hover:bg-primary/5 dark:hover:bg-blue-950/20"
-                              : "hover:bg-secondary/50 dark:hover:bg-card/50",
-                          )}
-                        >
-                          <div className="mt-0.5 flex-shrink-0">
-                            {getNotifIcon(n.type)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p
-                              className={cn(
-                                "text-xs truncate",
-                                !n.isRead
-                                  ? "font-bold text-foreground"
-                                  : "font-medium text-muted-foreground",
-                              )}
-                            >
-                              {n.title}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                              {n.message}
-                            </p>
-                            <p className="text-[9px] text-muted-foreground mt-1 uppercase tracking-wider font-bold">
-                              {new Date(n.createdAt).toLocaleString(undefined, {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </div>
-                          {!n.isRead && (
-                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+              </div>
+              {!isCollapsed && (
+                <span className="font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+                  Notifications
+                </span>
               )}
-            </div>
-          )}
-        </nav>
+            </button>
+
+            {/* Notification Dropdown */}
+            {showNotifications && (
+              <div
+                className={cn(
+                  "absolute z-[100] bg-white dark:bg-zinc-950 border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-left-2 duration-200",
+                  isCollapsed
+                    ? "left-full ml-3 bottom-0 w-80"
+                    : "left-4 right-4 bottom-full mb-2 w-80 sm:w-[calc(100%-32px)]",
+                )}
+              >
+                <div className="flex items-center justify-between p-4 border-b border-border bg-secondary/30">
+                  <h4 className="text-sm font-bold text-foreground">
+                    Notifications
+                  </h4>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllRead}
+                      className="text-[10px] font-bold text-primary hover:text-primary uppercase tracking-wider"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-muted-foreground text-sm">
+                      <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      No notifications yet
+                    </div>
+                  ) : (
+                    notifications.slice(0, 10).map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          markAsRead(n.id);
+                          if (n.type === "PAYMENT_SUBMITTED") {
+                            onViewChange("payments");
+                          } else if (n.type === "MAINTENANCE_CREATED") {
+                            onViewChange("maintenance");
+                          } else if (
+                            n.type === "PAYMENT_APPROVED" ||
+                            n.type === "PAYMENT_REJECTED"
+                          ) {
+                            onViewChange("payments");
+                          }
+                          setSelectedNotification(n);
+                          setShowNotifications(false);
+                        }}
+                        className={cn(
+                          "flex items-start gap-3 p-3.5 border-b border-zinc-100 dark:border-zinc-800 transition-colors cursor-pointer",
+                          !n.isRead
+                            ? "bg-primary/5/50 dark:bg-blue-950/20 hover:bg-primary/5 dark:hover:bg-blue-950/30"
+                            : "hover:bg-secondary/50 dark:hover:bg-card/50",
+                        )}
+                      >
+                        <div className="mt-0.5 flex-shrink-0">
+                          {getNotifIcon(n.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={cn(
+                              "text-xs truncate",
+                              !n.isRead
+                                ? "font-bold text-foreground"
+                                : "font-medium text-muted-foreground",
+                            )}
+                          >
+                            {n.title}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                            {n.message}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground mt-1 uppercase tracking-wider font-bold">
+                            {new Date(n.createdAt).toLocaleString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                        {!n.isRead && (
+                          <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Bottom Actions/Footer */}
         <div className="p-4 border-t border-border bg-secondary/50/50 dark:bg-card/20">

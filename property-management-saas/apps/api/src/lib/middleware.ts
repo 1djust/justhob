@@ -1,6 +1,16 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "./database";
 import { supabaseAdmin } from "./supabase";
+import { createHash } from "crypto";
+
+// Security (C-4): Hash JWT tokens before using as cache keys to prevent
+// token leakage in logs/memory dumps and reduce memory footprint.
+function tokenHash(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+// Security: Maximum cache size to prevent memory exhaustion from many unique tokens
+const MAX_CACHE_SIZE = 10_000;
 
 // In-memory cache to store auth and workspace access checks over high-latency WAN connections
 interface CachedAuth {
@@ -47,7 +57,8 @@ export const authenticate = async (
   if (!token) return reply.status(401).send({ error: "Unauthorized" });
 
   const now = Date.now();
-  const cached = authCache.get(token);
+  const hashedToken = tokenHash(token);
+  const cached = authCache.get(hashedToken);
   if (cached && cached.expiresAt > now) {
     if (cached.globalUserRole === "SUPER_ADMIN" && !cached.isAdminVerified) {
       const isVerifyRoute = request.raw.url?.endsWith("/verify");
@@ -93,7 +104,7 @@ export const authenticate = async (
   let isAAL2 = false;
   let isAdminVerified = false;
   if (dbUser.role === "SUPER_ADMIN") {
-    isAdminVerified = verifiedAdminTokens.has(token);
+    isAdminVerified = verifiedAdminTokens.has(hashedToken);
     const isVerifyRoute = request.raw.url?.endsWith("/verify");
     if (!isAdminVerified && !isVerifyRoute) {
       return reply.status(401).send({
@@ -123,8 +134,12 @@ export const authenticate = async (
   request.globalUserRole = dbUser.role as any;
   request.isAAL2 = isAAL2;
 
-  // Cache authentication for 60 seconds
-  authCache.set(token, {
+  // Security (C-4): Cache using hashed token key; enforce max cache size
+  if (authCache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = authCache.keys().next().value;
+    if (oldestKey) authCache.delete(oldestKey);
+  }
+  authCache.set(hashedToken, {
     userId: dbUser.id,
     globalUserRole: dbUser.role as any,
     isAAL2,
@@ -145,7 +160,10 @@ export const requireSuperAdmin = async (
   // Security: Enforce Two-Factor Authentication (AAL2) for Super Admins.
   // M-2 fix: Default to requiring MFA. Only skip if explicitly opted out
   // via DISABLE_MFA_CHECK=true (for local development/testing).
-  const isMfaDisabled = process.env.DISABLE_MFA_CHECK === "true";
+  // Security (C-3): Only allow MFA bypass in explicitly non-production environments
+  const isMfaDisabled =
+    process.env.NODE_ENV !== "production" &&
+    process.env.DISABLE_MFA_CHECK === "true";
   if (!isMfaDisabled && !request.isAAL2) {
     return reply.status(403).send({
       error:

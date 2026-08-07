@@ -260,6 +260,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           entityId: user.id,
           details: `Added landlord "${user.name}" (${user.email}) to the workspace.`,
           workspaceId,
+          req: request,
         });
 
         return reply.status(201).send({
@@ -337,6 +338,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           entityId: ownerId,
           details: `Updated bank settlement/payout settings for landlord ID "${ownerId}".`,
           workspaceId,
+          req: request,
         });
 
         return reply.send({ success: true, member: updatedMember });
@@ -387,6 +389,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
           entityId: ownerId,
           details: `Removed landlord ID "${ownerId}" from the workspace.`,
           workspaceId,
+          req: request,
         });
 
         return reply.send({ success: true });

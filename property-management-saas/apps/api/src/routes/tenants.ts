@@ -357,6 +357,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         entityId: (result as { tenant: { id: string } }).tenant.id,
         details: `Created tenant profile for "${name}" (${email || "no email"}).`,
         workspaceId,
+        req: request,
       });
 
       clearWorkspaceCache(workspaceId);
@@ -401,6 +402,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           entityId: tenant.id,
           details: `Updated tenant profile details for "${tenant.name}".`,
           workspaceId,
+          req: request,
         });
 
         clearWorkspaceCache(workspaceId);
@@ -468,6 +470,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           entityId: id,
           details: `Deleted tenant "${tenant.name}" (${tenant.email || "no email"}) and cleaned up auth credentials.`,
           workspaceId,
+          req: request,
         });
 
         // Notify the deleted tenant directly to trigger a dashboard/app reload
@@ -590,6 +593,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         entityId: lease.id,
         details: `Created lease agreement for tenant ID "${id}" in property "${lease.property.name}" (Unit ${lease.unit?.unitNumber || "N/A"}).`,
         workspaceId,
+        req: request,
       });
 
       clearWorkspaceCache(workspaceId);
@@ -683,6 +687,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         entityId: leaseId,
         details: `Ended tenancy early/terminated lease for tenant "${lease.tenant.name}" at property "${lease.property.name}" due to reason: "${reason}".`,
         workspaceId,
+        req: request,
       });
 
       clearWorkspaceCache(workspaceId);
@@ -855,6 +860,7 @@ Tenant: ${tenantName}`;
         entityId: lease.id,
         details: `Requested a legal lease draft for tenant ID "${tenantId}" (Drafting fee: ₦${feeAmount.toLocaleString()}).`,
         workspaceId,
+        req: request,
       });
 
       clearWorkspaceCache(workspaceId);
@@ -928,6 +934,7 @@ Tenant: ${tenantName}`;
         entityId: leaseId,
         details: `Uploaded lease agreement terms document for tenant "${lease.tenant.name}".`,
         workspaceId,
+        req: request,
       });
 
       clearWorkspaceCache(workspaceId);

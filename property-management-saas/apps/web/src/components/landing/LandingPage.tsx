@@ -49,19 +49,9 @@ export function LandingPage() {
     if (!email) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/check-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (data.exists) {
-        router.push(`/login?email=${encodeURIComponent(email)}`);
-      } else {
-        router.push(`/register?email=${encodeURIComponent(email)}`);
-      }
-    } catch (_err: unknown) {
-      router.push(`/register?email=${encodeURIComponent(email)}`);
+      // Security: The API returns a uniform response to prevent user enumeration.
+      // Always route to login — the login page handles new/existing users gracefully.
+      router.push(`/login?email=${encodeURIComponent(email)}`);
     } finally {
       setLoading(false);
     }

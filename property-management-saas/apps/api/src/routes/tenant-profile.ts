@@ -41,6 +41,80 @@ const LeaseIdParams = Type.Object({ leaseId: Type.String() });
 const ApproveLeaseBody = Type.Object({ signatureUrl: Type.String() });
 const RejectLeaseBody = Type.Object({ reason: Type.String() });
 
+/**
+ * Helper to resolve authenticated tenant profile by userId or user email with auto-healing.
+ */
+async function getAuthenticatedTenant(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return { user: null, tenant: null, workspaceId: null };
+
+  // Strategy 1: Find direct Tenant record by ID or email
+  let tenant = await prisma.tenant.findFirst({
+    where: {
+      OR: [
+        { id: userId },
+        ...(user.email ? [{ email: user.email }] : []),
+      ],
+      deletedAt: null,
+    },
+  });
+
+  // Strategy 2: Find via WorkspaceMember record
+  let workspaceId = tenant?.workspaceId || null;
+
+  if (!tenant) {
+    const membership = await prisma.workspaceMember.findFirst({
+      where: { userId, role: "TENANT" },
+    });
+    if (membership) {
+      workspaceId = membership.workspaceId;
+      tenant = await prisma.tenant.findFirst({
+        where: {
+          workspaceId,
+          ...(user.email ? { email: user.email } : {}),
+          deletedAt: null,
+        },
+      });
+    }
+  }
+
+  // Auto-heal missing WorkspaceMember or desynced tenant ID
+  if (tenant && tenant.workspaceId) {
+    workspaceId = tenant.workspaceId;
+
+    // 1. Ensure WorkspaceMember row exists for this tenant
+    const existingMember = await prisma.workspaceMember.findFirst({
+      where: { userId: user.id, workspaceId },
+    });
+
+    if (!existingMember) {
+      await prisma.workspaceMember.create({
+        data: {
+          userId: user.id,
+          workspaceId,
+          role: "TENANT",
+        },
+      }).catch(() => {});
+    } else if (existingMember.role !== "TENANT") {
+      await prisma.workspaceMember.update({
+        where: { id: existingMember.id },
+        data: { role: "TENANT" },
+      }).catch(() => {});
+    }
+
+    // 2. Link tenant ID if created with temp ID
+    if (tenant.id !== user.id && user.email && tenant.email === user.email) {
+      await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: { id: user.id },
+      }).catch(() => {});
+      tenant.id = user.id;
+    }
+  }
+
+  return { user, tenant, workspaceId };
+}
+
 export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
   server.addHook("preHandler", authenticate);
@@ -48,22 +122,15 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   server.get("/dashboard", { schema: {} }, async (request, reply) => {
     const userId = request.userId!;
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const { user, tenant: directTenant, workspaceId } = await getAuthenticatedTenant(userId);
     if (!user) return reply.status(401).send({ error: "User not found" });
-
-    // Find the first workspace where this user is a TENANT
-    const membership = await prisma.workspaceMember.findFirst({
-      where: { userId, role: "TENANT" },
-    });
-
-    if (!membership) {
+    if (!directTenant || !workspaceId) {
       return reply.status(200).send({ tenant: null }); // No tenant profile
     }
 
     const tenant = await prisma.tenant.findFirst({
       where: {
-        workspaceId: membership.workspaceId,
-        email: user.email,
+        id: directTenant.id,
         deletedAt: null,
       },
       include: {
@@ -120,7 +187,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
             where: {
               userId_workspaceId: {
                 userId: lease.property.owner.id,
-                workspaceId: membership.workspaceId,
+                workspaceId,
               },
             },
             select: {
@@ -167,30 +234,17 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const userId = request.userId!;
-      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const { user, tenant, workspaceId } = await getAuthenticatedTenant(userId);
       if (!user) return reply.status(401).send({ error: "User not found" });
-
-      const membership = await prisma.workspaceMember.findFirst({
-        where: { userId, role: "TENANT" },
-      });
-      if (!membership)
+      if (!tenant || !workspaceId)
         return reply.status(403).send({ error: "No tenant profile found" });
-
-      const tenant = await prisma.tenant.findFirst({
-        where: {
-          workspaceId: membership.workspaceId,
-          email: user.email,
-          deletedAt: null,
-        },
-      });
-      if (!tenant) return reply.status(404).send({ error: "Tenant not found" });
 
       const { status } = request.query;
 
       const requests = await prisma.maintenanceRequest.findMany({
         where: {
           tenantId: tenant.id,
-          workspaceId: membership.workspaceId,
+          workspaceId,
           ...(status
             ? { status: status as import("@prisma/client").MaintenanceStatus }
             : {}),
@@ -213,23 +267,10 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const userId = request.userId!;
-      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const { user, tenant, workspaceId } = await getAuthenticatedTenant(userId);
       if (!user) return reply.status(401).send({ error: "User not found" });
-
-      const membership = await prisma.workspaceMember.findFirst({
-        where: { userId, role: "TENANT" },
-      });
-      if (!membership)
+      if (!tenant || !workspaceId)
         return reply.status(403).send({ error: "No tenant profile found" });
-
-      const tenant = await prisma.tenant.findFirst({
-        where: {
-          workspaceId: membership.workspaceId,
-          email: user.email,
-          deletedAt: null,
-        },
-      });
-      if (!tenant) return reply.status(404).send({ error: "Tenant not found" });
 
       const { propertyId, description, imageUrl } = request.body;
 
@@ -242,15 +283,15 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       const maintenanceRequest = await prisma
         .$transaction(async (tx: Prisma.TransactionClient) => {
           // Lock the workspace record to prevent race conditions on limit checks
-          await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${membership.workspaceId} FOR UPDATE`;
+          await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
 
           const workspace = await tx.workspace.findUnique({
-            where: { id: membership.workspaceId },
+            where: { id: workspaceId },
           });
           if (workspace?.plan === "FREE") {
             const activeCount = await tx.maintenanceRequest.count({
               where: {
-                workspaceId: membership.workspaceId,
+                workspaceId,
                 status: { in: ["PENDING", "IN_PROGRESS"] },
               },
             });
@@ -264,7 +305,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
             data: {
               tenantId: tenant.id,
               propertyId,
-              workspaceId: membership.workspaceId,
+              workspaceId,
               description,
               imageUrl,
               status: "PENDING",
@@ -284,7 +325,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
       // Emit real-time update to the workspace room
       (fastify as unknown as { io: import("socket.io").Server }).io
-        .to(`workspace:${membership.workspaceId}`)
+        .to(`workspace:${workspaceId}`)
         .emit("MAINTENANCE_CREATED", {
           requestId: maintenanceRequest.id,
           propertyId,
@@ -294,7 +335,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       // Notify all managers in this workspace persistently
       const managers = await prisma.workspaceMember.findMany({
         where: {
-          workspaceId: membership.workspaceId,
+          workspaceId,
           role: "PROPERTY_MANAGER",
         },
         select: { userId: true },
@@ -318,23 +359,10 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
   // List payments for the authenticated tenant
   server.get("/payments", { schema: {} }, async (request, reply) => {
     const userId = request.userId!;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const { user, tenant, workspaceId } = await getAuthenticatedTenant(userId);
     if (!user) return reply.status(401).send({ error: "User not found" });
-
-    const membership = await prisma.workspaceMember.findFirst({
-      where: { userId, role: "TENANT" },
-    });
-    if (!membership)
+    if (!tenant || !workspaceId)
       return reply.status(403).send({ error: "No tenant profile found" });
-
-    const tenant = await prisma.tenant.findFirst({
-      where: {
-        workspaceId: membership.workspaceId,
-        email: user.email,
-        deletedAt: null,
-      },
-    });
-    if (!tenant) return reply.status(404).send({ error: "Tenant not found" });
 
     const payments = await prisma.payment.findMany({
       where: {
@@ -366,23 +394,10 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const userId = request.userId!;
-      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const { user, tenant, workspaceId } = await getAuthenticatedTenant(userId);
       if (!user) return reply.status(401).send({ error: "User not found" });
-
-      const membership = await prisma.workspaceMember.findFirst({
-        where: { userId, role: "TENANT" },
-      });
-      if (!membership)
+      if (!tenant || !workspaceId)
         return reply.status(403).send({ error: "No tenant profile found" });
-
-      const tenant = await prisma.tenant.findFirst({
-        where: {
-          workspaceId: membership.workspaceId,
-          email: user.email,
-          deletedAt: null,
-        },
-      });
-      if (!tenant) return reply.status(404).send({ error: "Tenant not found" });
 
       const { amount, amountPaid, promiseDate, leaseId, note } = request.body;
 
@@ -411,7 +426,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       try {
         // Enforce limits and create payment record
         const workspace = await prisma.workspace.findUnique({
-          where: { id: membership.workspaceId },
+          where: { id: workspaceId },
         });
 
         if (amountPaid && Number(amountPaid) < Number(amount)) {
@@ -438,7 +453,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
           );
           const paymentCount = await prisma.payment.count({
             where: {
-              workspaceId: membership.workspaceId,
+              workspaceId,
               createdAt: { gte: startOfMonth },
             },
           });
@@ -454,7 +469,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         const payment = await prisma.payment.create({
           data: {
             leaseId,
-            workspaceId: membership.workspaceId,
+            workspaceId,
             amount: Number(amount),
             balancePromise: promiseDate ? new Date(promiseDate) : null,
             dueDate: new Date(),
@@ -528,24 +543,10 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
           .send({ error: "Proof image URL (or Base64 string) is required" });
       }
 
-      const membership = await prisma.workspaceMember.findFirst({
-        where: { userId, role: "TENANT" },
-      });
-      if (!membership)
-        return reply.status(403).send({ error: "No tenant profile found" });
-
-      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const { user, tenant, workspaceId } = await getAuthenticatedTenant(userId);
       if (!user) return reply.status(401).send({ error: "User not found" });
-
-      const tenant = await prisma.tenant.findFirst({
-        where: {
-          workspaceId: membership.workspaceId,
-          email: user.email,
-          deletedAt: null,
-        },
-      });
-      if (!tenant)
-        return reply.status(404).send({ error: "Tenant profile not found" });
+      if (!tenant || !workspaceId)
+        return reply.status(403).send({ error: "No tenant profile found" });
 
       try {
         const payment = await prisma.payment.findFirst({
@@ -589,7 +590,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         // Notify all managers in this workspace
         const managers = await prisma.workspaceMember.findMany({
           where: {
-            workspaceId: membership.workspaceId,
+            workspaceId,
             role: "PROPERTY_MANAGER",
           },
           select: { userId: true },
@@ -608,7 +609,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
         // Emit real-time update to the workspace room
         (fastify as unknown as { io: import("socket.io").Server }).io
-          .to(`workspace:${membership.workspaceId}`)
+          .to(`workspace:${workspaceId}`)
           .emit("PAYMENT_UPDATED", {
             paymentId: id,
             status: "UNDER_REVIEW",
@@ -640,24 +641,10 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       const { id } = request.params;
       const { proposal } = request.body;
 
-      const membership = await prisma.workspaceMember.findFirst({
-        where: { userId, role: "TENANT" },
-      });
-      if (!membership)
-        return reply.status(403).send({ error: "No tenant profile found" });
-
-      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const { user, tenant, workspaceId } = await getAuthenticatedTenant(userId);
       if (!user) return reply.status(401).send({ error: "User not found" });
-
-      const tenant = await prisma.tenant.findFirst({
-        where: {
-          workspaceId: membership.workspaceId,
-          email: user.email,
-          deletedAt: null,
-        },
-      });
-      if (!tenant)
-        return reply.status(404).send({ error: "Tenant profile not found" });
+      if (!tenant || !workspaceId)
+        return reply.status(403).send({ error: "No tenant profile found" });
 
       try {
         const payment = await prisma.payment.findFirst({
@@ -686,7 +673,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         // Notify property manager
         const managers = await prisma.workspaceMember.findMany({
           where: {
-            workspaceId: membership.workspaceId,
+            workspaceId,
             role: "PROPERTY_MANAGER",
           },
           include: { user: true },

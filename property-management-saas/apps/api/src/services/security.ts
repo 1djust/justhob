@@ -55,11 +55,18 @@ export class SecurityService {
     try {
       const adminEmail = process.env.ADMIN_EMAIL || "admin@propertystack.com";
 
+      const safeIp = String(ipAddress)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
       const htmlContent = `
         <h2>Security Alert: Suspicious Activity Detected</h2>
         <p>The system has detected multiple failed security events from a single IP address.</p>
         <ul>
-          <li><strong>IP Address:</strong> ${ipAddress}</li>
+          <li><strong>IP Address:</strong> ${safeIp}</li>
           <li><strong>Events count:</strong> ${count} in the last 5 minutes</li>
         </ul>
         <p>Please review the security audit logs in the admin dashboard for more details.</p>

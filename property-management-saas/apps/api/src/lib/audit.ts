@@ -1,3 +1,4 @@
+import { FastifyRequest } from "fastify";
 import { prisma } from "./database";
 
 export async function logAction({
@@ -7,7 +8,8 @@ export async function logAction({
   entityId,
   details,
   workspaceId,
-  ipAddress = "127.0.0.1",
+  ipAddress,
+  req,
 }: {
   userId: string;
   action: string;
@@ -16,8 +18,10 @@ export async function logAction({
   details: string;
   workspaceId?: string;
   ipAddress?: string;
+  req?: FastifyRequest;
 }) {
   try {
+    const resolvedIp = req?.ip || ipAddress || "127.0.0.1";
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, email: true },
@@ -33,7 +37,7 @@ export async function logAction({
         entityId,
         details,
         workspaceId,
-        ipAddress,
+        ipAddress: resolvedIp,
       },
     });
   } catch (e) {

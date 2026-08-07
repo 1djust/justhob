@@ -73,6 +73,11 @@ export function buildApp() {
   fastify.register(cookie, {
     // L-4 fix: Dev-only fallback is clearly scoped; production enforced above
     secret: cookieSecret || (isProd ? undefined : "dev-only-cookie-secret"),
+    parseOptions: {
+      secure: isProd,
+      sameSite: "strict",
+      httpOnly: true,
+    },
   });
 
   // Security: HTTP security headers (CSP, X-Frame-Options, HSTS, etc.)
@@ -157,9 +162,21 @@ export function buildApp() {
 
     // Log the error
     if (statusCode === 400) {
+      const sanitizedBody =
+        request.body && typeof request.body === "object"
+          ? { ...(request.body as Record<string, unknown>) }
+          : request.body;
+
+      if (sanitizedBody && typeof sanitizedBody === "object") {
+        delete (sanitizedBody as Record<string, unknown>).password;
+        delete (sanitizedBody as Record<string, unknown>).newPassword;
+        delete (sanitizedBody as Record<string, unknown>).securityKey;
+        delete (sanitizedBody as Record<string, unknown>).secretKey;
+      }
+
       console.error(`[400 Error] ${request.method} ${request.url}:`, {
         message: error.message,
-        body: request.body,
+        body: sanitizedBody,
         params: request.params,
         query: request.query,
       });

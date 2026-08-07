@@ -89,7 +89,7 @@ Vercel will automatically detect the push and deploy the new files. This typical
 
 | File | Purpose |
 |------|---------|
-| `tenant_app/pubspec.yaml` | App version (`version: X.Y.Z+N`) |
+| `propertystack_mobile/pubspec.yaml` | App version (`version: X.Y.Z+N`) |
 | `property-management-saas/apps/web/public/downloads/version.json` | OTA metadata (version, build number, download URL, release notes) |
 | `property-management-saas/apps/web/public/downloads/propertystack-tenant.apk` | The actual APK binary served to users |
 | `.github/workflows/build-apk.yml` | GitHub Actions workflow that builds the APK |
@@ -136,5 +136,5 @@ Vercel will automatically detect the push and deploy the new files. This typical
 **Fix:** Use `withOpacity()` instead of `withValues(alpha:)`, and `MaterialStateProperty` instead of `WidgetStateProperty`.
 
 ### GitHub Actions build not triggered
-**Cause:** The workflow only triggers on pushes that modify files inside the `tenant_app/` directory.
-**Fix:** Ensure at least one file inside `tenant_app/` was modified in the commit. If only `version.json` or non-tenant files changed, make a small change to `pubspec.yaml` (e.g., add a blank line).
+**Cause:** The workflow only triggers on pushes that modify files inside the `propertystack_mobile/` directory.
+**Fix:** Ensure at least one file inside `propertystack_mobile/` was modified in the commit. If only `version.json` or non-tenant files changed, make a small change to `pubspec.yaml` (e.g., add a blank line).

@@ -208,6 +208,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           entityId: result.id,
           details: `Generated invoice of ₦${result.amount.toLocaleString()} for tenant "${result.lease.tenant.name}" in property "${result.lease.property.name}".`,
           workspaceId,
+          req: request,
         });
 
         clearWorkspaceCache(workspaceId);
@@ -295,6 +296,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           entityId: id,
           details: `Approved payment of ₦${amountReceived.toLocaleString()} for invoice ID "${id}" (New status: ${newStatus}).`,
           workspaceId,
+          req: request,
         });
 
         clearWorkspaceCache(workspaceId);
@@ -637,6 +639,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           entityId: id,
           details: `Approved proof of payment of ₦${amountReceived.toLocaleString()} for invoice ID "${id}".`,
           workspaceId,
+          req: request,
         });
       } else {
         await logAction({
@@ -646,6 +649,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           entityId: id,
           details: `Rejected proof of payment for invoice ID "${id}". Reason: "${rejectionReason}".`,
           workspaceId,
+          req: request,
         });
       }
 

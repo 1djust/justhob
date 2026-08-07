@@ -21,6 +21,12 @@ const ChangePasswordBody = Type.Object({
 });
 const ResetPasswordBody = Type.Object({ email: Type.String() });
 const CheckEmailBody = Type.Object({ email: Type.String() });
+const UpdateProfileBody = Type.Object({
+  name: Type.Optional(Type.String()),
+  bankCode: Type.Optional(Type.String()),
+  accountNumber: Type.Optional(Type.String()),
+  accountName: Type.Optional(Type.String()),
+});
 
 function getPrimaryWorkspace(
   workspaces?: Array<{ role: string; workspaceId: string }>,
@@ -644,6 +650,84 @@ export default async function authRoutes(fastify: FastifyInstance) {
     },
   );
 
+  // Update User & Workspace Profile details
+  server.put<{ Body: Static<typeof UpdateProfileBody> }>(
+    "/profile",
+    { schema: { body: UpdateProfileBody } },
+    async (request, reply) => {
+      const token = request.headers.authorization?.replace("Bearer ", "");
+      if (!token) throw new UnauthorizedError();
+
+      const { data: supaData, error: supaError } =
+        await supabaseAdmin.auth.getUser(token);
+      if (supaError || !supaData?.user) {
+        throw new UnauthorizedError("Invalid session");
+      }
+
+      const userId = supaData.user.id;
+      const { name, bankCode, accountNumber, accountName } = request.body;
+
+      // Update Prisma User
+      if (name) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { name },
+        });
+
+        // Also update Supabase metadata
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          user_metadata: {
+            ...supaData.user.user_metadata,
+            name,
+          },
+        });
+      }
+
+      // Update primary workspace bank payout details if provided
+      const userWithWorkspaces = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { workspaces: { include: { workspace: true } } },
+      });
+
+      const primaryWS = getPrimaryWorkspace(userWithWorkspaces?.workspaces as any);
+
+      if (primaryWS?.workspaceId && (bankCode || accountNumber || accountName)) {
+        await prisma.workspace.update({
+          where: { id: primaryWS.workspaceId },
+          data: {
+            ...(bankCode && { bankCode }),
+            ...(accountNumber && { accountNumber }),
+            ...(accountName && { accountName }),
+          },
+        });
+      }
+
+      // Invalidate cache
+      meCache.delete(token);
+
+      // Re-fetch updated user profile
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { workspaces: { include: { workspace: true } } },
+      });
+
+      const role = primaryWS?.role || supaData.user.user_metadata?.role || "TENANT";
+
+      return reply.send({
+        success: true,
+        message: "Profile updated successfully",
+        user: updatedUser
+          ? {
+              ...updatedUser,
+              role,
+              globalRole: updatedUser.role,
+              workspaceId: primaryWS?.workspaceId || null,
+            }
+          : null,
+      });
+    },
+  );
+
   // Trigger password reset email
   server.post<{ Body: Static<typeof ResetPasswordBody> }>(
     "/reset-password-request",
@@ -674,7 +758,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // Check if email exists (for smart routing on frontend)
   // Security: Always returns a consistent response to prevent user enumeration.
-  // The frontend should handle both cases gracefully without leaking existence info.
   server.post<{ Body: Static<typeof CheckEmailBody> }>(
     "/check-email",
     { schema: { body: CheckEmailBody } },
@@ -685,20 +768,16 @@ export default async function authRoutes(fastify: FastifyInstance) {
         throw new AppError("Database client failed to initialize.", 500);
       }
 
-      const user = await prisma.user.findUnique({
+      // Security: Perform the lookup but NEVER reveal the result to the client.
+      // The frontend should treat all responses identically and attempt login regardless.
+      await prisma.user.findUnique({
         where: { email: email.toLowerCase().trim() },
         select: { id: true },
       });
 
-      // Security: Always return success with a generic message to prevent enumeration.
-      // The actual existence info is still used internally for routing logic
-      // but the response is deliberately vague.
+      // Security: Uniform response — no enumeration possible
       return reply.send({
-        exists: !!user,
-        // NOTE: If you want full enumeration protection, change to:
-        // message: "If this email is registered, you will be directed to sign in."
-        // and always return the same shape. For now, the auth rate limit (10/min)
-        // provides reasonable protection.
+        message: "If this email is registered, you will be directed to sign in.",
       });
     },
   );

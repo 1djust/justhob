@@ -5,7 +5,7 @@
 This is a Turbo monorepo workspace at `C:\Users\USER\Desktop\PropertyStack`. Key projects:
 
 - `property-management-saas/` — Main monorepo (API + Web workspaces)
-- `tenant_app/` — Flutter mobile app
+- `propertystack_mobile/` — Flutter mobile app
 - `.agents/skills/` — Documentation/reference skills for agents
 
 ## Development Environment (WSL 2)
@@ -22,7 +22,7 @@ For detailed instructions on setting up and running the project, refer to the [D
    ```
 2. **Mobile App**:
    ```bash
-   cd tenant_app
+   cd propertystack_mobile
    ./run.sh
    ```
 

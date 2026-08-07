@@ -1,0 +1,66 @@
+name: propertystack_mobile
+description: "PropertyStack Unified Mobile Application for Tenants, Landlords, and Property Managers."
+publish_to: 'none'
+version: 0.3.1+19
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.8.0+1
+  dio_cookie_manager: ^3.1.2
+  cookie_jar: ^4.0.8
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+  go_router: ^14.7.2
+  flutter_secure_storage: ^9.2.4
+  json_annotation: ^4.9.0
+  freezed_annotation: ^2.4.4
+  intl: ^0.19.0
+  path_provider: ^2.1.5
+  url_launcher: ^6.3.2
+  image_picker: ^1.2.1
+  package_info_plus: ^9.0.1
+  pdf: ^3.12.0
+  printing: ^5.14.3
+  share_plus: ^12.0.2
+  socket_io_client: ^3.1.4
+  local_auth: ^2.3.0
+  collection: ^1.18.0
+  flutter_svg: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.15
+  riverpod_generator: ^2.6.3
+  json_serializable: ^6.9.3
+  freezed: ^2.5.8
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/
+
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#081023"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#060B19"
+  image: "assets/icon/logo.png"
+  android_12:
+    color: "#060B19"
+    image: "assets/icon/logo.png"
+    icon_background_color: "#060B19"
+

@@ -30,12 +30,12 @@ This starts the **Turbo dev server**, which handles:
 ---
 
 ## 2. Tenant Mobile App (Flutter)
-The mobile application is located in the `tenant_app/` directory.
+The mobile application is located in the `propertystack_mobile/` directory.
 
 ### Running the App on Emulator
 
 ```bash
-cd ~/projects/justhub/tenant_app
+cd ~/projects/justhub/propertystack_mobile
 ./run.sh
 ```
 **What the script does:**
@@ -67,7 +67,7 @@ d Settings app, go to Security -> Screen Lock (set a PIN) -> Fingerprint.
 2. Plug in your phone via USB and tap **Allow** on the USB Debugging prompt.
 3. In your **WSL 2 terminal**, run the app:
    ```bash
-   cd tenant_app
+   cd propertystack_mobile
    unset ADB_SERVER_SOCKET
    flutter run -d NBQGSKPJVC6DOZEI
    ```
@@ -76,7 +76,7 @@ d Settings app, go to Security -> Screen Lock (set a PIN) -> Fingerprint.
 ### Running on Linux Desktop (Fast Local Testing)
 For quick UI iteration without a physical device:
 ```bash
-cd tenant_app
+cd propertystack_mobile
 flutter run -d linux
 ```
 *Note: This runs as a desktop app inside WSL 2. Requires `dbus-run-session` and `gnome-keyring`.*
@@ -88,7 +88,7 @@ flutter run -d linux
 | Component | Directory | Shortcut | Manual Command |
 | :--- | :--- | :--- | :--- |
 | **Web & API** | `property-management-saas/` | `bash wsl_start_dev.sh` | `npm run dev` |
-| **Mobile App** | `tenant_app/` | `./run.sh` | `flutter run -d linux` |
+| **Mobile App** | `propertystack_mobile/` | `./run.sh` | `flutter run -d linux` |
 
 ---
 

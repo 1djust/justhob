@@ -6,9 +6,15 @@ import {
   verifiedAdminTokens,
   authCache,
 } from "../lib/middleware";
+import { SecurityService } from "../services/security";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
-import { timingSafeEqual } from "crypto";
+import { timingSafeEqual, createHash } from "crypto";
+
+// Security (C-4): Must match the same hash function used in middleware
+function tokenHash(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 const VerifyAdminBody = Type.Object({ securityKey: Type.String() });
 
@@ -37,10 +43,15 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       // Security: Use timing-safe comparison to prevent timing side-channel attacks
       const keyBuffer = Buffer.from(securityKey);
       const expectedBuffer = Buffer.from(expectedKey);
+      // Security (H-5): Log failed admin key verification attempts
       if (
         keyBuffer.length !== expectedBuffer.length ||
         !timingSafeEqual(keyBuffer, expectedBuffer)
       ) {
+        await SecurityService.logEvent(request.ip, "ADMIN_KEY_FAILURE", {
+          userId: request.userId,
+          url: request.url,
+        });
         return reply.status(401).send({ error: "Invalid Admin Security Key" });
       }
 
@@ -51,12 +62,13 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           .send({ error: "Forbidden: Admin role required" });
       }
 
-      // Save verified state for this session token
+      // Save verified state for this session token (using hashed key)
       const token = request.headers.authorization?.replace("Bearer ", "");
       if (token) {
-        verifiedAdminTokens.set(token, Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+        const hashed = tokenHash(token);
+        verifiedAdminTokens.set(hashed, Date.now() + 2 * 60 * 60 * 1000); // 2 hours
         // Force update of in-memory authCache
-        const cached = authCache.get(token);
+        const cached = authCache.get(hashed);
         if (cached) {
           cached.isAdminVerified = true;
         }

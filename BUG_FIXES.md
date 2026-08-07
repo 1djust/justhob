@@ -64,7 +64,7 @@ It works in tandem with the `.agents/skills/` directory: every time a bug is log
 **Environment**: Mobile App / Web Public Assets
 **Bug/Latency**: The mobile app lacked a release keystore configuration (which prevented signing the release build), and the download button on the landing page returned a 404 error because `propertystack-tenant.apk` did not exist in the public asset downloads.
 **Resolution**:
-- Generated a custom Java Keystore (`key.jks`) inside the [android/app/](file:///home/djust/projects/justhub/tenant_app/android/app/) directory configured with the release credentials defined in [build.gradle.kts](file:///home/djust/projects/justhub/tenant_app/android/app/build.gradle.kts).
+- Generated a custom Java Keystore (`key.jks`) inside the [android/app/](file:///home/djust/projects/justhub/propertystack_mobile/android/app/) directory configured with the release credentials defined in [build.gradle.kts](file:///home/djust/projects/justhub/propertystack_mobile/android/app/build.gradle.kts).
 - Compiled a signed production release APK using `flutter build apk --release`.
 - Copied and deployed the compiled APK to the web app's public assets folder under:
   - [propertystack-tenant.apk](file:///home/djust/projects/justhub/property-management-saas/apps/web/public/downloads/propertystack-tenant.apk) (resolves landing page 404).

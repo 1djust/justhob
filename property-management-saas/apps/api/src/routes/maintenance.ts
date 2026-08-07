@@ -240,6 +240,7 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
           entityId: id,
           details: `Updated maintenance ticket status/settings to ${status || "same"} (Priority: ${priority || "same"}).`,
           workspaceId,
+          req: request,
         });
 
         clearWorkspaceCache(workspaceId);

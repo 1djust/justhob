@@ -203,6 +203,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
         entityId: property.id,
         details: `Created property "${property.name}" with ${units?.length || 0} units.`,
         workspaceId,
+        req: request,
       });
 
       clearWorkspaceCache(workspaceId);
@@ -243,6 +244,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
           entityId: property.id,
           details: `Updated property settings for "${property.name}".`,
           workspaceId,
+          req: request,
         });
 
         clearWorkspaceCache(workspaceId);
@@ -356,6 +358,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
         entityId: propertyId,
         details: `Added ${units.length} units to property "${property.name}".`,
         workspaceId,
+        req: request,
       });
 
       clearWorkspaceCache(workspaceId);
@@ -402,6 +405,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
           entityId: id,
           details: `Soft-deleted property ID "${id}".`,
           workspaceId,
+          req: request,
         });
 
         clearWorkspaceCache(workspaceId);
