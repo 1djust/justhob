@@ -2,6 +2,6 @@
   "latestVersion": "0.3.1",
   "latestBuildNumber": 19,
   "isMandatory": true,
-  "downloadUrl": "https://justhob.vercel.app/downloads/justhub-tenant.apk",
+  "downloadUrl": "/downloads/propertystack-tenant.apk",
   "releaseNotes": "• Fixed Property Manager login workspace auto-assignment\n• Production release API routing enabled\n• Security & authentication reliability improvements"
 }
