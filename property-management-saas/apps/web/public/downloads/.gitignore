@@ -1,1 +1,10 @@
-*.apk
+# Ignore old APK variants
+estateos-tenant.apk
+justhub-tenant.apk
+justhub-tenant-latest.apk
+justhub-tenant.apk:Zone.Identifier
+propertystack-latest.apk
+version_temp.json
+
+# Track the production APK for landing page download
+!propertystack-tenant.apk
