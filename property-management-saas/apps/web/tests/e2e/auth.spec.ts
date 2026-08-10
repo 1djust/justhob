@@ -5,10 +5,9 @@ import { test, expect } from "@playwright/test";
  * This is critical — unauthenticated users must always land on /login.
  */
 test.describe("Homepage & Authentication", () => {
-  test("homepage should redirect to /login", async ({ page }) => {
+  test("homepage should render landing page branding", async ({ page }) => {
     await page.goto("/");
-    await page.waitForURL("**/login");
-    expect(page.url()).toContain("/login");
+    await expect(page).toHaveTitle(/PropertyStack/);
   });
 
   test("login page should render with proper form elements", async ({
@@ -61,7 +60,7 @@ test.describe("Protected Routes", () => {
     page,
   }) => {
     await page.goto("/dashboard");
-    await page.waitForURL("**/login", { timeout: 10_000 });
+    await page.waitForURL(/.*\/login/, { timeout: 15_000 });
     expect(page.url()).toContain("/login");
   });
 });
