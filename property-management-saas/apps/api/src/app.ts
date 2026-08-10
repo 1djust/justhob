@@ -262,13 +262,13 @@ export function buildApp() {
   // These clients still look at onrender.com/downloads/version.json due to hardcoded logic.
   fastify.get("/downloads/version.json", { schema: {} }, async () => {
     return {
-      latestVersion: "0.3.1",
-      latestBuildNumber: 19,
+      latestVersion: "0.3.2",
+      latestBuildNumber: 20,
       isMandatory: true,
       downloadUrl:
         "https://justhob.vercel.app/downloads/justhub-tenant.apk",
       releaseNotes:
-        "• Fixed Property Manager login workspace auto-assignment\n• Production release API routing enabled\n• Security & authentication reliability improvements",
+        "• Fixed Property Manager login workspace auto-assignment\n• Production release API routing enabled\n• Full-stack security hardening & CSP protection enabled",
     };
   });
 

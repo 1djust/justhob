@@ -1,7 +1,7 @@
 name: propertystack_mobile
 description: "PropertyStack Unified Mobile Application for Tenants, Landlords, and Property Managers."
 publish_to: 'none'
-version: 0.3.1+19
+version: 0.3.2+20
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
