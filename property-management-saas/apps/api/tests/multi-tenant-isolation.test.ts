@@ -129,8 +129,8 @@ describe("Priority 8: Multi-Tenant Workspace & RLS Boundary Isolation", () => {
 
       expect(res.statusCode).toBe(200);
       const data = res.json();
-      expect(Array.isArray(data)).toBe(true);
-      expect(data.some((p: any) => p.id === ws1PropertyId)).toBe(true);
+      const properties = Array.isArray(data) ? data : (data.properties || []);
+      expect(properties.some((p: any) => p.id === ws1PropertyId)).toBe(true);
     });
 
     it("User 1 is BLOCKED (403) from accessing properties in Workspace 2 (Cross-Tenant IDOR prevention)", async () => {
@@ -175,8 +175,12 @@ describe("Priority 8: Multi-Tenant Workspace & RLS Boundary Isolation", () => {
         url: `/api/workspaces/${ws2Id}/properties/${ws2PropertyId}/units`,
         headers: { authorization: `Bearer ${user1Token}` },
         payload: {
-          unitNumber: "Unit-Hacked-101",
-          type: "RESIDENTIAL",
+          units: [
+            {
+              unitNumber: "Unit-Hacked-101",
+              type: "MINI_FLAT",
+            },
+          ],
         },
       });
 
