@@ -1,13 +1,24 @@
 import { FastifyInstance } from "fastify";
+import path from "path";
 import { supabaseAdmin } from "../lib/supabase";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { authenticate } from "../lib/middleware";
 
 const PresignedUrlBody = Type.Object({
-  fileName: Type.String(),
-  contentType: Type.String(),
-  bucket: Type.Optional(Type.String({ default: "uploads" })),
+  fileName: Type.String({
+    minLength: 1,
+    maxLength: 255,
+    description: "File name with extension",
+  }),
+  contentType: Type.String({
+    minLength: 1,
+    maxLength: 100,
+    description: "MIME content type",
+  }),
+  bucket: Type.Optional(
+    Type.String({ minLength: 1, maxLength: 50, default: "uploads" }),
+  ),
 });
 
 export default async function uploadRoutes(fastify: FastifyInstance) {
@@ -61,10 +72,6 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
       );
     });
 
-  // Optional: Authenticate uploads if required. We can keep it public for tenants if needed,
-  // or use the tenant ID for authorization. For now, this requires standard authentication.
-  // We'll also create a public version for tenants on the public portal.
-
   // Secure route for logged-in managers/admins
   server.post<{ Body: Static<typeof PresignedUrlBody> }>(
     "/presigned-url",
@@ -74,7 +81,7 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { fileName, contentType } = request.body;
-      const bucketName = "uploads"; // Security: Hardcode bucket to prevent exhaustion
+      const targetBucket = "uploads"; // Security: Hardcode bucket to prevent arbitrary bucket creation
 
       // Security: Validate both file extension AND content type to prevent content-type spoofing
       const allowedExts = [".jpg", ".jpeg", ".png", ".pdf"];
@@ -93,10 +100,14 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
           .send({ error: "Only images (JPEG, PNG) and PDFs are allowed" });
       }
 
-      const filePath = `secure/${request.userId}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+      // Security: Strip dangerous path traversal characters
+      const cleanFileName = path
+        .basename(fileName)
+        .replace(/[^a-zA-Z0-9._-]/g, "_");
+      const filePath = `secure/${request.userId}/${Date.now()}-${cleanFileName}`;
 
       const { data, error } = await supabaseAdmin.storage
-        .from(bucketName)
+        .from(targetBucket)
         .createSignedUploadUrl(filePath);
 
       if (error) {
@@ -106,7 +117,7 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
           .send({ error: "Failed to generate upload URL" });
       }
 
-      const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
+      const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${targetBucket}/${filePath}`;
 
       return reply.send({
         signedUrl: data.signedUrl,
@@ -126,7 +137,7 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { fileName, contentType } = request.body;
-      const bucketName = "uploads"; // Security: Hardcode bucket
+      const targetBucket = "uploads"; // Security: Hardcode bucket
 
       const allowedExts = [".jpg", ".jpeg", ".png", ".pdf"];
       const allowedContentTypes = [
@@ -144,10 +155,14 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
           .send({ error: "Only images (JPEG, PNG) and PDFs are allowed" });
       }
 
-      const filePath = `public/${request.userId}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+      // Security: Strip dangerous path traversal characters
+      const cleanFileName = path
+        .basename(fileName)
+        .replace(/[^a-zA-Z0-9._-]/g, "_");
+      const filePath = `public/${request.userId}/${Date.now()}-${cleanFileName}`;
 
       const { data, error } = await supabaseAdmin.storage
-        .from(bucketName)
+        .from(targetBucket)
         .createSignedUploadUrl(filePath);
 
       if (error) {
@@ -160,7 +175,7 @@ export default async function uploadRoutes(fastify: FastifyInstance) {
           .send({ error: "Failed to generate upload URL" });
       }
 
-      const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
+      const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${targetBucket}/${filePath}`;
 
       return reply.send({
         signedUrl: data.signedUrl,

@@ -58,7 +58,7 @@ export const authenticate = async (
 
   const now = Date.now();
   const hashedToken = tokenHash(token);
-  const cached = authCache.get(hashedToken);
+  const cached = authCache.get(hashedToken) || authCache.get(token);
   if (cached && cached.expiresAt > now) {
     if (cached.globalUserRole === "SUPER_ADMIN" && !cached.isAdminVerified) {
       const isVerifyRoute = request.raw.url?.endsWith("/verify");

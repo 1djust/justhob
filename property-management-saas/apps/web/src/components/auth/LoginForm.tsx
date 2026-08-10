@@ -153,6 +153,18 @@ export function LoginForm() {
         throw new Error(sbError?.message || "Failed to login");
       }
 
+      // Security Gatekeeper: Enforce email verification before granting access
+      const isEmailConfirmed =
+        Boolean(data.user.email_confirmed_at) ||
+        Boolean(data.user.confirmed_at);
+
+      if (!isEmailConfirmed) {
+        await supabase.auth.signOut();
+        throw new Error(
+          "Your email has not been verified yet. Please enter the 6-digit OTP code sent to your email during registration.",
+        );
+      }
+
       // Check if MFA is required
       const { data: aalData, error: aalError } =
         await supabase.auth.mfa.getAuthenticatorAssuranceLevel();

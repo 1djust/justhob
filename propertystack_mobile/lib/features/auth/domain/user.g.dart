@@ -15,6 +15,10 @@ _$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
               .toList() ??
           const [],
       mustChangePassword: json['mustChangePassword'] as bool? ?? false,
+      isOnboarded: json['isOnboarded'] as bool? ?? true,
+      role: json['role'] as String?,
+      globalRole: json['globalRole'] as String?,
+      workspaceId: json['workspaceId'] as String?,
     );
 
 Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
@@ -24,4 +28,8 @@ Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
       'name': instance.name,
       'workspaces': instance.workspaces,
       'mustChangePassword': instance.mustChangePassword,
+      'isOnboarded': instance.isOnboarded,
+      'role': instance.role,
+      'globalRole': instance.globalRole,
+      'workspaceId': instance.workspaceId,
     };

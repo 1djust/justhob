@@ -1,6 +1,10 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/database";
-import { authenticate, verifyWorkspaceAccess } from "../lib/middleware";
+import {
+  authenticate,
+  verifyWorkspaceAccess,
+  requireManager,
+} from "../lib/middleware";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 
@@ -47,13 +51,14 @@ export default async function leaseRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // Update lease
+  // Update lease (Requires Manager role)
   server.patch<{
     Params: Static<typeof LeaseIdParams>;
     Body: Static<typeof UpdateLeaseBody>;
   }>(
     "/:id",
     {
+      preHandler: requireManager,
       schema: { params: LeaseIdParams, body: UpdateLeaseBody },
     },
     async (request, reply) => {

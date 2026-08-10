@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/change_password_screen.dart';
 import '../../features/auth/presentation/auth_notifier.dart';
+import '../../features/auth/presentation/manager_onboarding_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/home/presentation/notifications_screen.dart';
 import '../../features/payments/presentation/payments_screen.dart';
@@ -55,14 +57,33 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authStateValue = authState.value;
       final isLoggedIn = authState.hasValue && authStateValue != null;
       final isLoggingIn = state.matchedLocation == '/login';
+      final isRegistering = state.matchedLocation == '/register';
       final isChangingPassword = state.matchedLocation == '/change-password';
 
       if (!isLoggedIn) {
-        return isLoggingIn ? null : '/login';
+        return (isLoggingIn || isRegistering) ? null : '/login';
       }
 
       if (authStateValue.mustChangePassword) {
         return isChangingPassword ? null : '/change-password';
+      }
+
+      final isOnboarding = state.matchedLocation == '/onboarding';
+
+      final isManager = authStateValue.role == 'PROPERTY_MANAGER' ||
+          authStateValue.globalRole == 'PROPERTY_MANAGER' ||
+          authStateValue.workspaces.any((m) => m.role == 'PROPERTY_MANAGER');
+
+      final isOnboarded = authStateValue.isOnboarded &&
+          authStateValue.workspaces.isNotEmpty;
+
+      // Gatekeeper: If manager has not completed onboarding, force them to /onboarding
+      if (isManager && !isOnboarded) {
+        return isOnboarding ? null : '/onboarding';
+      }
+
+      if (isOnboarding) {
+        return isManager ? '/landlord' : '/';
       }
 
       final isLandlord = authStateValue.workspaces.any(
@@ -101,7 +122,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/';
       }
 
-      if (isLoggingIn || isChangingPassword) {
+      if (isLoggingIn || isRegistering || isChangingPassword || isOnboarding) {
         return '/';
       }
 
@@ -132,6 +153,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'] ??
+              (state.extra is String ? state.extra as String : null);
+          final step = state.uri.queryParameters['step'];
+          return RegisterScreen(
+            initialEmail: email,
+            initialStep: step == 'otp' ? 2 : 1,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const ManagerOnboardingScreen(),
       ),
       GoRoute(
         path: '/landlord',

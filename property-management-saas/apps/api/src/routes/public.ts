@@ -61,12 +61,22 @@ export default async function publicRoutes(fastify: FastifyInstance) {
           .send({ error: "Tenant not found or has been deactivated" });
       }
 
-      // Security Check: User must either be the tenant themselves (by email) OR a member of the workspace
-      const isSelf = false; // We can't definitively check this without joining on User by email, but workspace member check handles manager access
+      // Security Check: User must either be the tenant themselves (by email) OR a member of the workspace OR a super admin
+      const requestUser = await prisma.user.findUnique({
+        where: { id: request.userId! },
+        select: { email: true },
+      });
+      const isSelf = Boolean(
+        requestUser?.email && tenant.email && requestUser.email === tenant.email,
+      );
       const isWorkspaceMember =
         tenant.workspace?.members && tenant.workspace.members.length > 0;
 
-      if (!isSelf && !isWorkspaceMember && request.userRole !== "SUPER_ADMIN") {
+      if (
+        !isSelf &&
+        !isWorkspaceMember &&
+        request.globalUserRole !== "SUPER_ADMIN"
+      ) {
         return reply
           .status(403)
           .send({ error: "Unauthorized to view this tenant profile" });

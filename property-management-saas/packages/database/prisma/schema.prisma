@@ -59,7 +59,7 @@ model WorkspaceMember {
   bankCode       String?
   payoutStrategy PayoutStrategy?
   accountName    String?
-  user           User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
@@ -77,7 +77,7 @@ model Property {
   imageUrl            String?
   leases              Lease[]
   maintenanceRequests MaintenanceRequest[]
-  owner               User?                @relation(fields: [ownerId], references: [id])
+  owner               User?                @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   units               Unit[]
 

@@ -12,6 +12,10 @@ class User with _$User {
     String? name,
     @Default([]) List<WorkspaceMember> workspaces,
     @Default(false) bool mustChangePassword,
+    @Default(true) bool isOnboarded,
+    String? role,
+    String? globalRole,
+    String? workspaceId,
   }) = _User;
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

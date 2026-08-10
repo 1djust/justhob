@@ -48,18 +48,19 @@ flutter analyze --no-fatal-infos
 echo -e "${GREEN}✅ Analysis passed${NC}"
 
 # ----------------------------------------------------------
-# Step 3: Build split-per-ABI APK (arm64 only)
+# Step 3: Build split-per-ABI APK (arm64 only) with Obfuscation
 # ----------------------------------------------------------
-echo -e "\n${YELLOW}🔨 Building arm64-only release APK...${NC}"
-flutter build apk --release --split-per-abi --target-platform android-arm64
-echo -e "${GREEN}✅ APK built successfully${NC}"
+echo -e "\n${YELLOW}🔨 Building arm64-only obfuscated release APK...${NC}"
+mkdir -p "$SCRIPT_DIR/build/app/outputs/symbols"
+flutter build apk --release --split-per-abi --target-platform android-arm64 --obfuscate --split-debug-info=build/app/outputs/symbols
+echo -e "${GREEN}✅ Obfuscated APK built successfully${NC}"
 
 # ----------------------------------------------------------
-# Step 4: Build App Bundle for Google Play Store
+# Step 4: Build App Bundle for Google Play Store with Obfuscation
 # ----------------------------------------------------------
-echo -e "\n${YELLOW}🔨 Building App Bundle (.aab) for Google Play...${NC}"
-flutter build appbundle --release
-echo -e "${GREEN}✅ AAB built successfully${NC}"
+echo -e "\n${YELLOW}🔨 Building App Bundle (.aab) with Obfuscation for Google Play...${NC}"
+flutter build appbundle --release --obfuscate --split-debug-info=build/app/outputs/symbols
+echo -e "${GREEN}✅ Obfuscated AAB built successfully${NC}"
 
 # ----------------------------------------------------------
 # Step 5: Size guard — reject if APK exceeds threshold

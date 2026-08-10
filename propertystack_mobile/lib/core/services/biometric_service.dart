@@ -86,6 +86,8 @@ class BiometricService {
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,
+          sensitiveTransaction: true,
+          useErrorDialogs: true,
         ),
       );
     } catch (e) {

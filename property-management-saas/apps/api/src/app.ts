@@ -6,6 +6,7 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import errorLoggerPlugin from "./plugins/error-logger";
+import securityFirewallPlugin from "./plugins/security-firewall";
 import publicLogRoutes from "./routes/public-logs";
 import { SecurityService } from "./services/security";
 
@@ -80,10 +81,29 @@ export function buildApp() {
     },
   });
 
-  // Security: HTTP security headers (CSP, X-Frame-Options, HSTS, etc.)
+  // Security: Bank-Grade HTTP security headers (CSP, X-Frame-Options, HSTS, Anti-Sniffing)
   fastify.register(helmet, {
     contentSecurityPolicy: false, // Disabled — API-only server, no HTML rendering
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    dnsPrefetchControl: { allow: false },
+    frameguard: { action: "deny" }, // Anti-Clickjacking: DENY iframe framing
+    hidePoweredBy: true, // Strips X-Powered-By header
+    hsts: {
+      maxAge: 31536000, // 1 Year HSTS preload
+      includeSubDomains: true,
+      preload: true,
+    },
+    noSniff: true, // Anti-MIME Sniffing: X-Content-Type-Options: nosniff
+    originAgentCluster: true,
+    permittedCrossDomainPolicies: { permittedPolicies: "none" },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    xssFilter: true, // X-XSS-Protection: 1; mode=block
   });
+
+  // Security: Global Web Application Firewall (WAF) & Exploit Blocker
+  fastify.register(securityFirewallPlugin);
 
   // Security: Rate limiting — prevents brute force and DDoS
   fastify.register(rateLimit, {
@@ -108,8 +128,31 @@ export function buildApp() {
     fastify as unknown as Parameters<typeof setupIntegrityChecker>[0],
   );
 
-  // Global Security Hook to monitor anomalous events
+  // Global Security & Cache-Control Hook
   fastify.addHook("onSend", async (request, reply, payload) => {
+    // Defense-in-depth: Permissions-Policy header
+    reply.header(
+      "Permissions-Policy",
+      "camera=(), microphone=(), geolocation=(), payment=()",
+    );
+
+    // Defense-in-depth: Prevent caching of sensitive authenticated endpoints
+    const rawUrl = request.raw.url || request.url;
+    if (
+      rawUrl.startsWith("/api/workspaces") ||
+      rawUrl.startsWith("/api/tenant") ||
+      rawUrl.startsWith("/api/admin") ||
+      rawUrl.startsWith("/api/super-admin") ||
+      rawUrl.startsWith("/api/auth")
+    ) {
+      reply.header(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      );
+      reply.header("Pragma", "no-cache");
+      reply.header("Expires", "0");
+    }
+
     const code = reply.statusCode;
     if (code === 401 || code === 403 || code === 429) {
       let eventType = "UNAUTHORIZED_API_ACCESS";
@@ -135,15 +178,20 @@ export function buildApp() {
     // Sanitize raw Prisma and database connection errors for the frontend
     if (
       errorMessage.includes("Can't reach database server") ||
-      errorMessage.includes("PrismaClientInitializationError")
+      errorMessage.includes("PrismaClientInitializationError") ||
+      errorMessage.includes("PrismaClientKnownRequestError") ||
+      errorMessage.includes("PrismaClientUnknownRequestError") ||
+      errorMessage.includes("PrismaClientRustPanicError") ||
+      errorMessage.includes("ConnectorError")
     ) {
       errorMessage =
         "Unable to connect to the database. Please check your internet connection and try again.";
     } else if (
-      errorMessage.includes("\n") &&
-      errorMessage.includes("invocation in")
+      (errorMessage.includes("\n") && errorMessage.includes("invocation in")) ||
+      errorMessage.includes("Raw query failed") ||
+      errorMessage.includes("syntax error at or near")
     ) {
-      // Hide raw Prisma stack traces
+      // Hide raw Prisma stack traces and database schema details
       errorMessage =
         "An unexpected database error occurred. Please try again later.";
     } else if (
@@ -152,15 +200,20 @@ export function buildApp() {
     ) {
       errorMessage =
         "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.";
+    } else if (statusCode >= 500 && process.env.NODE_ENV === "production") {
+      // In production, mask unhandled 500 errors to prevent system information disclosure
+      errorMessage =
+        "An unexpected server error occurred. Please contact support if the issue persists.";
     }
 
     const errorCode =
       err.code || (statusCode >= 500 ? "INTERNAL_SERVER_ERROR" : "BAD_REQUEST");
 
-    // Safely handle details (ensure it's not nested if already structured)
-    let errorDetails = err.details || undefined;
+    // Mask internal error details for 500s to avoid leaking server internals
+    const errorDetails =
+      statusCode >= 500 ? undefined : err.details || undefined;
 
-    // Log the error
+    // Log the error safely
     if (statusCode === 400) {
       const sanitizedBody =
         request.body && typeof request.body === "object"
@@ -267,18 +320,40 @@ export function buildApp() {
     },
     { prefix: "/api/public" },
   );
-  fastify.register(bankVerificationRoutes, {
-    prefix: "/api/workspaces/:workspaceId/bank",
-  });
+
+  // Security: Bank account resolution rate limit (anti-enumeration: 15 req/min)
+  fastify.register(
+    async (scope) => {
+      scope.register(rateLimit, {
+        max: 15,
+        timeWindow: "1 minute",
+        keyGenerator: (request) => request.ip,
+      });
+      scope.register(bankVerificationRoutes);
+    },
+    { prefix: "/api/workspaces/:workspaceId/bank" },
+  );
+
   fastify.register(leaseRoutes, {
     prefix: "/api/workspaces/:workspaceId/leases",
   });
   fastify.register(leaseRenewalRoutes, {
     prefix: "/api/workspaces/:workspaceId",
   });
-  fastify.register(exportRoutes, {
-    prefix: "/api/workspaces/:workspaceId/export",
-  });
+
+  // Security: Document and PDF/CSV exports rate limit (DoS prevention: 10 req/min)
+  fastify.register(
+    async (scope) => {
+      scope.register(rateLimit, {
+        max: 10,
+        timeWindow: "1 minute",
+        keyGenerator: (request) => request.ip,
+      });
+      scope.register(exportRoutes);
+    },
+    { prefix: "/api/workspaces/:workspaceId/export" },
+  );
+
   fastify.register(adminRoutes, { prefix: "/api/admin" });
 
   // Security: Stricter rate limit for super-admin routes (data exfiltration prevention)
@@ -294,7 +369,18 @@ export function buildApp() {
     { prefix: "/api/super-admin" },
   );
 
-  fastify.register(uploadRoutes, { prefix: "/api/uploads" });
+  // Security: Uploads presigned URL generation rate limit (storage abuse prevention: 20 req/min)
+  fastify.register(
+    async (scope) => {
+      scope.register(rateLimit, {
+        max: 20,
+        timeWindow: "1 minute",
+        keyGenerator: (request) => request.ip,
+      });
+      scope.register(uploadRoutes);
+    },
+    { prefix: "/api/uploads" },
+  );
 
   return fastify;
 }

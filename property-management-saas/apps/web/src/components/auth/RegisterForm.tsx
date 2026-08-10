@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2, Clock } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { supabase } from "@/lib/supabase";
@@ -28,7 +28,101 @@ export function RegisterForm() {
   const [success, setSuccess] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [consent, setConsent] = React.useState(false);
+  const [otpCode, setOtpCode] = React.useState("");
+  const [verifyingOtp, setVerifyingOtp] = React.useState(false);
+  const [resendingOtp, setResendingOtp] = React.useState(false);
+  const [otpError, setOtpError] = React.useState("");
+  const [otpSuccessMessage, setOtpSuccessMessage] = React.useState("");
+  const [timeLeft, setTimeLeft] = React.useState(600); // 10 minutes in seconds
+  const [resendCooldown, setResendCooldown] = React.useState(60); // 60s cooldown
   const router = useRouter();
+
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (success) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+        setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [success]);
+
+  const formattedTimeLeft = React.useMemo(() => {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }, [timeLeft]);
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.length < 6) {
+      setOtpError("Please enter the complete verification code.");
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setOtpError("");
+    setOtpSuccessMessage("");
+
+    try {
+      // 1. Verify OTP with Supabase or Fastify API
+      const res = await apiFetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim(),
+          token: otpCode.trim(),
+          type: "signup",
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Invalid or expired verification code.");
+      }
+
+      setOtpSuccessMessage("Email verified! Redirecting to login...");
+      setTimeout(() => {
+        router.push("/login?verified=true");
+      }, 1200);
+    } catch (err: unknown) {
+      const errorObj = err as Error;
+      setOtpError(errorObj.message || "Failed to verify OTP.");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setResendingOtp(true);
+    setOtpError("");
+    setOtpSuccessMessage("");
+
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/api/auth/resend-otp`, {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim(),
+          type: "signup",
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to resend OTP.");
+      }
+
+      setTimeLeft(600);
+      setResendCooldown(60);
+      setOtpSuccessMessage("A fresh verification code has been sent to your email.");
+    } catch (err: unknown) {
+      const errorObj = err as Error;
+      setOtpError(errorObj.message || "Failed to resend code.");
+    } finally {
+      setResendingOtp(false);
+    }
+  };
 
   const hasMinLength = password.length >= 8;
   const hasUppercase = /[A-Z]/.test(password);
@@ -70,6 +164,40 @@ export function RegisterForm() {
     setError("");
 
     try {
+      // 1. Pre-validate name similarity with backend (80% - 100% duplicate protection)
+      const checkRes = await apiFetch(`${API_BASE_URL}/api/auth/check-name`, {
+        method: "POST",
+        body: JSON.stringify({ name: name.trim() }),
+      });
+
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        if (!checkData.available) {
+          setError(
+            `The full name "${name}" is too similar to an existing account (${checkData.matchPercent}% match). For identity security, please use your distinct full name or include your middle initial.`
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2. Pre-validate email similarity with backend (80% - 100% duplicate protection)
+      const emailCheckRes = await apiFetch(`${API_BASE_URL}/api/auth/check-email-similarity`, {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (emailCheckRes.ok) {
+        const emailCheckData = await emailCheckRes.json();
+        if (!emailCheckData.available) {
+          setError(
+            `The email "${email}" is too similar to an existing account (${emailCheckData.matchPercent}% match). If this is your account, please sign in. Otherwise, please use a distinct email address.`
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data, error: sbError } = await supabase.auth.signUp({
         email,
         password,
@@ -122,19 +250,97 @@ export function RegisterForm() {
       )}
 
       {success && (
-        <div className="p-5 text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 rounded-sm border-l-4 border-emerald-500 text-center space-y-3">
-          <p className="font-bold text-base tracking-tight">
-            Registration Successful!
-          </p>
-          <p>
-            Please check your email to confirm your account before logging in.
-          </p>
-          <Link
-            href="/login"
-            className="block text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline font-bold pt-2 transition-colors"
+        <div className="p-6 text-sm text-foreground bg-card rounded-lg border border-border shadow-sm space-y-4">
+          <div className="text-center space-y-1">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 mb-2">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <p className="font-bold text-lg tracking-tight">
+              Enter Verification Code
+            </p>
+            <p className="text-xs text-muted-foreground">
+              We sent a verification code to <strong className="text-foreground">{email}</strong>. Enter it below to activate your account.
+            </p>
+
+            <div className="flex justify-center pt-2">
+              <span
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                  timeLeft > 60
+                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+                    : "bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20"
+                }`}
+              >
+                {timeLeft > 0 ? (
+                  <>
+                    <Clock className="w-3.5 h-3.5" />
+                    Code expires in {formattedTimeLeft}
+                  </>
+                ) : (
+                  <>⚠️ Code expired. Request a new one.</>
+                )}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Verification Code
+            </label>
+            <input
+              type="text"
+              maxLength={8}
+              value={otpCode}
+              onChange={(e) => {
+                setOtpCode(e.target.value.trim());
+                if (otpError) setOtpError("");
+              }}
+              placeholder="12345678"
+              className="flex h-12 w-full text-center text-xl tracking-[0.3em] font-mono rounded-md border border-input bg-transparent px-3 py-2 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              disabled={verifyingOtp}
+              autoFocus
+            />
+          </div>
+
+          {otpError && (
+            <p className="text-xs text-red-600 font-medium text-center">{otpError}</p>
+          )}
+
+          {otpSuccessMessage && (
+            <p className="text-xs text-emerald-600 font-medium text-center">{otpSuccessMessage}</p>
+          )}
+
+          <button
+            type="button"
+            onClick={handleVerifyOtp}
+            disabled={verifyingOtp || otpCode.length < 6}
+            className="w-full h-11 bg-primary text-primary-foreground font-semibold rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center text-sm"
           >
-            Go to Login
-          </Link>
+            {verifyingOtp ? "Verifying Code..." : "Verify Code & Sign In"}
+          </button>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+            {resendCooldown > 0 ? (
+              <span className="text-muted-foreground/70">
+                Resend in {resendCooldown}s
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendingOtp}
+                className="hover:text-foreground underline font-semibold text-primary transition-colors"
+              >
+                {resendingOtp ? "Sending..." : "Resend Code"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setSuccess(false)}
+              className="hover:text-foreground transition-colors"
+            >
+              Change Email
+            </button>
+          </div>
         </div>
       )}
 

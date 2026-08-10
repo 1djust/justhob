@@ -27,10 +27,14 @@ function toCSV(
           const val = row[c.key];
           if (val === null || val === undefined) return '""';
           // Replace newlines, carriage returns, and tabs with a space to prevent CSV breakage
-          const str = String(val)
+          let str = String(val)
             .replace(/[\n\r\t]+/g, " ")
             .replace(/"/g, '""')
             .trim();
+          // Security: Prevent CSV / Formula Injection (CWE-1236)
+          if (/^[=+\-@\t\r]/.test(str)) {
+            str = "'" + str;
+          }
           return `"${str}"`;
         })
         .join(","),

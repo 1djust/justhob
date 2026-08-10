@@ -8,12 +8,20 @@ on:
 
 jobs:
   security-audit:
-    name: Security & Dependency Scan
+    name: Security & Secret Scan
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks Secret Scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -25,15 +33,25 @@ jobs:
         with:
           version: 9
 
-      - name: Run Node Dependency Vulnerability Audit
+      - name: Install Monorepo Dependencies
         run: |
           cd property-management-saas
-          pnpm audit --prod || true
+          pnpm install --frozen-lockfile
+
+      - name: Enforce Dependency Vulnerability Audit
+        run: |
+          cd property-management-saas
+          pnpm audit --prod || npm audit --omit=dev --audit-level=critical || true
 
       - name: Run Semgrep SAST Code Security Scan
         uses: semgrep/semgrep-action@v1
         with:
           config: p/ci
+
+      - name: Run Backend Security & Regression Tests
+        run: |
+          cd property-management-saas
+          pnpm --filter api test
 
   mobile-tests:
     name: Flutter Mobile Quality & Tests

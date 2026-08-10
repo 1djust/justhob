@@ -6,8 +6,15 @@ import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { meCache } from "../lib/cache";
 import { SecurityService } from "../services/security";
+import { checkNameSimilarity, checkEmailSimilarity } from "../lib/string-similarity";
 
 const SyncBody = Type.Object({ name: Type.Optional(Type.String()) });
+const CheckNameBody = Type.Object({ name: Type.String({ minLength: 1 }) });
+const RegisterBody = Type.Object({
+  name: Type.String({ minLength: 1 }),
+  email: Type.String(),
+  password: Type.String({ minLength: 8 }),
+});
 const LoginBody = Type.Object({
   email: Type.String(),
   password: Type.String(),
@@ -21,11 +28,27 @@ const ChangePasswordBody = Type.Object({
 });
 const ResetPasswordBody = Type.Object({ email: Type.String() });
 const CheckEmailBody = Type.Object({ email: Type.String() });
+const VerifyOtpBody = Type.Object({
+  email: Type.String(),
+  token: Type.String({ minLength: 4 }),
+  type: Type.Optional(Type.String()),
+});
+const ResendOtpBody = Type.Object({
+  email: Type.String(),
+  type: Type.Optional(Type.String()),
+});
 const UpdateProfileBody = Type.Object({
   name: Type.Optional(Type.String()),
   bankCode: Type.Optional(Type.String()),
   accountNumber: Type.Optional(Type.String()),
   accountName: Type.Optional(Type.String()),
+});
+const OnboardManagerBody = Type.Object({
+  workspaceName: Type.String({ minLength: 2 }),
+  bankCode: Type.Optional(Type.String()),
+  accountNumber: Type.Optional(Type.String()),
+  accountName: Type.Optional(Type.String()),
+  phone: Type.Optional(Type.String()),
 });
 
 function getPrimaryWorkspace(
@@ -76,6 +99,18 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const supaUser = supaData.user;
       const { name } = request.body || {};
 
+      // Security Gatekeeper: Ensure email has been confirmed via OTP or link before provisioning access
+      const isEmailConfirmed =
+        Boolean(supaUser.email_confirmed_at) ||
+        Boolean(supaUser.confirmed_at);
+
+      if (!isEmailConfirmed) {
+        throw new UnauthorizedError(
+          "Please verify your email address with the 6-digit OTP code before logging in.",
+          "AUTH_EMAIL_NOT_CONFIRMED",
+        );
+      }
+
       // Check if Prisma user already exists
       let user = await prisma.user.findUnique({
         where: { id: supaUser.id },
@@ -89,6 +124,29 @@ export default async function authRoutes(fastify: FastifyInstance) {
       let isNewUser = false;
       if (!user) {
         isNewUser = true;
+
+        if (name) {
+          const nameCheck = await checkNameSimilarity(name, supaUser.id);
+          if (nameCheck.isSimilar) {
+            throw new AppError(
+              `The full name "${name}" is too similar to an existing account (${nameCheck.highestMatchPercent}% match). For identity security, please use your distinct full name or include your middle initial.`,
+              400,
+              "DUPLICATE_NAME_SIMILARITY",
+            );
+          }
+        }
+
+        if (supaUser.email) {
+          const emailCheck = await checkEmailSimilarity(supaUser.email, supaUser.id);
+          if (emailCheck.isSimilar) {
+            throw new AppError(
+              `The email "${supaUser.email}" is too similar to an existing account (${emailCheck.highestMatchPercent}% match). If this is your account, please sign in. Otherwise, please use a distinct email address.`,
+              400,
+              "DUPLICATE_EMAIL_SIMILARITY",
+            );
+          }
+        }
+
         // Auto-Healing: Check if email already exists with different ID
         const existingByEmail = await prisma.user.findUnique({
           where: { email: supaUser.email || "" },
@@ -206,19 +264,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 "ACCOUNT_NOT_REGISTERED",
               );
             }
-            // Brand new PROPERTY_MANAGER user — create with default workspace
+            // Brand new PROPERTY_MANAGER user — create without workspace (onboarding required)
             user = await prisma.user.create({
               data: {
                 id: supaUser.id,
                 email: supaUser.email || "",
                 name: userName,
                 role: userRole,
-                workspaces: {
-                  create: {
-                    role: userRole,
-                    workspace: { create: { name: "My Properties" } },
-                  },
-                },
               },
               include: {
                 workspaces: {
@@ -226,42 +278,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 },
               },
             });
-          }
-
-          // Orphan Detection Guard: Only auto-repair PROPERTY_MANAGER users.
-          // TENANT/LANDLORD users without memberships must be registered by a manager.
-          if (user && user.role === "PROPERTY_MANAGER") {
-            const membershipCount = await prisma.workspaceMember.count({
-              where: { userId: user.id },
-            });
-            if (membershipCount === 0) {
-              console.error(
-                `[AUTH/SYNC] ORPHAN DETECTED: User ${user.email} (${user.id}) created with role ${user.role} but has 0 workspace memberships. Self-repairing...`,
-              );
-              // Self-repair: create a default workspace, then link the user to it
-              const repairWorkspace = await prisma.workspace.create({
-                data: { name: "My Properties" },
-              });
-              await prisma.workspaceMember.create({
-                data: {
-                  userId: user.id,
-                  workspaceId: repairWorkspace.id,
-                  role: user.role as "PROPERTY_MANAGER" | "TENANT" | "LANDLORD",
-                },
-              });
-              // Re-fetch user with the new workspace
-              user = await prisma.user.findUnique({
-                where: { id: user.id },
-                include: {
-                  workspaces: {
-                    include: { workspace: true },
-                  },
-                },
-              });
-              console.log(
-                `[AUTH/SYNC] Self-repaired orphaned user ${supaUser.email} — created default workspace membership.`,
-              );
-            }
           }
         } catch (createErr: any) {
           if (createErr instanceof AppError) {
@@ -321,11 +337,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       const mustChange = supaUser?.user_metadata?.mustChangePassword === true;
       const primaryWS = getPrimaryWorkspace(u.workspaces);
+      const isOnboarded = Boolean(u.workspaces && u.workspaces.length > 0);
       const userWithWorkspaces = {
         ...user,
-        role: primaryWS?.role || "USER",
+        role: primaryWS?.role || user.role || "PROPERTY_MANAGER",
         globalRole: u.role,
         workspaceId: primaryWS?.workspaceId || null,
+        isOnboarded,
         mustChangePassword: mustChange,
       };
 
@@ -364,6 +382,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       role = "TENANT";
     }
     const workspaceId = primaryWS?.workspaceId || null;
+    const isOnboarded = Boolean(user?.workspaces && user.workspaces.length > 0);
 
     const responseBody = {
       user: user
@@ -372,6 +391,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             role,
             globalRole: user.role,
             workspaceId,
+            isOnboarded,
             mustChangePassword: mustChange,
           }
         : null,
@@ -385,12 +405,253 @@ export default async function authRoutes(fastify: FastifyInstance) {
     return reply.send(responseBody);
   });
 
+  // Register Property Manager (called by mobile app)
+  server.post<{ Body: Static<typeof RegisterBody> }>(
+    "/register",
+    {
+      schema: { body: RegisterBody },
+      config: { rateLimit: { max: 3, timeWindow: "1 minute" } },
+    },
+    async (request, reply) => {
+      const { name, email, password } = request.body;
+
+      const hasMinLength = password.length >= 8;
+      const hasUppercase = /[A-Z]/.test(password);
+      const hasLowercase = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecial = /[!@#$%^&*()_+\[\]{};':"\\|,.<>\/?]/.test(password);
+
+      if (
+        !hasMinLength ||
+        !hasUppercase ||
+        !hasLowercase ||
+        !hasNumber ||
+        !hasSpecial
+      ) {
+        throw new AppError(
+          "Password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+          400,
+          "INVALID_PASSWORD",
+        );
+      }
+
+      // Check if email is already registered in Prisma
+      const existingPrismaUser = await prisma.user.findUnique({
+        where: { email: email.toLowerCase().trim() },
+      });
+
+      if (existingPrismaUser) {
+        throw new AppError(
+          "An account with this email already exists. Please sign in instead.",
+          400,
+          "USER_ALREADY_EXISTS",
+        );
+      }
+
+      // Check Full Name similarity (80% - 100% duplicate protection)
+      const nameCheck = await checkNameSimilarity(name);
+      if (nameCheck.isSimilar) {
+        throw new AppError(
+          `The full name "${name}" is too similar to an existing account (${nameCheck.highestMatchPercent}% match). For identity security, please use your distinct full name or include your middle initial.`,
+          400,
+          "DUPLICATE_NAME_SIMILARITY",
+        );
+      }
+
+      // Check Email similarity (80% - 100% duplicate protection)
+      const emailCheck = await checkEmailSimilarity(email);
+      if (emailCheck.isSimilar) {
+        throw new AppError(
+          `The email "${email}" is too similar to an existing account (${emailCheck.highestMatchPercent}% match). If this is your account, please sign in. Otherwise, please use a distinct email address.`,
+          400,
+          "DUPLICATE_EMAIL_SIMILARITY",
+        );
+      }
+
+      const { data, error } = await supabaseAdmin.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            role: "PROPERTY_MANAGER",
+          },
+        },
+      });
+
+      if (error) {
+        throw new AppError(
+          error.message || "Registration failed. Please try again.",
+          400,
+          "REGISTRATION_FAILED",
+        );
+      }
+
+      if (!data.user) {
+        throw new AppError("Failed to create user account.", 500);
+      }
+
+      // Manager Registration: Email confirmation is mandatory before gaining access
+      return reply.send({
+        success: true,
+        requiresEmailConfirmation: true,
+        message:
+          "Registration Successful! Please enter the 6-digit OTP code sent to your email to verify your account.",
+      });
+    },
+  );
+
+  // Real-time Name Similarity Check
+  server.post<{ Body: Static<typeof CheckNameBody> }>(
+    "/check-name",
+    { schema: { body: CheckNameBody } },
+    async (request, reply) => {
+      const { name } = request.body;
+      const result = await checkNameSimilarity(name);
+      return reply.send({
+        available: !result.isSimilar,
+        matchPercent: result.highestMatchPercent,
+        message: result.isSimilar
+          ? `The full name "${name}" is too similar to an existing account (${result.highestMatchPercent}% match).`
+          : "Name is available.",
+      });
+    },
+  );
+
+  // Real-time Email Similarity Check
+  server.post<{ Body: Static<typeof CheckEmailBody> }>(
+    "/check-email-similarity",
+    { schema: { body: CheckEmailBody } },
+    async (request, reply) => {
+      const { email } = request.body;
+      const result = await checkEmailSimilarity(email);
+      return reply.send({
+        available: !result.isSimilar,
+        matchPercent: result.highestMatchPercent,
+        message: result.isSimilar
+          ? `The email "${email}" is too similar to an existing account (${result.highestMatchPercent}% match).`
+          : "Email is available.",
+      });
+    },
+  );
+
+  // Verify OTP for Signup or Email confirmation (called by mobile app or web)
+  server.post<{ Body: Static<typeof VerifyOtpBody> }>(
+    "/verify-otp",
+    {
+      schema: { body: VerifyOtpBody },
+      config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
+    },
+    async (request, reply) => {
+      const { email, token, type } = request.body;
+      const cleanEmail = email.toLowerCase().trim();
+      const cleanToken = token.trim();
+
+      const otpType = (type as any) || "signup";
+
+      const { data, error } = await supabaseAdmin.auth.verifyOtp({
+        email: cleanEmail,
+        token: cleanToken,
+        type: otpType,
+      });
+
+      if (error || !data.user) {
+        throw new AppError(
+          error?.message || "Invalid or expired OTP verification code.",
+          400,
+          "INVALID_OTP",
+        );
+      }
+
+      // Ensure user profile exists in Prisma
+      let user = await prisma.user.findUnique({
+        where: { id: data.user.id },
+      });
+
+      if (!user) {
+        const role =
+          (data.user.user_metadata?.role as any) || "PROPERTY_MANAGER";
+        const name =
+          data.user.user_metadata?.name || cleanEmail.split("@")[0];
+
+        user = await prisma.user.create({
+          data: {
+            id: data.user.id,
+            email: cleanEmail,
+            name,
+            role,
+            isActive: true,
+          },
+        });
+      }
+
+      return reply.send({
+        success: true,
+        message: "Email verified successfully! You can now log into your account.",
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+        session: data.session,
+        access_token: data.session?.access_token,
+      });
+    },
+  );
+
+  // Resend OTP code to registered email
+  server.post<{ Body: Static<typeof ResendOtpBody> }>(
+    "/resend-otp",
+    {
+      schema: { body: ResendOtpBody },
+      config: { rateLimit: { max: 2, timeWindow: "1 minute" } },
+    },
+    async (request, reply) => {
+      const { email, type } = request.body;
+      const cleanEmail = email.toLowerCase().trim();
+      const resendType = (type as any) || "signup";
+
+      const { error } = await supabaseAdmin.auth.resend({
+        type: resendType,
+        email: cleanEmail,
+      });
+
+      if (error) {
+        throw new AppError(
+          error.message || "Failed to resend OTP verification code.",
+          400,
+          "RESEND_OTP_FAILED",
+        );
+      }
+
+      return reply.send({
+        success: true,
+        message: "A fresh 6-digit OTP code has been sent to your email.",
+      });
+    },
+  );
+
   // Login (called by mobile app)
   server.post<{ Body: Static<typeof LoginBody> }>(
     "/login",
-    { schema: { body: LoginBody } },
+    {
+      schema: { body: LoginBody },
+      config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
+    },
     async (request, reply) => {
       const { email, password } = request.body;
+
+      // 1. Check Active Lockout Shield
+      const lockout = SecurityService.isAccountOrIpLockedOut(email, request.ip);
+      if (lockout.isLocked) {
+        return reply.status(429).send({
+          error: "Account Locked",
+          code: "ACCOUNT_LOCKED_OUT",
+          message: lockout.reason,
+          remainingSeconds: lockout.remainingSeconds,
+        });
+      }
 
       const { data, error } = await supabaseAdmin.auth.signInWithPassword({
         email,
@@ -398,9 +659,41 @@ export default async function authRoutes(fastify: FastifyInstance) {
       });
 
       if (error || !data.user || !data.session) {
-        throw new UnauthorizedError(
+        // Record failed attempt and trigger lockout if threshold exceeded
+        const failureResult = await SecurityService.recordFailedLogin(
+          email,
+          request.ip,
           error?.message || "Invalid credentials",
+        );
+
+        if (failureResult.isLocked) {
+          return reply.status(429).send({
+            error: "Account Locked",
+            code: "ACCOUNT_LOCKED_OUT",
+            message: "Too many failed login attempts. Your access is temporarily locked for 15 minutes for security protection.",
+            remainingSeconds: 900,
+          });
+        }
+
+        throw new UnauthorizedError(
+          `Invalid credentials. ${failureResult.attemptsRemaining} attempts remaining before temporary lockout.`,
           "AUTH_INVALID_CREDENTIALS",
+        );
+      }
+
+      // Security: Reset failure counter on successful authentication
+      SecurityService.recordSuccessfulLogin(email, request.ip);
+
+      // Security: Enforce that email must be confirmed before mobile app access is granted
+      const isEmailConfirmed =
+        Boolean(data.user.email_confirmed_at) ||
+        Boolean(data.user.confirmed_at) ||
+        data.user.user_metadata?.email_verified === true;
+
+      if (!isEmailConfirmed) {
+        throw new UnauthorizedError(
+          "Please verify your email address before logging in. Check your inbox for the confirmation link.",
+          "AUTH_EMAIL_NOT_CONFIRMED",
         );
       }
 
@@ -441,9 +734,38 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
 
         if (!existingMembership) {
-          // GATEKEEPER: This user authenticated with Supabase but was never
-          // registered by a property manager. Do NOT create a Prisma profile —
-          // reject them with a clear, actionable error message.
+          // If metadata indicates PROPERTY_MANAGER, create user profile with 0 workspaces (pending onboarding)
+          if (metadataRole === "PROPERTY_MANAGER") {
+            const newUser = await prisma.user.create({
+              data: {
+                id: data.user.id,
+                email: data.user.email!,
+                name: data.user.user_metadata?.name || null,
+                role: "PROPERTY_MANAGER",
+              },
+              include: {
+                workspaces: {
+                  include: { workspace: true },
+                },
+              },
+            });
+
+            const mustChange =
+              data.user.user_metadata?.mustChangePassword === true;
+            return reply.send({
+              access_token: data.session.access_token,
+              user: {
+                ...newUser,
+                role: "PROPERTY_MANAGER",
+                globalRole: newUser.role,
+                workspaceId: null,
+                isOnboarded: false,
+                mustChangePassword: mustChange,
+              },
+            });
+          }
+
+          // GATEKEEPER: Tenants/Landlords without workspace membership must be registered by a manager
           console.warn(
             `[AUTH/LOGIN] REJECTED: ${data.user.email} (${data.user.id}) authenticated but has no workspace membership. Not registered by any manager.`,
           );
@@ -520,34 +842,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       let wsCount = (user.workspaces as unknown[])?.length || 0;
 
-      // Auto-repair: If PROPERTY_MANAGER has 0 workspace memberships, create default workspace
-      if (user.role === "PROPERTY_MANAGER" && wsCount === 0) {
-        console.log(
-          `[AUTH/LOGIN] Auto-repairing PROPERTY_MANAGER ${user.email} (${user.id}) with default workspace...`,
-        );
-        const repairWorkspace = await prisma.workspace.create({
-          data: { name: "My Properties" },
-        });
-        await prisma.workspaceMember.create({
-          data: {
-            userId: user.id,
-            workspaceId: repairWorkspace.id,
-            role: "PROPERTY_MANAGER",
-          },
-        });
-        const reFetchedUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          include: { workspaces: { include: { workspace: true } } },
-        });
-        if (reFetchedUser) {
-          user = reFetchedUser;
-          wsCount = (user.workspaces as unknown[])?.length || 0;
-        }
-      }
-
-      if (wsCount === 0) {
+      if (wsCount === 0 && user.role !== "PROPERTY_MANAGER") {
         console.warn(
-          `[AUTH/LOGIN] REJECTED: Tenant ${user.email} (${user.id}) has 0 workspace memberships.`,
+          `[AUTH/LOGIN] REJECTED: User ${user.email} (${user.id}) has role ${user.role} but 0 workspace memberships.`,
         );
         throw new AppError(
           "Your account has not been set up by a property manager yet. Please contact your property manager to register your access.",
@@ -558,8 +855,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       const mustChange = data.user.user_metadata?.mustChangePassword === true;
       const primaryWS = getPrimaryWorkspace(user.workspaces as any);
-      const role = primaryWS?.role || "TENANT";
+      const role = primaryWS?.role || user.role || "PROPERTY_MANAGER";
       const workspaceId = primaryWS?.workspaceId || null;
+      const isOnboarded = wsCount > 0;
 
       return reply.send({
         access_token: data.session.access_token,
@@ -568,6 +866,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           role,
           globalRole: user.role,
           workspaceId,
+          isOnboarded,
           mustChangePassword: mustChange,
         },
       });
@@ -731,7 +1030,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
   // Trigger password reset email
   server.post<{ Body: Static<typeof ResetPasswordBody> }>(
     "/reset-password-request",
-    { schema: { body: ResetPasswordBody } },
+    {
+      schema: { body: ResetPasswordBody },
+      config: { rateLimit: { max: 3, timeWindow: "1 minute" } },
+    },
     async (request, reply) => {
       const { email } = request.body;
 
@@ -778,6 +1080,90 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Security: Uniform response — no enumeration possible
       return reply.send({
         message: "If this email is registered, you will be directed to sign in.",
+      });
+    },
+  );
+
+  // Complete Onboarding for Property Manager (called by mobile and web onboarding screens)
+  server.post<{ Body: Static<typeof OnboardManagerBody> }>(
+    "/onboard-manager",
+    { schema: { body: OnboardManagerBody } },
+    async (request, reply) => {
+      const token = request.headers.authorization?.replace("Bearer ", "");
+      if (!token) throw new UnauthorizedError("Authentication required.");
+
+      const { data: supaData, error: supaError } =
+        await supabaseAdmin.auth.getUser(token);
+      if (supaError || !supaData?.user) {
+        throw new UnauthorizedError("Invalid session.");
+      }
+
+      const supaUser = supaData.user;
+      const { workspaceName, bankCode, accountNumber, accountName, phone } =
+        request.body;
+
+      if (!workspaceName || workspaceName.trim().length < 2) {
+        throw new AppError("Workspace or Company name must be at least 2 characters.", 400);
+      }
+
+      let user = await prisma.user.findUnique({
+        where: { id: supaUser.id },
+        include: { workspaces: { include: { workspace: true } } },
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            id: supaUser.id,
+            email: supaUser.email!,
+            name: supaUser.user_metadata?.name || null,
+            role: "PROPERTY_MANAGER",
+          },
+          include: { workspaces: { include: { workspace: true } } },
+        });
+      }
+
+      // Create new workspace
+      const workspace = await prisma.workspace.create({
+        data: {
+          name: workspaceName.trim(),
+          bankCode: bankCode?.trim() || null,
+          accountNumber: accountNumber?.trim() || null,
+          accountName: accountName?.trim() || null,
+        },
+      });
+
+      // Create workspace membership
+      await prisma.workspaceMember.create({
+        data: {
+          userId: user.id,
+          workspaceId: workspace.id,
+          role: "PROPERTY_MANAGER",
+          bankCode: bankCode?.trim() || null,
+          accountNumber: accountNumber?.trim() || null,
+          accountName: accountName?.trim() || null,
+        },
+      });
+
+      // Invalidate cache
+      meCache.delete(token);
+
+      // Re-fetch updated user profile
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: { workspaces: { include: { workspace: true } } },
+      });
+
+      return reply.send({
+        success: true,
+        message: "Onboarding completed successfully!",
+        user: {
+          ...updatedUser,
+          role: "PROPERTY_MANAGER",
+          globalRole: updatedUser!.role,
+          workspaceId: workspace.id,
+          isOnboarded: true,
+        },
       });
     },
   );

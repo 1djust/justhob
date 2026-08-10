@@ -1,0 +1,42 @@
+title = "PropertyStack Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist for safe paths and test mocks"
+paths = [
+  '''(?i)tests/.*''',
+  '''(?i).*_test\.go''',
+  '''(?i).*_test\.dart''',
+  '''(?i).*\.test\.ts''',
+  '''(?i).*\.spec\.ts''',
+  '''(?i)pnpm-lock\.yaml''',
+  '''(?i)package-lock\.json''',
+  '''(?i)\.agent/.*''',
+  '''(?i)mock-data/.*'''
+]
+regexes = [
+  '''token-tenant-auth''',
+  '''token-other-tenant-auth''',
+  '''token-manager-auth''',
+  '''mock-[a-zA-Z0-9_-]+''',
+  '''fake-[a-zA-Z0-9_-]+''',
+  '''example-[a-zA-Z0-9_-]+'''
+]
+
+# Custom rule for Paystack secret keys
+[[rules]]
+id = "paystack-secret-key"
+description = "Paystack live or test secret key detected"
+regex = '''(?i)(?:paystack|ps)_(?:secret|key|live|test)[a-z0-9_]*\s*[:=]\s*["'](sk_(?:live|test)_[a-zA-Z0-9]{32,})["']'''
+secretGroup = 1
+keywords = ["sk_live_", "sk_test_"]
+
+# Custom rule for Supabase Service Role Key
+[[rules]]
+id = "supabase-service-role-key"
+description = "Supabase service role administrative secret key detected"
+regex = '''(?i)(?:supabase.*service.*role.*key|supabase.*secret)\s*[:=]\s*["']([a-zA-Z0-9_\-]{80,})["']'''
+secretGroup = 1
+keywords = ["service_role"]

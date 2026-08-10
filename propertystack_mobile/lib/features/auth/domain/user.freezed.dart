@@ -25,6 +25,10 @@ mixin _$User {
   String? get name => throw _privateConstructorUsedError;
   List<WorkspaceMember> get workspaces => throw _privateConstructorUsedError;
   bool get mustChangePassword => throw _privateConstructorUsedError;
+  bool get isOnboarded => throw _privateConstructorUsedError;
+  String? get role => throw _privateConstructorUsedError;
+  String? get globalRole => throw _privateConstructorUsedError;
+  String? get workspaceId => throw _privateConstructorUsedError;
 
   /// Serializes this User to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -45,7 +49,11 @@ abstract class $UserCopyWith<$Res> {
       String email,
       String? name,
       List<WorkspaceMember> workspaces,
-      bool mustChangePassword});
+      bool mustChangePassword,
+      bool isOnboarded,
+      String? role,
+      String? globalRole,
+      String? workspaceId});
 }
 
 /// @nodoc
@@ -68,6 +76,10 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
     Object? name = freezed,
     Object? workspaces = null,
     Object? mustChangePassword = null,
+    Object? isOnboarded = null,
+    Object? role = freezed,
+    Object? globalRole = freezed,
+    Object? workspaceId = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -90,6 +102,22 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
           ? _value.mustChangePassword
           : mustChangePassword // ignore: cast_nullable_to_non_nullable
               as bool,
+      isOnboarded: null == isOnboarded
+          ? _value.isOnboarded
+          : isOnboarded // ignore: cast_nullable_to_non_nullable
+              as bool,
+      role: freezed == role
+          ? _value.role
+          : role // ignore: cast_nullable_to_non_nullable
+              as String?,
+      globalRole: freezed == globalRole
+          ? _value.globalRole
+          : globalRole // ignore: cast_nullable_to_non_nullable
+              as String?,
+      workspaceId: freezed == workspaceId
+          ? _value.workspaceId
+          : workspaceId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -106,7 +134,11 @@ abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
       String email,
       String? name,
       List<WorkspaceMember> workspaces,
-      bool mustChangePassword});
+      bool mustChangePassword,
+      bool isOnboarded,
+      String? role,
+      String? globalRole,
+      String? workspaceId});
 }
 
 /// @nodoc
@@ -126,6 +158,10 @@ class __$$UserImplCopyWithImpl<$Res>
     Object? name = freezed,
     Object? workspaces = null,
     Object? mustChangePassword = null,
+    Object? isOnboarded = null,
+    Object? role = freezed,
+    Object? globalRole = freezed,
+    Object? workspaceId = freezed,
   }) {
     return _then(_$UserImpl(
       id: null == id
@@ -148,6 +184,22 @@ class __$$UserImplCopyWithImpl<$Res>
           ? _value.mustChangePassword
           : mustChangePassword // ignore: cast_nullable_to_non_nullable
               as bool,
+      isOnboarded: null == isOnboarded
+          ? _value.isOnboarded
+          : isOnboarded // ignore: cast_nullable_to_non_nullable
+              as bool,
+      role: freezed == role
+          ? _value.role
+          : role // ignore: cast_nullable_to_non_nullable
+              as String?,
+      globalRole: freezed == globalRole
+          ? _value.globalRole
+          : globalRole // ignore: cast_nullable_to_non_nullable
+              as String?,
+      workspaceId: freezed == workspaceId
+          ? _value.workspaceId
+          : workspaceId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -160,7 +212,11 @@ class _$UserImpl implements _User {
       required this.email,
       this.name,
       final List<WorkspaceMember> workspaces = const [],
-      this.mustChangePassword = false})
+      this.mustChangePassword = false,
+      this.isOnboarded = true,
+      this.role,
+      this.globalRole,
+      this.workspaceId})
       : _workspaces = workspaces;
 
   factory _$UserImpl.fromJson(Map<String, dynamic> json) =>
@@ -184,10 +240,19 @@ class _$UserImpl implements _User {
   @override
   @JsonKey()
   final bool mustChangePassword;
+  @override
+  @JsonKey()
+  final bool isOnboarded;
+  @override
+  final String? role;
+  @override
+  final String? globalRole;
+  @override
+  final String? workspaceId;
 
   @override
   String toString() {
-    return 'User(id: $id, email: $email, name: $name, workspaces: $workspaces, mustChangePassword: $mustChangePassword)';
+    return 'User(id: $id, email: $email, name: $name, workspaces: $workspaces, mustChangePassword: $mustChangePassword, isOnboarded: $isOnboarded, role: $role, globalRole: $globalRole, workspaceId: $workspaceId)';
   }
 
   @override
@@ -201,13 +266,29 @@ class _$UserImpl implements _User {
             const DeepCollectionEquality()
                 .equals(other._workspaces, _workspaces) &&
             (identical(other.mustChangePassword, mustChangePassword) ||
-                other.mustChangePassword == mustChangePassword));
+                other.mustChangePassword == mustChangePassword) &&
+            (identical(other.isOnboarded, isOnboarded) ||
+                other.isOnboarded == isOnboarded) &&
+            (identical(other.role, role) || other.role == role) &&
+            (identical(other.globalRole, globalRole) ||
+                other.globalRole == globalRole) &&
+            (identical(other.workspaceId, workspaceId) ||
+                other.workspaceId == workspaceId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, email, name,
-      const DeepCollectionEquality().hash(_workspaces), mustChangePassword);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      email,
+      name,
+      const DeepCollectionEquality().hash(_workspaces),
+      mustChangePassword,
+      isOnboarded,
+      role,
+      globalRole,
+      workspaceId);
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.
@@ -231,7 +312,11 @@ abstract class _User implements User {
       required final String email,
       final String? name,
       final List<WorkspaceMember> workspaces,
-      final bool mustChangePassword}) = _$UserImpl;
+      final bool mustChangePassword,
+      final bool isOnboarded,
+      final String? role,
+      final String? globalRole,
+      final String? workspaceId}) = _$UserImpl;
 
   factory _User.fromJson(Map<String, dynamic> json) = _$UserImpl.fromJson;
 
@@ -245,6 +330,14 @@ abstract class _User implements User {
   List<WorkspaceMember> get workspaces;
   @override
   bool get mustChangePassword;
+  @override
+  bool get isOnboarded;
+  @override
+  String? get role;
+  @override
+  String? get globalRole;
+  @override
+  String? get workspaceId;
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.

@@ -108,9 +108,13 @@ async function main() {
     // 3. Delete user from Prisma if they existed there
     if (user) {
       console.log(`Deleting user from Prisma Database (ID: ${user.id})...`);
-      await prisma.user.delete({
-        where: { id: user.id },
-      });
+      await prisma.$transaction([
+        prisma.workspaceMember.deleteMany({ where: { userId: user.id } }),
+        prisma.notification.deleteMany({ where: { userId: user.id } }),
+        prisma.upgradeRequest.deleteMany({ where: { userId: user.id } }),
+        prisma.property.updateMany({ where: { ownerId: user.id }, data: { ownerId: null } }),
+        prisma.user.delete({ where: { id: user.id } }),
+      ]);
       console.log("Successfully deleted user profile from Prisma database.");
     }
 

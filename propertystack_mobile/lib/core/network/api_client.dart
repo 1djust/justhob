@@ -88,14 +88,8 @@ class ApiClient {
         },
         onError: (DioException e, handler) async {
           if (e.response?.statusCode == 401) {
-            // Token expired or invalid, clear session data and invoke callback
-            inMemoryToken = null;
-            try {
-              await storage.delete(key: 'access_token');
-              await cookieJar.deleteAll();
-            } catch (clearErr) {
-              debugPrint('[ApiClient] Failed to clear storage on 401: $clearErr');
-            }
+            // Token expired or invalid, purge session data and invoke callback
+            await clearSession();
             onUnauthorized?.call();
           }
           return handler.next(e);
@@ -110,6 +104,17 @@ class ApiClient {
           responseBody: true,
         ),
       );
+    }
+  }
+
+  /// Security: Purges all stored tokens, session cookies, and in-memory caches
+  Future<void> clearSession() async {
+    inMemoryToken = null;
+    try {
+      await storage.delete(key: 'access_token');
+      await cookieJar.deleteAll();
+    } catch (clearErr) {
+      debugPrint('[ApiClient] Failed to clear storage during session purge: $clearErr');
     }
   }
 }

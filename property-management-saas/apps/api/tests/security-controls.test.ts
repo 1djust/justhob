@@ -112,22 +112,24 @@ describe("Security Access Controls & Gateways", () => {
       },
     });
 
-    // 6. Seed mock tokens in authCache
-    authCache.set(tenantToken, {
+    // 6. Seed mock tokens in authCache (both raw and sha256 hashed for tokenHash lookup)
+    const hash = (t: string) => crypto.createHash("sha256").update(t).digest("hex");
+    
+    authCache.set(hash(tenantToken), {
       userId: tenantUserId,
       globalUserRole: "TENANT",
       isAAL2: false,
       expiresAt: Date.now() + 60 * 60 * 1000,
     });
 
-    authCache.set(otherTenantToken, {
+    authCache.set(hash(otherTenantToken), {
       userId: otherTenantUserId,
       globalUserRole: "TENANT",
       isAAL2: false,
       expiresAt: Date.now() + 60 * 60 * 1000,
     });
 
-    authCache.set(managerToken, {
+    authCache.set(hash(managerToken), {
       userId: managerUserId,
       globalUserRole: "PROPERTY_MANAGER",
       isAAL2: false,
@@ -282,9 +284,89 @@ describe("Security Access Controls & Gateways", () => {
         },
       });
 
-      // The manager doesn't have access to otherWorkspaceId or the payment doesn't exist in otherWorkspaceId
-      // Result is 403 or 404 due to strict compound key lookup where: { payment_workspace_id: { id, workspaceId } }
       expect([403, 404]).toContain(response.statusCode);
+    });
+  });
+
+  describe("Hardening: HTTP Security Headers & Cache-Control", () => {
+    it("should attach strict defense-in-depth security headers to responses", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/health",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers["x-content-type-options"]).toBe("nosniff");
+      expect(response.headers["x-frame-options"]).toBe("DENY");
+      expect(response.headers["permissions-policy"]).toContain("camera=()");
+    });
+
+    it("should enforce no-store Cache-Control on sensitive authenticated routes", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/workspaces/${workspaceId}/properties`,
+        headers: {
+          authorization: `Bearer ${managerToken}`,
+        },
+      });
+
+      expect(response.headers["cache-control"]).toContain("no-store");
+      expect(response.headers["pragma"]).toBe("no-cache");
+    });
+  });
+
+  describe("Hardening: Bank Verification Input Validation", () => {
+    it("should reject non-10-digit or non-numeric account numbers with 400", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: `/api/workspaces/${workspaceId}/bank/resolve`,
+        headers: {
+          authorization: `Bearer ${managerToken}`,
+        },
+        payload: {
+          accountNumber: "12345", // too short
+          bankCode: "058",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it("should accept valid 10-digit numeric account numbers", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: `/api/workspaces/${workspaceId}/bank/resolve`,
+        headers: {
+          authorization: `Bearer ${managerToken}`,
+        },
+        payload: {
+          accountNumber: "0123456789",
+          bankCode: "058",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().verified).toBe(true);
+      expect(response.json().accountName).toBeDefined();
+    });
+  });
+
+  describe("Hardening: File Upload Extension and MIME Validation", () => {
+    it("should reject unauthorized executable or script file extensions", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/uploads/presigned-url",
+        headers: {
+          authorization: `Bearer ${managerToken}`,
+        },
+        payload: {
+          fileName: "malicious.sh",
+          contentType: "application/x-sh",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe("Only images (JPEG, PNG) and PDFs are allowed");
     });
   });
 });

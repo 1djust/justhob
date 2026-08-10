@@ -146,6 +146,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
           } else {
             errorMsg = e.toString();
           }
+
+          final isUnverified = errorMsg.toLowerCase().contains('confirm') ||
+              errorMsg.toLowerCase().contains('verify') ||
+              errorMsg.toLowerCase().contains('otp');
+
+          if (isUnverified) {
+            final email = _emailController.text.trim();
+            setState(() {
+              _isSubmitting = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.mark_email_unread_outlined,
+                        color: Colors.white, size: 20),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Email not verified. Please enter your 6-digit OTP code.',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFFB45309),
+                duration: const Duration(seconds: 4),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+            context.go('/register?email=${Uri.encodeComponent(email)}&step=otp');
+            return;
+          }
+
           setState(() {
             _isSubmitting = false;
             _errorMessage = errorMsg;
@@ -215,27 +251,69 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
   Widget _buildErrorBanner(ThemeData theme) {
     if (_errorMessage == null) return const SizedBox.shrink();
 
+    final isUnverified = _errorMessage!.toLowerCase().contains('verify') ||
+        _errorMessage!.toLowerCase().contains('confirmation') ||
+        _errorMessage!.toLowerCase().contains('otp');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.red.shade50,
+        color: isUnverified ? const Color(0xFFFFFBEB) : Colors.red.shade50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.shade200),
+        border: Border.all(
+          color: isUnverified ? const Color(0xFFFDE68A) : Colors.red.shade200,
+        ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.error_outline_rounded, color: Colors.red.shade700, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _errorMessage!,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.red.shade900,
-                fontWeight: FontWeight.w500,
+          Row(
+            children: [
+              Icon(
+                isUnverified
+                    ? Icons.mark_email_unread_outlined
+                    : Icons.error_outline_rounded,
+                color: isUnverified
+                    ? const Color(0xFFB45309)
+                    : Colors.red.shade700,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _errorMessage!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: isUnverified
+                        ? const Color(0xFF92400E)
+                        : Colors.red.shade900,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (isUnverified) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  final email = _emailController.text.trim();
+                  context.go('/register?email=$email');
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFB45309),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text(
+                  'Enter Verification Code →',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -419,37 +497,78 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
                     ),
                   ),
                   const SizedBox(height: 28),
-                  // Need an account?
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 4,
+                  // Manager Sign Up & Tenant info
+                  Column(
                     children: [
-                      Text(
-                        'Need an account?',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Request an invite from your landlord.')),
-                          );
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-                          child: Text(
-                            'Contact Manager',
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 4,
+                        children: [
+                          const Text(
+                            'Are you a Property Manager?',
                             style: TextStyle(
-                              color: AppTheme.textPrimary,
+                              color: AppTheme.textSecondary,
                               fontSize: 14,
-                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ),
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => context.go('/register'),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 6.0, vertical: 8.0),
+                              child: Text(
+                                'Create Account',
+                                style: TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 4,
+                        children: [
+                          const Text(
+                            'Tenant or Landlord?',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Tenants and Landlords access PropertyStack via manager invitation.',
+                                  ),
+                                  duration: Duration(seconds: 4),
+                                ),
+                              );
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 6.0, vertical: 8.0),
+                              child: Text(
+                                'Request invite from manager',
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

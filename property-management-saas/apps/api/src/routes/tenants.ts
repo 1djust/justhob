@@ -280,13 +280,13 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
                   where: { email },
                 });
                 if (existingDbUser && existingDbUser.id !== supabaseUserId) {
-                  await tx.workspaceMember.deleteMany({
-                    where: { userId: existingDbUser.id },
-                  });
-                  await tx.user.delete({ where: { id: existingDbUser.id } });
-                  await tx.user.create({
-                    data: { id: supabaseUserId, email, name, role: "TENANT" },
-                  });
+                  const oldId = existingDbUser.id;
+                  const newId = supabaseUserId;
+                  await tx.$executeRaw`UPDATE "WorkspaceMember" SET "userId" = ${newId} WHERE "userId" = ${oldId}`;
+                  await tx.$executeRaw`UPDATE "Notification" SET "userId" = ${newId} WHERE "userId" = ${oldId}`;
+                  await tx.$executeRaw`UPDATE "MaintenanceMessage" SET "senderId" = ${newId} WHERE "senderId" = ${oldId}`;
+                  await tx.$executeRaw`UPDATE "Property" SET "ownerId" = ${newId} WHERE "ownerId" = ${oldId}`;
+                  await tx.$executeRaw`UPDATE "User" SET id = ${newId} WHERE id = ${oldId}`;
                 } else if (!existingDbUser) {
                   await tx.user.create({
                     data: { id: supabaseUserId, email, name, role: "TENANT" },
@@ -294,7 +294,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
                 } else {
                   await tx.user.update({
                     where: { id: supabaseUserId },
-                    data: { email, name },
+                    data: { email, name: name || existingDbUser.name },
                   });
                 }
 

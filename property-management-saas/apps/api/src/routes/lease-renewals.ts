@@ -203,6 +203,8 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { workspaceId, id, offerId } = request.params;
       const { accept } = request.body;
+      const userId = request.userId!;
+      const userRole = request.userRole!;
 
       const offer = await prisma.leaseRenewalOffer.findUnique({
         where: { id: offerId },
@@ -215,6 +217,24 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
         offer.lease.tenant.workspaceId !== workspaceId
       ) {
         return reply.status(404).send({ error: "Offer not found" });
+      }
+
+      // Security: Check that the responding user is the tenant assigned to this lease or a manager
+      if (userRole === "TENANT") {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true },
+        });
+
+        const isAssignedTenant =
+          offer.lease.tenantId === userId ||
+          Boolean(user?.email && offer.lease.tenant.email === user.email);
+
+        if (!isAssignedTenant) {
+          return reply.status(403).send({
+            error: "You are not authorized to respond to this renewal offer",
+          });
+        }
       }
 
       if (offer.status !== "PENDING") {

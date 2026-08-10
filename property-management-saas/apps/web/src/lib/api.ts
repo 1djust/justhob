@@ -45,11 +45,21 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch(url: string, options: ApiOptions = {}) {
+  const targetUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
+  const isTrustedTarget =
+    !url.startsWith("http") ||
+    url.startsWith(API_BASE_URL) ||
+    url.includes("supabase.co") ||
+    url.includes("onrender.com") ||
+    url.includes("localhost:3001") ||
+    url.includes("127.0.0.1:3001");
+
   const { data } = await supabase.auth.getSession();
   const session = data?.session;
 
   const headers = new Headers(options.headers || {});
-  if (session?.access_token) {
+  // Security: Only attach bearer credentials to trusted API backend targets
+  if (session?.access_token && isTrustedTarget) {
     headers.set("Authorization", `Bearer ${session.access_token}`);
   }
 

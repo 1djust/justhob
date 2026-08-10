@@ -109,8 +109,9 @@ We have provided helper scripts to manage Super Admin accounts (God Mode privile
 | Action | Command | Description |
 | :--- | :--- | :--- |
 | **Create / Promote Super Admin** | `npx tsx src/promote-admin.ts <email_or_id> [password]` | Promotes an existing user, or creates a new Super Admin from scratch in both Supabase Auth and Prisma database. Password defaults to `Test1234!`. |
+| **Confirm User Email (Bypass Link)** | `npx tsx src/confirm-user.ts <email_or_uuid>` | Instantly marks a user's email as verified in Supabase Auth so they can log in without waiting for an email link. |
 | **Reset User / Admin Password** | `npx tsx src/reset-password.ts <email_or_id> <new_password>` | Directly updates the password for any user or admin in Supabase Auth via Admin API. |
-| **Permanently Delete User** | `npx tsx src/remove-user.ts <email_or_id>` | Permanently purges a user profile and credentials from both Supabase Auth and the Prisma database. |
+| **Permanently Delete User** | `npx tsx src/remove-user.ts <email_or_uuid>` | Permanently purges a user profile and credentials from both Supabase Auth and the Prisma database, automatically cleaning up foreign key relations (workspace memberships, notifications, property ownership links). |
 
 ### Examples:
 * **Create a new Super Admin account**:
@@ -118,16 +119,34 @@ We have provided helper scripts to manage Super Admin accounts (God Mode privile
   cd property-management-saas/apps/api
   npx tsx src/promote-admin.ts admin@example.com MyPass123!
   ```
+* **Manually verify / confirm a signed-up user**:
+  ```bash
+  cd property-management-saas/apps/api
+  npx tsx src/confirm-user.ts manager@example.com
+  ```
 * **Reset password for an admin or user account**:
   ```bash
   cd property-management-saas/apps/api
   npx tsx src/reset-password.ts admin@example.com NewSecurePassword123!
   ```
-* **Permanently delete an admin or user account**:
+* **Permanently delete an admin or user account via CLI**:
   ```bash
   cd property-management-saas/apps/api
+  
+  # Delete by Email:
   npx tsx src/remove-user.ts admin@example.com
+  
+  # Delete by User UUID:
+  npx tsx src/remove-user.ts ef491076-790f-43ea-8616-182f34993f82
   ```
+  *Note: The CLI command cleans up Supabase Auth credentials and runs an atomic transaction to prune referencing foreign keys (e.g. `WorkspaceMember`, `Notification`, `UpgradeRequest`) before removing the user from the database.*
+
+### Email Verification Troubleshooting (Supabase Auth)
+If newly registered managers or tenants do not receive verification emails:
+1. **Supabase Built-in Mailer Rate Limits**: Supabase free projects have a default rate limit of 3-4 emails per hour and emails from `noreply@mail.app.supabase.io` may be caught in Spam folders.
+2. **Instant CLI Verification for Testing**: Run `npx tsx src/confirm-user.ts <email>` to immediately verify the account.
+3. **Auto-Confirm for Development**: In your Supabase Dashboard, go to **Authentication -> Providers -> Email** and turn **Confirm email** OFF if you want users to be instantly active upon registration during development.
+4. **Custom SMTP for Production**: In your Supabase Dashboard, go to **Project Settings -> Authentication -> SMTP Settings** and configure your custom SMTP provider (e.g. Resend, SendGrid, Amazon SES, or Postmark).
 
 ---
 

@@ -6,6 +6,7 @@ import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { PayoutStrategy } from "@prisma/client";
 import { logAction } from "../lib/audit";
+import { randomBytes } from "crypto";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 const CreateOwnerBody = Type.Object({
@@ -169,7 +170,8 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         if (!user) {
           // User doesn't exist, need to create in Supabase then Prisma
           // Note: We do this outside the transaction to avoid long locks during network calls
-          const tempPassword = password || "TempPass123!";
+          const tempPassword =
+            password || randomBytes(12).toString("hex") + "A!1";
           const frontendUrl =
             process.env.FRONTEND_URL || "https://justhob.vercel.app";
           const { data: linkData, error: linkError } =

@@ -107,6 +107,15 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { workspaceId, id } = request.params;
 
+      const ticket = await prisma.maintenanceRequest.findFirst({
+        where: { id, workspaceId },
+      });
+      if (!ticket) {
+        return reply
+          .status(404)
+          .send({ error: "Maintenance request not found" });
+      }
+
       const messages = await prisma.maintenanceMessage.findMany({
         where: { requestId: id, workspaceId },
         include: {
@@ -134,6 +143,15 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
       const { workspaceId, id } = request.params;
       const { content } = request.body;
       const userId = request.userId!;
+
+      const ticket = await prisma.maintenanceRequest.findFirst({
+        where: { id, workspaceId },
+      });
+      if (!ticket) {
+        return reply
+          .status(404)
+          .send({ error: "Maintenance request not found" });
+      }
 
       const message = await prisma.maintenanceMessage.create({
         data: {

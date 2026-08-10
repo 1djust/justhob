@@ -61,7 +61,16 @@ export default async function webhookRoutes(fastify: FastifyInstance) {
         .update(rawBody)
         .digest("hex");
 
-      if (signature !== expectedSignature) {
+      const signatureStr = (
+        Array.isArray(signature) ? signature[0] : signature
+      ) as string;
+      const signatureBuffer = Buffer.from(signatureStr);
+      const expectedBuffer = Buffer.from(expectedSignature);
+
+      if (
+        signatureBuffer.length !== expectedBuffer.length ||
+        !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+      ) {
         request.log.warn("[Webhook] Invalid HMAC signature");
         return reply.status(401).send({ error: "Invalid signature" });
       }

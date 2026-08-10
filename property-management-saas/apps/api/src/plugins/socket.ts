@@ -127,14 +127,40 @@ const socketPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
           requestId: string;
         }) => {
           try {
-            // Verify workspace membership first
+            if (!workspaceId || !requestId) return;
+
+            // 1. Verify workspace membership or tenant authorization
+            let isAuthorized = false;
             const membership = await prisma.workspaceMember.findFirst({
               where: { workspaceId, userId },
             });
 
-            if (!membership) {
+            if (membership) {
+              isAuthorized = true;
+            } else if (userEmail) {
+              const tenant = await prisma.tenant.findFirst({
+                where: { workspaceId, email: userEmail, deletedAt: null },
+              });
+              if (tenant) isAuthorized = true;
+            }
+
+            if (!isAuthorized) {
               socket.emit("error", {
                 message: "Forbidden: You are not a member of this workspace",
+              });
+              return;
+            }
+
+            // 2. Verify maintenance request exists and belongs to this workspace (IDOR prevention)
+            const maintenanceRequest =
+              await prisma.maintenanceRequest.findFirst({
+                where: { id: requestId, workspaceId },
+              });
+
+            if (!maintenanceRequest) {
+              socket.emit("error", {
+                message:
+                  "Forbidden: Maintenance ticket not found in this workspace",
               });
               return;
             }
