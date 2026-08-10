@@ -165,4 +165,131 @@ export default async function webhookRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: "Webhook processing failed" });
     }
   });
+
+  // Receive Paystack Payment Webhooks
+  server.post("/paystack", { schema: {} }, async (request, reply) => {
+    try {
+      const signature = request.headers["x-paystack-signature"];
+      const secret = process.env.PAYSTACK_SECRET_KEY || process.env.WEBHOOK_SECRET;
+
+      if (!signature || !secret) {
+        request.log.warn("[Paystack Webhook] Missing signature or secret key");
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      const rawBody = JSON.stringify(request.body);
+      const expectedSignature = crypto
+        .createHmac("sha512", secret)
+        .update(rawBody)
+        .digest("hex");
+
+      const signatureStr = (
+        Array.isArray(signature) ? signature[0] : signature
+      ) as string;
+      const signatureBuffer = Buffer.from(signatureStr);
+      const expectedBuffer = Buffer.from(expectedSignature);
+
+      if (
+        signatureBuffer.length !== expectedBuffer.length ||
+        !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+      ) {
+        request.log.warn("[Paystack Webhook] Invalid HMAC signature");
+        return reply.status(401).send({ error: "Invalid signature" });
+      }
+
+      const body = request.body as Record<string, any>;
+      const event = body?.event;
+      const data = body?.data;
+
+      if (event === "charge.success" && data) {
+        const reference = data.reference;
+        const channel = data.channel || "card";
+
+        if (!reference) {
+          return reply.status(400).send({ error: "Missing transaction reference" });
+        }
+
+        // Idempotency Check
+        const existingEvent = await prisma.webhookEvent.findUnique({
+          where: { eventId: `paystack_${reference}` },
+        });
+
+        if (existingEvent) {
+          request.log.info(
+            `[Paystack Webhook] Duplicate event ignored for ref: ${reference}`,
+          );
+          return reply.send({
+            success: true,
+            message: "Duplicate event acknowledged",
+          });
+        }
+
+        // Locate pending payment by transaction reference or matching invoice
+        const payment = await prisma.payment.findFirst({
+          where: {
+            OR: [
+              { transactionId: reference },
+              { rrr: reference },
+              { id: reference },
+            ],
+          },
+        });
+
+        if (payment && payment.status !== "PAID") {
+          await prisma.$transaction(async (tx) => {
+            await tx.payment.update({
+              where: { id: payment.id },
+              data: {
+                status: "PAID",
+                amountPaid: payment.amount,
+                paidDate: new Date(),
+                transactionId: reference,
+              },
+            });
+
+            await tx.paymentTransaction.create({
+              data: {
+                paymentId: payment.id,
+                amount: payment.amount - (payment.amountPaid || 0),
+                status: "COMPLETED",
+                note: `Automated Paystack Settlement (${channel})`,
+                receiptId: reference,
+              },
+            });
+
+            await tx.webhookEvent.create({
+              data: {
+                source: "PAYSTACK",
+                eventId: `paystack_${reference}`,
+                payload: body,
+                status: "PROCESSED",
+              },
+            });
+          });
+
+          request.log.info(
+            `[Paystack Webhook] Payment ${payment.id} marked as PAID (Ref: ${reference})`,
+          );
+        } else {
+          // Log unassociated/already paid event
+          await prisma.webhookEvent.create({
+            data: {
+              source: "PAYSTACK",
+              eventId: `paystack_${reference}`,
+              payload: body,
+              status: "PROCESSED",
+            },
+          });
+        }
+      }
+
+      return reply.send({
+        success: true,
+        message: "Paystack webhook processed successfully",
+      });
+    } catch (error: unknown) {
+      request.log.error({ err: error }, "[Paystack Webhook Error]");
+      return reply.status(500).send({ error: "Webhook processing failed" });
+    }
+  });
 }
