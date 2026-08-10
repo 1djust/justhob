@@ -26,13 +26,13 @@ import { DashboardCarousel } from "./DashboardCarousel";
 import { PricingSection } from "./PricingSection";
 
 export function LandingPage() {
-  const [version, setVersion] = useState("0.1.7");
+  const [version, setVersion] = useState("0.3.2");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/downloads/version.json")
+    fetch(`/downloads/version.json?t=${Date.now()}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.latestVersion) {
