@@ -189,8 +189,19 @@ export function setupDataRetention(fastify: FastifyInstance): void {
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="vertical-align: middle; padding-right: 12px;">
-                          <div style="background-color: #0066FF; width: 36px; height: 36px; border-radius: 8px; text-align: center; line-height: 36px;">
-                            <span style="color: #ffffff; font-size: 18px; font-weight: bold;">🏢</span>
+                          <!-- Official PropertyStack 3-Layer Logo Icon -->
+                          <div style="background: linear-gradient(135deg, #0066FF 0%, #0047BA 100%); width: 38px; height: 38px; border-radius: 9px; text-align: center; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" height="100%">
+                              <tr>
+                                <td align="center" style="vertical-align: middle; padding-top: 5px;">
+                                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M2 17L12 22L22 17" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M2 12L12 17L22 12" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                  </svg>
+                                </td>
+                              </tr>
+                            </table>
                           </div>
                         </td>
                         <td style="vertical-align: middle;">
