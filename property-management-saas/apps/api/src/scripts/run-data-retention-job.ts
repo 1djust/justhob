@@ -167,8 +167,9 @@ async function main() {
     console.error(`[ERROR] ${msg}`);
   }
 
-  // 5. Total counts & Email Report
+  // 5. Total counts & HTML Email Report
   const totalPurged = results.reduce((sum, r) => sum + r.deletedCount, 0);
+  const totalCleaned = totalPurged + removedOrphansCount;
 
   // Read current database counts for summary
   const [currentWebhooks, currentErrors, currentSecurity] = await Promise.all([
@@ -182,33 +183,248 @@ async function main() {
   console.log(`  • ErrorLog entries         : ${currentErrors}`);
   console.log(`  • SecurityAuditLog entries : ${currentSecurity}`);
 
-  const report = `
-Data Retention Policy — Cloud Automated Report
-══════════════════════════════════════════════
-Status: Completed
-Timestamp: ${new Date().toISOString()}
-Target Admin: ${adminEmail}
+  const now = new Date();
+  const formattedDate = `${now.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })}, ${now.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })} WAT`;
 
-Summary of Actions Taken:
-${results.map((r) => `  • ${r.table}: ${r.deletedCount} records purged (retention threshold: ${r.retentionDays} days)`).join("\n")}
-  • Storage Cleanup: ${removedOrphansCount} orphaned files removed from 'uploads' bucket
+  const webhookResult = results.find((r) => r.table === "WebhookEvent")?.deletedCount || 0;
+  const errorLogResult = results.find((r) => r.table === "ErrorLog")?.deletedCount || 0;
+  const securityLogResult = results.find((r) => r.table === "SecurityAuditLog")?.deletedCount || 0;
 
-Current Database Active Footprint:
-  • WebhookEvent records     : ${currentWebhooks}
-  • ErrorLog entries         : ${currentErrors}
-  • SecurityAuditLog entries : ${currentSecurity}
+  const htmlReport = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Retention Report</title>
+</head>
+<body style="margin: 0; padding: 24px 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+    <tr>
+      <td align="center">
+        <!-- Main Card -->
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          
+          <!-- Header Banner with Official Brand Colors: Deep Navy #0A192F + Electric Blue #0066FF -->
+          <tr>
+            <td style="background-color: #0A192F; padding: 20px 24px;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td>
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="vertical-align: middle; padding-right: 12px;">
+                          <!-- Logo Icon with Electric Blue Background -->
+                          <div style="background-color: #0066FF; width: 36px; height: 36px; border-radius: 8px; text-align: center; line-height: 36px;">
+                            <span style="color: #ffffff; font-size: 18px; font-weight: bold;">🏢</span>
+                          </div>
+                        </td>
+                        <td style="vertical-align: middle;">
+                          <div style="color: #ffffff; font-size: 16px; font-weight: 700; letter-spacing: -0.2px;">PropertyStack</div>
+                          <div style="color: #93C5FD; font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 2px;">AUTOMATED SYSTEMS</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="display: inline-block; background-color: #1E293B; border: 1px solid #334155; border-radius: 20px; padding: 6px 14px;">
+                      <span style="color: #10B981; font-size: 10px; margin-right: 4px;">●</span>
+                      <span style="color: #F8FAFC; font-size: 12px; font-weight: 600;">Completed</span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-${errors.length > 0 ? `⚠️ Errors Encountered:\n${errors.map((e) => `  • ${e}`).join("\n")}` : "✅ All database and storage operations completed with zero errors."}
+          <!-- Body Content -->
+          <tr>
+            <td style="padding: 32px 28px 24px 28px;">
+              
+              <!-- Subtitle Category in Brand Electric Blue -->
+              <div style="color: #0066FF; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
+                CLOUD DATA RETENTION
+              </div>
+
+              <!-- Main Title -->
+              <h1 style="color: #0A192F; font-size: 22px; font-weight: 800; line-height: 1.3; margin: 8px 0 20px 0; letter-spacing: -0.4px;">
+                Daily retention run finished, ${totalCleaned} record${totalCleaned === 1 ? "" : "s"} cleaned
+              </h1>
+
+              <!-- Meta Table -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 28px;">
+                <tr>
+                  <td style="color: #64748b; font-size: 13px; padding: 4px 0;">Run time</td>
+                  <td align="right" style="color: #0A192F; font-size: 13px; font-family: monospace; font-weight: 600;">${formattedDate}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; font-size: 13px; padding: 4px 0;">Target admin</td>
+                  <td align="right" style="color: #0A192F; font-size: 13px; font-family: monospace;">${adminEmail}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; font-size: 13px; padding: 4px 0;">Errors</td>
+                  <td align="right" style="color: #0A192F; font-size: 13px; font-family: monospace; font-weight: 600;">${errors.length}</td>
+                </tr>
+              </table>
+
+              <!-- Section: Actions Taken -->
+              <div style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">
+                ACTIONS TAKEN
+              </div>
+
+              <!-- Action Row 1: WebhookEvent -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="padding: 12px 0; border-bottom: 1px solid #f8fafc;">
+                <tr>
+                  <td width="42" style="vertical-align: middle;">
+                    <div style="background-color: #EFF6FF; width: 34px; height: 34px; border-radius: 8px; text-align: center; line-height: 34px; font-size: 16px;">
+                      🔄
+                    </div>
+                  </td>
+                  <td style="vertical-align: middle; padding-left: 8px;">
+                    <div style="color: #0A192F; font-size: 14px; font-weight: 600;">WebhookEvent</div>
+                    <div style="color: #94a3b8; font-size: 12px;">Retention threshold ${retentionWebhookDays} days</div>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="color: ${webhookResult > 0 ? "#0066FF" : "#64748b"}; font-size: 16px; font-weight: 700;">${webhookResult}</div>
+                    <div style="color: #94a3b8; font-size: 11px;">purged</div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Action Row 2: ErrorLog -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="padding: 12px 0; border-bottom: 1px solid #f8fafc;">
+                <tr>
+                  <td width="42" style="vertical-align: middle;">
+                    <div style="background-color: #EFF6FF; width: 34px; height: 34px; border-radius: 8px; text-align: center; line-height: 34px; font-size: 16px;">
+                      ⚠️
+                    </div>
+                  </td>
+                  <td style="vertical-align: middle; padding-left: 8px;">
+                    <div style="color: #0A192F; font-size: 14px; font-weight: 600;">ErrorLog</div>
+                    <div style="color: #94a3b8; font-size: 12px;">Retention threshold ${retentionErrorLogDays} days</div>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="color: ${errorLogResult > 0 ? "#0066FF" : "#64748b"}; font-size: 16px; font-weight: 700;">${errorLogResult}</div>
+                    <div style="color: #94a3b8; font-size: 11px;">purged</div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Action Row 3: SecurityAuditLog -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="padding: 12px 0; border-bottom: 1px solid #f8fafc;">
+                <tr>
+                  <td width="42" style="vertical-align: middle;">
+                    <div style="background-color: #EFF6FF; width: 34px; height: 34px; border-radius: 8px; text-align: center; line-height: 34px; font-size: 16px;">
+                      🛡️
+                    </div>
+                  </td>
+                  <td style="vertical-align: middle; padding-left: 8px;">
+                    <div style="color: #0A192F; font-size: 14px; font-weight: 600;">SecurityAuditLog</div>
+                    <div style="color: #94a3b8; font-size: 12px;">Retention threshold ${retentionSecurityLogDays} days</div>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="color: ${securityLogResult > 0 ? "#0066FF" : "#64748b"}; font-size: 16px; font-weight: 700;">${securityLogResult}</div>
+                    <div style="color: #94a3b8; font-size: 11px;">purged</div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Action Row 4: Storage Cleanup -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="padding: 12px 0; margin-bottom: 28px;">
+                <tr>
+                  <td width="42" style="vertical-align: middle;">
+                    <div style="background-color: #EFF6FF; width: 34px; height: 34px; border-radius: 8px; text-align: center; line-height: 34px; font-size: 16px;">
+                      🗄️
+                    </div>
+                  </td>
+                  <td style="vertical-align: middle; padding-left: 8px;">
+                    <div style="color: #0A192F; font-size: 14px; font-weight: 600;">Storage cleanup</div>
+                    <div style="color: #94a3b8; font-size: 12px;">Orphaned files in 'uploads' bucket</div>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="color: ${removedOrphansCount > 0 ? "#0066FF" : "#64748b"}; font-size: 16px; font-weight: 700;">${removedOrphansCount}</div>
+                    <div style="color: #94a3b8; font-size: 11px;">removed</div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Section: Active Database Footprint -->
+              <div style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 12px;">
+                ACTIVE DATABASE FOOTPRINT
+              </div>
+
+              <!-- 3-Column Footprint Card -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 24px; padding: 16px;">
+                <tr>
+                  <td width="33%" align="center" style="vertical-align: middle; border-right: 1px solid #f1f5f9;">
+                    <div style="color: #0A192F; font-size: 24px; font-weight: 800;">${currentWebhooks.toLocaleString()}</div>
+                    <div style="color: #64748b; font-size: 12px; margin-top: 4px;">WebhookEvent</div>
+                  </td>
+                  <td width="33%" align="center" style="vertical-align: middle; border-right: 1px solid #f1f5f9;">
+                    <div style="color: #0A192F; font-size: 24px; font-weight: 800;">${currentErrors.toLocaleString()}</div>
+                    <div style="color: #64748b; font-size: 12px; margin-top: 4px;">ErrorLog</div>
+                  </td>
+                  <td width="34%" align="center" style="vertical-align: middle;">
+                    <div style="color: #0A192F; font-size: 24px; font-weight: 800;">${currentSecurity.toLocaleString()}</div>
+                    <div style="color: #64748b; font-size: 12px; margin-top: 4px;">SecurityAuditLog</div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Success Status Pill / Box -->
+              <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid #0066FF; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td width="28" style="vertical-align: middle; font-size: 16px;">
+                      ✅
+                    </td>
+                    <td style="vertical-align: middle; color: #0A192F; font-size: 13px; font-weight: 600;">
+                      ${errors.length > 0 ? errors.join("; ") : "All database and storage operations completed with zero errors."}
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 28px; text-align: center;">
+              <p style="color: #64748b; font-size: 11px; line-height: 1.5; margin: 0 0 12px 0;">
+                <strong>Automated report.</strong> No action is required. This message was generated by the PropertyStack data retention policy and sent to the workspace administrator on record.
+              </p>
+              <p style="color: #94a3b8; font-size: 11px; margin: 0;">
+                PropertyStack · Automated Systems · <a href="https://propertystack.com" style="color: #0066FF; text-decoration: none; font-weight: 600;">Manage retention settings</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
 `;
 
-  console.log(`\nDispatching summary email report to ${adminEmail}...`);
+  console.log(`\nDispatching rich HTML summary report to ${adminEmail}...`);
   await sendEmail(
     adminEmail,
-    `[AUTOMATED] PropertyStack Daily Data Retention Report — ${totalPurged + removedOrphansCount} items cleaned`,
-    report
+    `Daily retention run finished, ${totalCleaned} record${totalCleaned === 1 ? "" : "s"} cleaned`,
+    `PropertyStack Data Retention: ${totalCleaned} records cleaned. Active footprint: ${currentWebhooks} Webhooks, ${currentErrors} Errors, ${currentSecurity} Security Logs.`,
+    htmlReport
   );
 
-  console.log("✅ Email report dispatched successfully!");
+  console.log("✅ Rich HTML email report dispatched successfully!");
   console.log("==================================================");
   console.log("CLOUD JOB COMPLETED SUCCESSFULLY");
   console.log("==================================================");
@@ -221,3 +437,4 @@ main().catch((err) => {
   console.error("Fatal Job Error:", err);
   process.exit(1);
 });
+
