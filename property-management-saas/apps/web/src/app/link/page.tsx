@@ -52,61 +52,39 @@ function detectPlatform(): "android" | "ios" | "desktop" {
 
 function SmartRedirectContent() {
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<"redirecting" | "fallback">("redirecting");
   const [platform, setPlatform] = useState<"android" | "ios" | "desktop">("desktop");
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     const action = searchParams.get("action") || "login";
     const detectedPlatform = detectPlatform();
     setPlatform(detectedPlatform);
 
     const route = ACTION_ROUTES[action] || ACTION_ROUTES.login;
 
+    // Desktop users: Instant seamless redirect directly to the web app
     if (detectedPlatform === "desktop") {
-      // Desktop: immediate redirect to web route
       const webPath = route.web(searchParams);
       window.location.replace(webPath);
       return;
     }
 
-    if (detectedPlatform === "android") {
-      // Android: attempt App Link, fallback after timeout
-      const origin = typeof window !== "undefined" ? window.location.origin : "https://propertystack.vercel.app";
-      const appUrl = `${origin}/link?action=${action}&${searchParams.toString()}`;
-
-      // The App Link intent-filter on Android will intercept this URL if the app is installed.
-      // If the app is NOT installed, the browser stays on this page and we show the fallback UI.
-      const fallbackTimer = setTimeout(() => {
-        setStatus("fallback");
-      }, 1500);
-
-      // Try to detect if the app opened (page becomes hidden)
-      const handleVisibility = () => {
-        if (document.hidden) {
-          clearTimeout(fallbackTimer);
-        }
-      };
-      document.addEventListener("visibilitychange", handleVisibility);
-
-      // If we're still here after the app link attempt, redirect to web
-      const webFallbackTimer = setTimeout(() => {
-        const webPath = route.web(searchParams);
-        window.location.replace(webPath);
-      }, 3000);
-
-      return () => {
-        clearTimeout(fallbackTimer);
-        clearTimeout(webFallbackTimer);
-        document.removeEventListener("visibilitychange", handleVisibility);
-      };
-    }
-
-    // iOS: no Universal Links configured yet, go straight to web
-    const webPath = route.web(searchParams);
-    window.location.replace(webPath);
+    // Mobile users (Android / iOS):
+    // Stay on this clean mobile options card so the user can freely choose
+    // whether to open in the native app / Google Play or continue in the browser.
   }, [searchParams]);
 
-  if (status === "fallback" && platform !== "desktop") {
+  if (!isClient) {
+    return null;
+  }
+
+  // Mobile Experience (Android & iOS)
+  if (platform !== "desktop") {
+    const action = searchParams.get("action") || "login";
+    const route = ACTION_ROUTES[action] || ACTION_ROUTES.login;
+    const webTargetUrl = route.web(searchParams);
+
     return (
       <div
         style={{
@@ -117,63 +95,85 @@ function SmartRedirectContent() {
           backgroundColor: "#EEF2F6",
           fontFamily:
             '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          padding: "20px",
+          padding: "24px 16px",
+          boxSizing: "border-box",
         }}
       >
         <div
           style={{
-            maxWidth: 420,
+            maxWidth: 400,
             width: "100%",
             backgroundColor: "#FFFFFF",
-            borderRadius: 16,
-            padding: "40px 28px",
+            borderRadius: 20,
+            padding: "36px 24px",
             textAlign: "center",
-            boxShadow: "0 4px 24px rgba(10, 25, 47, 0.08)",
+            boxShadow: "0 10px 30px rgba(10, 25, 47, 0.08)",
             border: "1px solid #E2E8F0",
           }}
         >
-          <img
-            src="https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png"
-            alt="PropertyStack"
-            style={{ height: 48, marginBottom: 24 }}
-          />
+          {/* Official PropertyStack Logo */}
+          <div style={{ marginBottom: 20, display: "flex", justifyContent: "center" }}>
+            <img
+              src="/images/assets/logo.png"
+              alt="PropertyStack Logo"
+              style={{
+                height: 48,
+                width: "auto",
+                objectFit: "contain",
+              }}
+              onError={(e) => {
+                // Fallback to github asset if local path differs
+                (e.target as HTMLImageElement).src =
+                  "https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png";
+              }}
+            />
+          </div>
+
           <h1
             style={{
               fontSize: 22,
               fontWeight: 700,
               color: "#0A192F",
               margin: "0 0 8px 0",
+              letterSpacing: "-0.3px",
             }}
           >
             Open in PropertyStack
           </h1>
           <p
             style={{
-              fontSize: 15,
+              fontSize: 14,
               color: "#64748B",
               margin: "0 0 28px 0",
               lineHeight: 1.5,
             }}
           >
-            Get the best experience with our mobile app.
+            Get the best experience with the official PropertyStack mobile app.
           </p>
 
+          {/* Primary Mobile CTA: Google Play */}
           {platform === "android" && (
             <a
               href={PLAY_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
-                display: "block",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
                 backgroundColor: "#0066FF",
                 color: "#FFFFFF",
-                padding: "14px 24px",
-                borderRadius: 10,
+                padding: "14px 20px",
+                borderRadius: 12,
                 textDecoration: "none",
                 fontWeight: 600,
                 fontSize: 15,
-                marginBottom: 16,
+                marginBottom: 14,
+                boxShadow: "0 4px 14px rgba(0, 102, 255, 0.25)",
               }}
             >
-              📲 Get it on Google Play
+              <span>📲</span> Get it on Google Play
             </a>
           )}
 
@@ -182,33 +182,32 @@ function SmartRedirectContent() {
               style={{
                 backgroundColor: "#EFF6FF",
                 border: "1px solid #BFDBFE",
-                borderRadius: 10,
-                padding: "14px 20px",
-                marginBottom: 16,
-                fontSize: 14,
+                borderRadius: 12,
+                padding: "12px 16px",
+                marginBottom: 14,
+                fontSize: 13,
                 color: "#1E40AF",
+                fontWeight: 500,
               }}
             >
-              📱 App Store version coming soon
+              📱 iOS App Store version coming soon
             </div>
           )}
 
+          {/* Secondary CTA: Continue in Browser */}
           <a
-            href={(() => {
-              const action = searchParams.get("action") || "login";
-              const route = ACTION_ROUTES[action] || ACTION_ROUTES.login;
-              return route.web(searchParams);
-            })()}
+            href={webTargetUrl}
             style={{
               display: "block",
-              backgroundColor: "transparent",
+              backgroundColor: "#F8FAFC",
               color: "#0066FF",
-              padding: "12px 24px",
-              borderRadius: 10,
+              padding: "13px 20px",
+              borderRadius: 12,
               textDecoration: "none",
               fontWeight: 600,
-              fontSize: 15,
-              border: "2px solid #0066FF",
+              fontSize: 14,
+              border: "1.5px solid #0066FF",
+              transition: "all 0.2s ease",
             }}
           >
             Continue in Browser →
@@ -218,7 +217,7 @@ function SmartRedirectContent() {
     );
   }
 
-  // Loading / redirect state
+  // Desktop Loading Spinner while immediate redirect executes
   return (
     <div
       style={{
@@ -233,19 +232,19 @@ function SmartRedirectContent() {
     >
       <div style={{ textAlign: "center" }}>
         <img
-          src="https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png"
+          src="/images/assets/logo.png"
           alt="PropertyStack"
-          style={{ height: 40, marginBottom: 20 }}
+          style={{ height: 44, marginBottom: 16, objectFit: "contain" }}
         />
-        <p style={{ fontSize: 15, color: "#64748B" }}>Redirecting you...</p>
+        <p style={{ fontSize: 14, color: "#64748B" }}>Opening PropertyStack...</p>
         <div
           style={{
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             border: "3px solid #E2E8F0",
             borderTopColor: "#0066FF",
             borderRadius: "50%",
-            margin: "16px auto 0",
+            margin: "12px auto 0",
             animation: "spin 0.8s linear infinite",
           }}
         />
