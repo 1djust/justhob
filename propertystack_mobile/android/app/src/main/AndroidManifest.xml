@@ -37,6 +37,13 @@
                 <data android:scheme="https" android:host="propertystack.vercel.app" android:pathPrefix="/link" />
                 <data android:scheme="https" android:host="justhob.vercel.app" android:pathPrefix="/link" />
             </intent-filter>
+            <!-- Custom Scheme: propertystack://link -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="propertystack" android:host="link" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

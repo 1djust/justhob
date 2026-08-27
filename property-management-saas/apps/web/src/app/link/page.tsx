@@ -9,7 +9,11 @@ import { useEffect, useState, Suspense } from "react";
  */
 const ACTION_ROUTES: Record<
   string,
-  { web: (params: URLSearchParams) => string; mobile: (params: URLSearchParams) => string }
+  {
+    web: (params: URLSearchParams) => string;
+    mobile: (params: URLSearchParams) => string;
+    label: string;
+  }
 > = {
   register: {
     web: (p) => {
@@ -18,24 +22,29 @@ const ACTION_ROUTES: Record<
     },
     mobile: (p) => {
       const email = p.get("email");
-      return email ? `/register?email=${encodeURIComponent(email)}` : "/register";
+      return email ? `register?email=${encodeURIComponent(email)}` : "register";
     },
+    label: "Complete Registration in Mobile App",
   },
   login: {
     web: () => "/login",
-    mobile: () => "/login",
+    mobile: () => "login",
+    label: "Log in to Mobile App",
   },
   dashboard: {
     web: () => "/dashboard",
-    mobile: () => "/landlord",
+    mobile: () => "landlord",
+    label: "Open Mobile App",
   },
   onboarding: {
     web: () => "/dashboard",
-    mobile: () => "/onboarding",
+    mobile: () => "onboarding",
+    label: "Set Up in Mobile App",
   },
   payments: {
     web: () => "/dashboard",
-    mobile: () => "/payments",
+    mobile: () => "payments",
+    label: "View Payments in Mobile App",
   },
 };
 
@@ -69,10 +78,6 @@ function SmartRedirectContent() {
       window.location.replace(webPath);
       return;
     }
-
-    // Mobile users (Android / iOS):
-    // Stay on this clean mobile options card so the user can freely choose
-    // whether to open in the native app / Google Play or continue in the browser.
   }, [searchParams]);
 
   if (!isClient) {
@@ -84,6 +89,26 @@ function SmartRedirectContent() {
     const action = searchParams.get("action") || "login";
     const route = ACTION_ROUTES[action] || ACTION_ROUTES.login;
     const webTargetUrl = route.web(searchParams);
+    const mobileActionPath = route.mobile(searchParams);
+
+    // Android Intent URI:
+    // 1. If PropertyStack app is installed -> Launches the app directly to /link?action=...
+    // 2. If app is NOT installed -> Falls back smoothly to Google Play Store listing
+    const androidIntentUrl = `intent://link?action=${action}&${searchParams.toString()}#Intent;scheme=propertystack;package=com.propertystack.mobile;S.browser_fallback_url=${encodeURIComponent(
+      PLAY_STORE_URL,
+    )};end`;
+
+    const customSchemeUrl = `propertystack://link?action=${action}&${searchParams.toString()}`;
+
+    const handleOpenApp = (e: React.MouseEvent) => {
+      if (platform === "android") {
+        // Use Android Intent
+        window.location.href = androidIntentUrl;
+      } else {
+        // iOS: Attempt custom scheme, then fallback to web or store
+        window.location.href = customSchemeUrl;
+      }
+    };
 
     return (
       <div
@@ -122,7 +147,6 @@ function SmartRedirectContent() {
                 objectFit: "contain",
               }}
               onError={(e) => {
-                // Fallback to github asset if local path differs
                 (e.target as HTMLImageElement).src =
                   "https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png";
               }}
@@ -148,70 +172,77 @@ function SmartRedirectContent() {
               lineHeight: 1.5,
             }}
           >
-            Get the best experience with the official PropertyStack mobile app.
+            Continue your property management on your mobile device.
           </p>
 
-          {/* Primary Mobile CTA: Google Play */}
-          {platform === "android" && (
-            <a
-              href={PLAY_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "10px",
-                backgroundColor: "#0066FF",
-                color: "#FFFFFF",
-                padding: "14px 20px",
-                borderRadius: 12,
-                textDecoration: "none",
-                fontWeight: 600,
-                fontSize: 15,
-                marginBottom: 14,
-                boxShadow: "0 4px 14px rgba(0, 102, 255, 0.25)",
-              }}
-            >
-              <span>📲</span> Get it on Google Play
-            </a>
-          )}
+          {/* Primary Action Button: Open in Mobile App */}
+          <a
+            href={platform === "android" ? androidIntentUrl : customSchemeUrl}
+            onClick={handleOpenApp}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "10px",
+              backgroundColor: "#0066FF",
+              color: "#FFFFFF",
+              padding: "14px 20px",
+              borderRadius: 12,
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: 15,
+              marginBottom: 12,
+              boxShadow: "0 4px 14px rgba(0, 102, 255, 0.25)",
+            }}
+          >
+            <span>📱</span> Open in Mobile App
+          </a>
 
-          {platform === "ios" && (
-            <div
-              style={{
-                backgroundColor: "#EFF6FF",
-                border: "1px solid #BFDBFE",
-                borderRadius: 12,
-                padding: "12px 16px",
-                marginBottom: 14,
-                fontSize: 13,
-                color: "#1E40AF",
-                fontWeight: 500,
-              }}
-            >
-              📱 iOS App Store version coming soon
-            </div>
-          )}
-
-          {/* Secondary CTA: Continue in Browser */}
+          {/* Secondary Action: Continue in Browser */}
           <a
             href={webTargetUrl}
             style={{
               display: "block",
               backgroundColor: "#F8FAFC",
-              color: "#0066FF",
+              color: "#0A192F",
               padding: "13px 20px",
               borderRadius: 12,
               textDecoration: "none",
               fontWeight: 600,
               fontSize: 14,
-              border: "1.5px solid #0066FF",
+              border: "1.5px solid #CBD5E1",
+              marginBottom: 20,
               transition: "all 0.2s ease",
             }}
           >
             Continue in Browser →
           </a>
+
+          {/* Helper Footer for App Download */}
+          <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 16 }}>
+            <p style={{ fontSize: 13, color: "#64748B", margin: "0 0 4px 0" }}>
+              Don't have the app yet?
+            </p>
+            {platform === "android" ? (
+              <a
+                href={PLAY_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: 13,
+                  color: "#0066FF",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Download on Google Play ↗
+              </a>
+            ) : (
+              <span style={{ fontSize: 12, color: "#94A3B8" }}>
+                iOS App Store version coming soon
+              </span>
+            )}
+          </div>
         </div>
       </div>
     );
