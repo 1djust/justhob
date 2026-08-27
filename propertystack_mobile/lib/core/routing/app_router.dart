@@ -59,9 +59,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggingIn = state.matchedLocation == '/login';
       final isRegistering = state.matchedLocation == '/register';
       final isChangingPassword = state.matchedLocation == '/change-password';
+      final isLink = state.matchedLocation == '/link';
 
       if (!isLoggedIn) {
-        return (isLoggingIn || isRegistering) ? null : '/login';
+        return (isLoggingIn || isRegistering || isLink) ? null : '/login';
       }
 
       if (authStateValue.mustChangePassword) {
@@ -189,6 +190,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               (state.extra is String ? state.extra as String : null);
           final step = state.uri.queryParameters['step'];
           return RegisterScreen(
+            key: ValueKey('register_${email}_${step}'),
             initialEmail: email,
             initialStep: step == 'otp' ? 2 : 1,
           );

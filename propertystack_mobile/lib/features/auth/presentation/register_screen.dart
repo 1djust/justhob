@@ -57,6 +57,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant RegisterScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialEmail != null && widget.initialEmail != oldWidget.initialEmail) {
+      _emailController.text = widget.initialEmail!;
+    }
+    if (widget.initialStep != oldWidget.initialStep) {
+      setState(() {
+        _success = widget.initialStep == 2;
+        if (_success) {
+          _startCountdownTimer();
+        }
+      });
+    }
+  }
+
   void _startCountdownTimer() {
     _countdownTimer?.cancel();
     _secondsRemaining = 600;
