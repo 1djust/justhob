@@ -150,6 +150,29 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // Smart deep link handler for email CTA routing
+      GoRoute(
+        path: '/link',
+        redirect: (context, state) {
+          final action = state.uri.queryParameters['action'] ?? 'login';
+          final email = state.uri.queryParameters['email'];
+
+          switch (action) {
+            case 'register':
+              return email != null
+                  ? '/register?email=${Uri.encodeComponent(email)}'
+                  : '/register';
+            case 'dashboard':
+              return '/landlord';
+            case 'onboarding':
+              return '/onboarding';
+            case 'payments':
+              return '/payments';
+            default:
+              return '/login';
+          }
+        },
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),

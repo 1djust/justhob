@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import { prisma } from "../lib/database";
 import { authenticate, verifyWorkspaceAccess } from "../lib/middleware";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
@@ -28,7 +29,7 @@ export default async function bankVerificationRoutes(fastify: FastifyInstance) {
   server.addHook("preHandler", verifyWorkspaceAccess);
 
   /**
-   * Resolves a 10-digit account number to a mock name with strict validation.
+   * Resolves a 10-digit account number via Paystack or verified workspace records.
    * Input: { accountNumber, bankCode }
    */
   server.post<{
@@ -44,27 +45,55 @@ export default async function bankVerificationRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { accountNumber, bankCode } = request.body;
+      const paystackKey = process.env.PAYSTACK_SECRET_KEY;
 
-      // Simulate network delay for a "real-time" feel
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      if (paystackKey && !paystackKey.includes("mock")) {
+        try {
+          const res = await fetch(
+            `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`,
+            {
+              headers: {
+                Authorization: `Bearer ${paystackKey}`,
+              },
+            }
+          );
 
-      // For demo purposes, we generate deterministic plausible names
-      const names = [
-        "Justus Ogunduyi",
-        "Ibrahim Abubakar",
-        "Chinelo Eze",
-        "Olukayode Arowosegbe",
-        "Blessing Okon",
-        "Tunde Balogun",
-      ];
+          if (res.ok) {
+            const data = (await res.json()) as { status: boolean; data?: { account_name?: string; account_number?: string } };
+            if (data.status && data.data?.account_name) {
+              return reply.send({
+                accountName: data.data.account_name,
+                accountNumber: data.data.account_number || accountNumber,
+                verified: true,
+              });
+            }
+          }
+        } catch (err) {
+          request.log.error({ err }, "[Paystack Resolve Error]");
+        }
+      }
 
-      // Seed randomness based on account number for consistency
-      const seed = parseInt(accountNumber[0] + accountNumber[9], 10);
-      const accountName = names[seed % names.length];
+      // Check if this account number already exists in workspace records
+      const existingMember = await prisma.workspaceMember.findFirst({
+        where: {
+          workspaceId: request.params.workspaceId,
+          accountNumber,
+          accountName: { not: null },
+        },
+        select: { accountName: true },
+      });
+
+      if (existingMember?.accountName) {
+        return reply.send({
+          accountName: existingMember.accountName,
+          verified: true,
+        });
+      }
 
       return reply.send({
-        accountName,
-        verified: true,
+        accountName: "",
+        verified: false,
+        message: "Account name could not be automatically resolved. Please enter account name manually.",
       });
     },
   );

@@ -174,6 +174,11 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
     final currencyFormatter = NumberFormat.currency(symbol: '₦', decimalDigits: 2);
     final rentFormatted = currencyFormatter.format(stats?.rentCollected ?? 0.0);
 
+    final totalProperties = stats?.totalProperties ?? 0;
+    final totalTenants = stats?.totalTenants ?? 0;
+    final rentCollected = stats?.rentCollected ?? 0.0;
+    final pendingFixes = stats?.pendingMaintenance ?? 0;
+
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -184,24 +189,24 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
       children: [
         _buildMetricCard(
           title: 'Total Properties',
-          value: '${stats?.totalProperties ?? 1}',
-          subtitle: '+1 new',
+          value: '$totalProperties',
+          subtitle: totalProperties > 0 ? '$totalProperties Active' : '0 Active',
         ),
         _buildMetricCard(
           title: 'Total Tenants',
-          value: '${stats?.totalTenants ?? 0}',
-          subtitle: 'Active This Week',
+          value: '$totalTenants',
+          subtitle: totalTenants > 0 ? '$totalTenants Active' : '0 Active',
         ),
         _buildMetricCard(
           title: 'Rent Collected',
           value: rentFormatted,
-          subtitle: '+12% m/m',
+          subtitle: rentCollected > 0 ? 'This Month' : 'No collections yet',
           isCurrency: true,
         ),
         _buildMetricCard(
           title: 'Pending Fixes',
-          value: '${stats?.pendingMaintenance ?? 0}',
-          subtitle: 'Urgent This Week',
+          value: '$pendingFixes',
+          subtitle: pendingFixes > 0 ? 'Requires attention' : 'All clear',
         ),
       ],
     );
@@ -396,10 +401,11 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
     );
   }
 
-  /// Action Needed Section (Overdue Payments, Expiring Leases)
+  /// Action Needed Section (Overdue Payments, Expiring Leases, All Caught Up)
   Widget _buildActionNeededSection(BuildContext context, {required String userName, LandlordStats? stats}) {
-    final overdueCount = stats?.overduePaymentsCount ?? 2;
-    final expiringCount = stats?.expiringLeasesCount ?? 1;
+    final overdueCount = stats?.overduePaymentsCount ?? 0;
+    final expiringCount = stats?.expiringLeasesCount ?? 0;
+    final hasActions = overdueCount > 0 || expiringCount > 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,182 +420,264 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
         ),
         const SizedBox(height: 14),
 
-        // Overdue Payments Card
-        InkWell(
-          onTap: () {
-            context.push('/landlord/payments');
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(5),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Alert Warning Icon in Circular Light Red Container
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFEF2F2),
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(11),
-                  child: SvgPicture.asset(
-                    'assets/icon/alert-triangle.svg',
-                    colorFilter: const ColorFilter.mode(Color(0xFFEF4444), BlendMode.srcIn),
-                  ),
-                ),
-                const SizedBox(width: 14),
-
-                // Text Content
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Overdue Payments',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$userName, $overdueCount invoices are past due',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Rounded Tag Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF2F2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Overdue',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFEF4444),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Expiring Leases Card
-        InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Lease renewal management coming soon!'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(5),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Clock Icon in Circular Light Amber Container
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFFBEB),
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(11),
-                  child: SvgPicture.asset(
-                    'assets/icon/clock.svg',
-                    colorFilter: const ColorFilter.mode(Color(0xFFF59E0B), BlendMode.srcIn),
-                  ),
-                ),
-                const SizedBox(width: 14),
-
-                // Text Content
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Expiring Leases',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$expiringCount lease is expiring in the next 30 days',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Rounded Tag Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFBEB),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Expiring',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFD97706),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        if (hasActions) ...[
+          if (overdueCount > 0) ...[
+            _buildOverduePaymentsCard(context, overdueCount: overdueCount),
+            if (expiringCount > 0) const SizedBox(height: 12),
+          ],
+          if (expiringCount > 0) ...[
+            _buildExpiringLeasesCard(context, expiringCount: expiringCount),
+          ],
+        ] else ...[
+          _buildAllCaughtUpCard(context, hasProperties: (stats?.totalProperties ?? 0) > 0),
+        ],
       ],
+    );
+  }
+
+  Widget _buildAllCaughtUpCard(BuildContext context, {required bool hasProperties}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: Color(0xFFECFDF5),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.check_circle_outline_rounded,
+              color: Color(0xFF10B981),
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'All caught up',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hasProperties
+                      ? 'No overdue payments or expiring leases right now.'
+                      : 'No actions needed. Add properties and tenants to start tracking payments.',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'Clear',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF059669),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverduePaymentsCard(BuildContext context, {required int overdueCount}) {
+    return InkWell(
+      onTap: () {
+        context.push('/landlord/payments');
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(5),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEF2F2),
+                shape: BoxShape.circle,
+              ),
+              padding: const EdgeInsets.all(11),
+              child: SvgPicture.asset(
+                'assets/icon/alert-triangle.svg',
+                colorFilter: const ColorFilter.mode(Color(0xFFEF4444), BlendMode.srcIn),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Overdue Payments',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$overdueCount invoice${overdueCount == 1 ? ' is' : 's are'} past due',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Overdue',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpiringLeasesCard(BuildContext context, {required int expiringCount}) {
+    return InkWell(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lease renewal management coming soon!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(5),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFFBEB),
+                shape: BoxShape.circle,
+              ),
+              padding: const EdgeInsets.all(11),
+              child: SvgPicture.asset(
+                'assets/icon/clock.svg',
+                colorFilter: const ColorFilter.mode(Color(0xFFF59E0B), BlendMode.srcIn),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Expiring Leases',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$expiringCount lease${expiringCount == 1 ? ' is' : 's are'} expiring in the next 30 days',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Expiring',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFD97706),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

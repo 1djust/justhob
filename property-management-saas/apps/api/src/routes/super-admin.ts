@@ -1358,7 +1358,7 @@ export default async function superAdminRoutes(
         }
       }
 
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${legalRequest.workspaceId}`)
         .emit("LEASE_UPDATED", {
           leaseId: legalRequest.leaseId,

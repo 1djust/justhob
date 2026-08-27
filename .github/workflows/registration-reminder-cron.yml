@@ -1,15 +1,21 @@
-name: Automated Daily Data Retention & Audit Report
+name: Automated Registration Follow-up Reminders
 
 on:
   schedule:
-    # Runs every day at 02:00 AM WAT (01:00 AM UTC)
-    - cron: '0 1 * * *'
+    # Runs daily at 03:00 AM WAT (02:00 AM UTC)
+    - cron: '0 2 * * *'
   # Allows manual triggering from the GitHub Actions tab anytime
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in DRY-RUN mode (simulate without sending emails)'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
-  run-retention-job:
-    name: Run Data Retention & Audit Cleanup
+  run-registration-reminders:
+    name: Run Registration Follow-up Email Job
     runs-on: ubuntu-latest
 
     steps:
@@ -36,20 +42,22 @@ jobs:
           cd property-management-saas
           pnpm --filter @property-stack/database db:generate
 
-      - name: Execute Data Retention & Email Dispatch
+      - name: Execute Registration Follow-up Job
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL || 'https://justhob.vercel.app' }}
           SMTP_HOST: ${{ secrets.SMTP_HOST || 'smtp.gmail.com' }}
           SMTP_PORT: ${{ secrets.SMTP_PORT || '465' }}
           SMTP_USER: ${{ secrets.SMTP_USER || 'propertystackapp@gmail.com' }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL || 'propertystackapp@gmail.com' }}
-          DATA_RETENTION_WEBHOOK_DAYS: '30'
-          DATA_RETENTION_ERROR_LOG_DAYS: '90'
-          DATA_RETENTION_SECURITY_LOG_DAYS: '180'
         run: |
           cd property-management-saas/apps/api
-          npx tsx src/scripts/run-data-retention-job.ts
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            npx tsx src/scripts/run-registration-reminder.ts --dry-run
+          else
+            npx tsx src/scripts/run-registration-reminder.ts
+          fi

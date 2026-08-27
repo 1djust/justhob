@@ -170,6 +170,14 @@ export default async function publicRoutes(fastify: FastifyInstance) {
           // Lock the workspace record to prevent race conditions on limit checks
           await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
 
+          // Security: Verify the property belongs to this workspace
+          const property = await tx.property.findFirst({
+            where: { id: propertyId, workspaceId, deletedAt: null },
+          });
+          if (!property) {
+            throw new Error("PROPERTY_NOT_FOUND");
+          }
+
           const workspace = await tx.workspace.findUnique({
             where: { id: workspaceId },
           });
@@ -198,11 +206,18 @@ export default async function publicRoutes(fastify: FastifyInstance) {
           });
         })
         .catch((err: unknown) => {
-          if ((err as Error).message === "LIMIT_MAINTENANCE") {
+          const errMessage = (err as Error).message;
+          if (errMessage === "LIMIT_MAINTENANCE") {
             throw {
               statusCode: 402,
               message:
                 "Free plan limit reached: Maximum 3 active maintenance tickets allowed. Please upgrade your plan.",
+            };
+          }
+          if (errMessage === "PROPERTY_NOT_FOUND") {
+            throw {
+              statusCode: 404,
+              message: "Property not found in this workspace",
             };
           }
           throw err;

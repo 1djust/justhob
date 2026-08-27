@@ -8,6 +8,13 @@ const createTransporter = () => {
   const pass = process.env.SMTP_PASS;
 
   if (host && user && pass) {
+    if (host === "smtp.gmail.com" || host.includes("gmail")) {
+      return nodemailer.createTransport({
+        service: "gmail",
+        auth: { user, pass },
+      });
+    }
+
     return nodemailer.createTransport({
       host,
       port,
@@ -43,14 +50,21 @@ export const sendEmail = async (
   html?: string,
 ) => {
   try {
-    await transporter.sendMail({
-      from: '"PropertyStack" <notifications@propertystack.com>',
+    const fromAddress =
+      process.env.SMTP_USER || "notifications@propertystack.com";
+    const info = await transporter.sendMail({
+      from: `"PropertyStack" <${fromAddress}>`,
       to,
       subject,
       text: content,
       html: html || content,
     });
+    console.log(
+      `[Mailer] Delivered to ${to} | ID: ${info.messageId} | Accepted: ${JSON.stringify(info.accepted)}`,
+    );
+    return info;
   } catch (error) {
     console.error("[MailerError]", error);
+    throw error;
   }
 };

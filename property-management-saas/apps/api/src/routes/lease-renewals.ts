@@ -148,7 +148,7 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
         });
 
         // Emit to user room
-        (request.server as unknown as { io: import("socket.io").Server }).io
+        request.server.io
           .to(`user:${tenantUser.id}`)
           .emit("NOTIFICATION_CREATED", notification);
       }
@@ -156,7 +156,7 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
       // Emit real-time update to the workspace
       const room = `workspace:${workspaceId}`;
       console.log(`[LeaseRenewal] Emitting LEASE_UPDATED to room ${room}`);
-      (request.server as unknown as { io: import("socket.io").Server }).io
+      request.server.io
         .to(room)
         .emit("LEASE_UPDATED", { leaseId: id });
 
@@ -169,7 +169,7 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
           `[LeaseRenewal] Emitting LEASE_RENEWAL_OFFER to rooms: ${userRoom}, ${emailRoom}`,
         );
 
-        (request.server as unknown as { io: import("socket.io").Server }).io
+        request.server.io
           .to(userRoom)
           .emit("LEASE_RENEWAL_OFFER", {
             leaseId: id,
@@ -178,7 +178,7 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
           });
 
         if (lease.tenant.email) {
-          (request.server as unknown as { io: import("socket.io").Server }).io
+          request.server.io
             .to(emailRoom)
             .emit("LEASE_RENEWAL_OFFER", {
               leaseId: id,
@@ -293,7 +293,7 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
           });
         }
 
-        (fastify as unknown as { io: import("socket.io").Server }).io
+        fastify.io
           .to(`workspace:${workspaceId}`)
           .emit("LEASE_RENEWED", {
             leaseId: newLease.id,
@@ -333,7 +333,7 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
           });
         }
 
-        (fastify as unknown as { io: import("socket.io").Server }).io
+        fastify.io
           .to(`workspace:${workspaceId}`)
           .emit("LEASE_RENEWAL_REJECTED", {
             leaseId: offer.lease.id,

@@ -293,7 +293,7 @@ export function PropertiesList({
       queryClient.invalidateQueries({ queryKey: ["properties", workspaceId] });
       toast.success("Apartment units added successfully!");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error(err.message || "Failed to add units");
     },
   });

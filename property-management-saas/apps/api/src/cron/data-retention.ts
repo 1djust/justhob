@@ -148,7 +148,8 @@ export function setupDataRetention(fastify: FastifyInstance): void {
       prisma.securityAuditLog.count(),
     ]);
 
-    const adminEmail = process.env.ADMIN_EMAIL || "ogunduyijustus@gmail.com";
+    const adminEmail =
+      process.env.ADMIN_EMAIL || "propertystackapp@gmail.com";
     const retentionWebhookDays = getDaysEnv("DATA_RETENTION_WEBHOOK_DAYS", 30);
     const retentionErrorLogDays = getDaysEnv("DATA_RETENTION_ERROR_LOG_DAYS", 90);
     const retentionSecurityLogDays = getDaysEnv("DATA_RETENTION_SECURITY_LOG_DAYS", 180);

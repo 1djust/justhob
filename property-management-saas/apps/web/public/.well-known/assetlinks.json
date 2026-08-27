@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.propertystack.mobile",
+    "sha256_cert_fingerprints": [
+      "C4:A0:53:D7:10:E0:C6:88:22:7F:9F:5D:7E:B6:7D:5E:3D:9F:EC:B4:83:5B:9E:AC:9E:A9:E3:2D:4A:4C:0E:34"
+    ]
+  }
+}]

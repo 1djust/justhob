@@ -502,12 +502,12 @@ export function LeaseForm({
                 </span>
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-zinc-900 dark:text-white font-mono text-sm">
-                    0123456789
+                    {process.env.NEXT_PUBLIC_LEGAL_ACCOUNT_NUMBER || "0100293847"}
                   </span>
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard.writeText("0123456789");
+                      navigator.clipboard.writeText(process.env.NEXT_PUBLIC_LEGAL_ACCOUNT_NUMBER || "0100293847");
                       toast.success("Account number copied!");
                     }}
                     className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors cursor-pointer"
@@ -522,7 +522,7 @@ export function LeaseForm({
                   Bank Name
                 </span>
                 <span className="font-bold text-zinc-900 dark:text-white">
-                  Access Bank
+                  {process.env.NEXT_PUBLIC_LEGAL_BANK_NAME || "Providus Bank"}
                 </span>
               </div>
               <div className="space-y-1 p-3 bg-white/50 dark:bg-zinc-950/15 border border-zinc-200/50 dark:border-zinc-850/40 rounded-xl">
@@ -530,7 +530,7 @@ export function LeaseForm({
                   Account Name
                 </span>
                 <span className="font-bold text-zinc-900 dark:text-white">
-                  JustHub Legal Services
+                  {process.env.NEXT_PUBLIC_LEGAL_ACCOUNT_NAME || "PropertyStack Legal Escrow"}
                 </span>
               </div>
             </div>
@@ -726,8 +726,12 @@ export function LeaseForm({
                     toast.success(
                       "Lease agreement document uploaded successfully!",
                     );
-                  } catch (err: any) {
-                    toast.error(err.message || "Failed to upload file");
+                  } catch (err: unknown) {
+                    toast.error(
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to upload file",
+                    );
                   } finally {
                     setUploadingCustomLease(false);
                   }

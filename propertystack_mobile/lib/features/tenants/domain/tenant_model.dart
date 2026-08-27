@@ -175,7 +175,7 @@ class TenantModel {
       id: json['id'] ?? '',
       name: json['name'] ?? 'Unnamed Tenant',
       email: json['email'] ?? '',
-      phone: json['phone'] ?? '+234 800 000 0000',
+      phone: json['phone'] ?? '',
       propertyName: property?['name'] ?? 'Unassigned',
       unitNumber: unit?['unitNumber'] ?? '-',
       status: json['status'] ?? displayStatus,

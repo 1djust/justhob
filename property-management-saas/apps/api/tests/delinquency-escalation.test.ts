@@ -32,7 +32,6 @@ describe("Delinquency Escalation Protocol", () => {
   let testTenantId: string;
   let testPropertyId: string;
   let testLeaseId: string;
-  const adminSecurityKey = process.env.ADMIN_SECURITY_KEY || "test_admin_key"; // Mock key or fallback if needed
 
   beforeAll(async () => {
     // 1. Create a workspace
@@ -127,44 +126,6 @@ describe("Delinquency Escalation Protocol", () => {
     });
     return payment.id;
   };
-
-  const triggerSystemJobs = async () => {
-    // In test env, we can directly import the super admin token or just hit the cron logic directly.
-    // However, the test environment may not have process.env.ADMIN_SECURITY_KEY set correctly,
-    // so we'll mock the globalUserRole to bypass the token check, or just set ADMIN_SECURITY_KEY.
-    process.env.ADMIN_SECURITY_KEY = adminSecurityKey;
-
-    // We need to inject a request to /api/admin/trigger-crons with globalUserRole = SUPER_ADMIN
-    // Since our middleware relies on Supabase Auth, we can't easily mock the JWT for integration tests
-    // unless we create a mock token.
-    // Instead of wrestling with auth, let's just directly call the overdue checker cron logic?
-    // Wait, the prompt says "hit the admin trigger". Let's assume we can mock it or just call the DB directly.
-    // But we modified the overdue-checker.ts to have the correct logic, so let's just trigger the admin endpoint
-    // by mocking auth. Let's see if there is an easy way.
-    // Actually, in the backend we can just import the logic from the cron job or admin route if they are exported.
-    // Wait, admin endpoint doesn't need JWT if we bypass? Let's check requireSuperAdmin middleware.
-
-    // We'll hit the actual logic by requiring the overdue-checker cron and running it directly.
-    const { setupOverdueChecker } = await import("../src/cron/overdue-checker");
-    // setupOverdueChecker just sets up the cron. We need to trigger the internal logic.
-    // This is hard to do without refactoring the cron logic into a separate testable function.
-
-    // Let's use the actual DB logic here to simulate it since it's just a test confirming
-    // the system behaves as expected. Wait, we should test the actual implementation.
-    // If we call the admin endpoint, we need a valid token.
-    // Let's refactor this test to use the app.inject with a mock token if possible.
-    // If not, we will rely on the fact that we fixed the `overdue-checker.ts` and can just
-    // manually execute the same block of code here to verify the logic.
-
-    // Let's try to hit the admin endpoint. The middleware expects a Bearer token.
-    // We can't generate a valid Supabase token easily.
-
-    // To ensure the logic works, we'll extract the overdue logic from admin.ts / overdue-checker.ts
-    // No, we should test the actual route or cron.
-    // Let's just create a test specific route in the app for testing, or we just trust the route.
-    // Let's try to hit the route.
-  };
-
   it("Test Case 1: 1-Day Overdue Warning", async () => {
     const paymentId = await setupPaymentWithDaysOverdue(1);
 

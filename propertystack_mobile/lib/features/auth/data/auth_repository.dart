@@ -21,6 +21,42 @@ class AuthRepository {
 
   AuthRepository(this._apiClient);
 
+  String _extractDioErrorMessage(DioException e, {required String defaultError}) {
+    debugPrint('Caught error: $e');
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout) {
+      return 'Server is taking too long to respond. Please try again.';
+    } else if (e.type == DioExceptionType.connectionError ||
+        e.response == null ||
+        (e.error != null && e.error.toString().contains('SocketException'))) {
+      return 'Cannot reach the server. Please check your internet connection or verify the API server is running.';
+    } else if (e.response != null) {
+      dynamic data = e.response?.data;
+      if (data is String) {
+        try {
+          data = jsonDecode(data);
+        } catch (e) {
+          debugPrint('Caught error: $e');
+        }
+      }
+      if (data is Map) {
+        final error = data['error'];
+        if (error is Map && error['message'] != null) {
+          return error['message'].toString();
+        } else if (error is String) {
+          return error;
+        } else if (data['message'] != null) {
+          return data['message'].toString();
+        } else {
+          return 'Error: $data';
+        }
+      } else {
+        return 'Error ${e.response?.statusCode}: $data';
+      }
+    }
+    return defaultError;
+  }
+
   Future<RegisterResult> register({
     required String name,
     required String email,
@@ -63,39 +99,7 @@ class AuthRepository {
       }
       throw Exception('Registration failed.');
     } on DioException catch (e) {
-      debugPrint('Caught error: $e');
-      String message = 'Registration failed. Please check your details.';
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        message = 'Server is taking too long to respond. Please try again.';
-      } else if (e.type == DioExceptionType.connectionError) {
-        message =
-            'Cannot reach the server. Please check your internet connection.';
-      } else if (e.response != null) {
-        dynamic data = e.response?.data;
-        if (data is String) {
-          try {
-            data = jsonDecode(data);
-          } catch (e) {
-            debugPrint('Caught error: $e');
-          }
-        }
-        if (data is Map) {
-          final error = data['error'];
-          if (error is Map && error['message'] != null) {
-            message = error['message'].toString();
-          } else if (error is String) {
-            message = error;
-          } else if (data['message'] != null) {
-            message = data['message'].toString();
-          } else {
-            message = 'Error: $data';
-          }
-        } else {
-          message = 'Error ${e.response?.statusCode}: $data';
-        }
-      }
-      throw Exception(message);
+      throw Exception(_extractDioErrorMessage(e, defaultError: 'Registration failed. Please check your details.'));
     } catch (e) {
       throw Exception('An unexpected error occurred: ${e.toString()}');
     }

@@ -27,11 +27,18 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+interface SecurityLogDetails {
+  url?: string;
+  method?: string;
+  userAgent?: string;
+  [key: string]: unknown;
+}
+
 interface SecurityLogEntry {
   id: string;
   eventType: string;
   ipAddress: string;
-  details: Record<string, unknown> | null;
+  details: SecurityLogDetails | null;
   createdAt: string;
 }
 
@@ -262,7 +269,7 @@ export function SecurityLogs() {
         <div className="space-y-2.5">
           {paginatedLogs.map((log) => {
             const config = getEventConfig(log.eventType);
-            const details = log.details as Record<string, any> | null;
+            const details = log.details;
             const url = details?.url;
             const method = details?.method;
             const userAgent = details?.userAgent;

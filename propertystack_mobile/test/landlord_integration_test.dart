@@ -8,6 +8,8 @@ import 'package:propertystack_mobile/core/widgets/header_action_icons.dart';
 import 'package:propertystack_mobile/features/auth/domain/user.dart';
 import 'package:propertystack_mobile/features/auth/domain/workspace.dart';
 import 'package:propertystack_mobile/features/auth/presentation/auth_notifier.dart';
+import 'package:propertystack_mobile/features/landlord_home/data/landlord_stats.dart';
+import 'package:propertystack_mobile/features/landlord_home/presentation/landlord_home_notifier.dart';
 import 'package:propertystack_mobile/features/landlord_home/presentation/landlord_home_screen.dart';
 import 'package:propertystack_mobile/core/theme/app_theme.dart';
 
@@ -105,6 +107,22 @@ ProviderContainer _makeContainer(AsyncValue<User?> authState) {
   final container = ProviderContainer(
     overrides: [
       authStateProvider.overrideWith((_) => notifier),
+    ],
+  );
+  addTearDown(container.dispose);
+  return container;
+}
+
+ProviderContainer _makeContainerWithStats({
+  required AsyncValue<User?> authState,
+  LandlordStats? stats,
+}) {
+  final notifier = _StubAuthNotifier(authState);
+  final container = ProviderContainer(
+    overrides: [
+      authStateProvider.overrideWith((_) => notifier),
+      if (stats != null)
+        landlordStatsProvider.overrideWith((ref) => Future.value(stats)),
     ],
   );
   addTearDown(container.dispose);
@@ -490,6 +508,53 @@ void main() {
       await tester.pumpAndSettle();
       // More tab now shows overlay, not a full screen with Sign Out
       expect(find.text('More'), findsOneWidget);
+    });
+
+    testWidgets('TC-44b: New user with 0 stats shows All caught up and 0 metrics', (tester) async {
+      final stats = LandlordStats(
+        totalProperties: 0,
+        totalTenants: 0,
+        rentCollected: 0.0,
+        pendingMaintenance: 0,
+        underReviewPayments: 0,
+        overduePaymentsCount: 0,
+        expiringLeasesCount: 0,
+      );
+      final c = _makeContainerWithStats(
+        authState: AsyncValue.data(_landlordUser()),
+        stats: stats,
+      );
+      await tester.pumpWidget(_wrap(child: const LandlordHomeScreen(), container: c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('All caught up'), findsOneWidget);
+      expect(find.text('No collections yet'), findsOneWidget);
+      expect(find.text('All clear'), findsOneWidget);
+      expect(find.text('0 Active'), findsNWidgets(2));
+      expect(find.text('Overdue Payments'), findsNothing);
+      expect(find.text('Expiring Leases'), findsNothing);
+    });
+
+    testWidgets('TC-44c: User with overdue payments renders Overdue Payments card', (tester) async {
+      final stats = LandlordStats(
+        totalProperties: 2,
+        totalTenants: 4,
+        rentCollected: 500000.0,
+        pendingMaintenance: 1,
+        underReviewPayments: 0,
+        overduePaymentsCount: 3,
+        expiringLeasesCount: 0,
+      );
+      final c = _makeContainerWithStats(
+        authState: AsyncValue.data(_landlordUser()),
+        stats: stats,
+      );
+      await tester.pumpWidget(_wrap(child: const LandlordHomeScreen(), container: c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Overdue Payments'), findsOneWidget);
+      expect(find.text('3 invoices are past due'), findsOneWidget);
+      expect(find.text('All caught up'), findsNothing);
     });
   });
 

@@ -325,7 +325,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
 
             return { tenant, tempPassword, inviteLink };
           },
-          { timeout: 15000 },
+          { maxWait: 10000, timeout: 20000 },
         )
         .catch((err: unknown) => {
           const errorMsg = (err as Error).message;
@@ -343,7 +343,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         });
 
       // Emit real-time update to the workspace room
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("TENANT_CREATED", {
           tenantId: (result as { tenant: { id: string } }).tenant.id,
@@ -456,7 +456,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         });
 
         // Emit real-time update to the workspace room
-        (fastify as unknown as { io: import("socket.io").Server }).io
+        fastify.io
           .to(`workspace:${workspaceId}`)
           .emit("TENANT_DELETED", {
             tenantId: id,
@@ -516,6 +516,15 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         return reply
           .status(400)
           .send({ error: "Property ID and start date are required" });
+      }
+
+      if (
+        yearlyRent !== undefined &&
+        (Number(yearlyRent) < 0 || isNaN(Number(yearlyRent)))
+      ) {
+        return reply
+          .status(400)
+          .send({ error: "Yearly rent cannot be negative" });
       }
 
       // Check if tenant already has an active or pending lease
@@ -579,7 +588,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         },
       });
 
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("LEASE_UPDATED", {
           workspaceId,
@@ -673,7 +682,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         });
       }
 
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("TENANT_DELETED", {
           tenantId: id,
@@ -846,7 +855,7 @@ Tenant: ${tenantName}`;
         );
       }
 
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("LEASE_UPDATED", {
           leaseId: lease.id,
@@ -920,7 +929,7 @@ Tenant: ${tenantName}`;
         );
       }
 
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("LEASE_UPDATED", {
           leaseId,

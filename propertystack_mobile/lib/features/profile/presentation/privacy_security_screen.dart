@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:propertystack_mobile/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/biometric_service.dart';
+import '../../auth/presentation/auth_notifier.dart';
 
-class PrivacySecurityScreen extends StatefulWidget {
+class PrivacySecurityScreen extends ConsumerStatefulWidget {
   const PrivacySecurityScreen({super.key});
 
   @override
-  State<PrivacySecurityScreen> createState() => _PrivacySecurityScreenState();
+  ConsumerState<PrivacySecurityScreen> createState() => _PrivacySecurityScreenState();
 }
 
-class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
+class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   bool _isLoadingBiometric = true;
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
@@ -25,7 +27,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     final bio = BiometricService();
     final supported = await bio.isDeviceSupported();
     final enabled = await bio.isBiometricEnabled();
-    
+
     if (mounted) {
       setState(() {
         _biometricAvailable = supported;
@@ -37,43 +39,169 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
 
   Future<void> _toggleBiometric(bool enable) async {
     final bio = BiometricService();
-    
+
     if (enable) {
-      // To enable, we require a successful biometric scan to prove identity
-      // However, we don't have the user's password here. 
-      // The secure storage requires the password to auto-login.
-      // We will show a dialog telling them to enable it during next login.
-      _showBiometricInfoDialog();
+      _showEnableBiometricSheet();
     } else {
-      // Disable it
+      // Disable biometric authentication cleanly
       await bio.disableBiometric();
       if (!mounted) return;
       setState(() {
         _biometricEnabled = false;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Biometric login disabled.')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Biometric authentication turned off. You can now use your login credentials.'),
+          backgroundColor: Color(0xFF0F172A),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
-  void _showBiometricInfoDialog() {
-    showDialog(
+  void _showEnableBiometricSheet() {
+    final user = ref.read(authStateProvider).value;
+    final email = user?.email ?? '';
+    final passwordController = TextEditingController();
+    bool isVerifying = false;
+    String? errorText;
+
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Enable Biometric Login'),
-        content: const Text(
-          'For security reasons, to enable biometric login, please log out and sign in manually using your email and password. '
-          'You will be prompted to enable fingerprint/FaceID during the login process.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Got it'),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.fingerprint_rounded, color: Color(0xFF2563EB), size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Enable Biometrics',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        ),
+                        Text(
+                          'Fast & secure login',
+                          style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Enter your account password to securely link fingerprint/FaceID on this device.',
+                style: TextStyle(fontSize: 13, height: 1.4, color: Color(0xFF475569)),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Current Password',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded),
+                  errorText: errorText,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: isVerifying
+                      ? null
+                      : () async {
+                          final password = passwordController.text.trim();
+                          if (password.isEmpty) {
+                            setSheetState(() => errorText = 'Password is required');
+                            return;
+                          }
+
+                          setSheetState(() {
+                            isVerifying = true;
+                            errorText = null;
+                          });
+
+                          try {
+                            // Verify password against API
+                            final authRepo = ref.read(authRepositoryProvider);
+                            await authRepo.login(email, password);
+
+                            // Perform biometric scan verification
+                            final bio = BiometricService();
+                            final didAuth = await bio.authenticate();
+
+                            if (didAuth) {
+                              await bio.enableBiometric(email, password);
+                              if (mounted) {
+                                setState(() => _biometricEnabled = true);
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Biometric authentication enabled successfully!'),
+                                    backgroundColor: Color(0xFF16A34A),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            } else {
+                              setSheetState(() {
+                                isVerifying = false;
+                                errorText = 'Biometric scan was cancelled.';
+                              });
+                            }
+                          } catch (e) {
+                            setSheetState(() {
+                              isVerifying = false;
+                              errorText = 'Incorrect password. Please try again.';
+                            });
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: isVerifying
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Confirm & Enable',
+                          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -114,21 +242,45 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             ),
             const Divider(height: 32, color: AppTheme.borderColor),
             if (_isLoadingBiometric)
-              const Center(child: CircularProgressIndicator())
+              const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()))
             else if (_biometricAvailable)
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text(
-                  'Biometric Login',
+                  'Biometric Authentication',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                 ),
-                subtitle: const Text('Use fingerprint or FaceID to sign in.', style: TextStyle(color: AppTheme.textSecondary)),
+                subtitle: const Text('Use fingerprint or FaceID for fast & secure sign in.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                 value: _biometricEnabled,
                 onChanged: _toggleBiometric,
-                activeColor: AppTheme.textPrimary,
+                activeTrackColor: const Color(0xFF2563EB),
                 secondary: const Icon(Icons.fingerprint_rounded, color: AppTheme.textPrimary),
+              )
+            else
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.fingerprint_rounded, color: AppTheme.textSecondary),
+                title: const Text(
+                  'Biometric Authentication',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+                subtitle: const Text(
+                  'Biometric authentication is not supported or not configured on this device.',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                ),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Not Available',
+                    style: TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                ),
               ),
-            if (_biometricAvailable) const SizedBox(height: 32),
+            const SizedBox(height: 32),
             _buildSectionHeader('Privacy'),
             ListTile(
               onTap: () {

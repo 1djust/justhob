@@ -714,8 +714,12 @@ function EditOwnerModal({
       );
       toast.success("Landlord settings updated successfully!");
       onSuccess();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update landlord settings");
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Failed to update landlord settings",
+      );
     } finally {
       setIsSaving(false);
     }

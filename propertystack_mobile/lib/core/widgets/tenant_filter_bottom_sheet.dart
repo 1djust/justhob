@@ -19,14 +19,14 @@ class TenantFilterBottomSheet extends StatefulWidget {
     super.key,
     this.selectedType = 'All Types',
     this.selectedLocation = 'All',
-    this.availableLocations = const ['All', "Solomon's Heights", 'Solomon Luxury Estates', 'Alpha Commercial plaza'],
+    this.availableLocations = const ['All'],
   });
 
   static Future<TenantFilterResult?> show(
     BuildContext context, {
     String selectedType = 'All Types',
     String selectedLocation = 'All',
-    List<String> availableLocations = const ['All', "Solomon's Heights", 'Solomon Luxury Estates', 'Alpha Commercial plaza'],
+    List<String> availableLocations = const ['All'],
   }) {
     return showModalBottomSheet<TenantFilterResult>(
       context: context,

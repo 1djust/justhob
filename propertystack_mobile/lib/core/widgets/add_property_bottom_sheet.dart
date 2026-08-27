@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../features/properties/data/properties_repository.dart';
 import '../../features/properties/presentation/properties_notifier.dart';
 import '../../features/owners/presentation/owners_notifier.dart';
@@ -17,6 +20,8 @@ class _AddPropertyBottomSheetState extends ConsumerState<AddPropertyBottomSheet>
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
   String? _selectedOwnerId;
+  File? _propertyImageFile;
+  final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
   bool _fetchingOwners = true;
   List<dynamic> _owners = [];
@@ -46,6 +51,90 @@ class _AddPropertyBottomSheetState extends ConsumerState<AddPropertyBottomSheet>
     _nameController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPropertyImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _propertyImageFile = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to select image: $e')),
+        );
+      }
+    }
+  }
+
+  void _showImagePickerSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Property Picture',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+              ),
+              const SizedBox(height: 14),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(color: Color(0xFFEFF6FF), shape: BoxShape.circle),
+                  child: const Icon(Icons.photo_camera_rounded, color: Color(0xFF2563EB)),
+                ),
+                title: const Text('Take Photo', style: TextStyle(fontWeight: FontWeight.w700)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickPropertyImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(color: Color(0xFFEFF6FF), shape: BoxShape.circle),
+                  child: const Icon(Icons.photo_library_rounded, color: Color(0xFF2563EB)),
+                ),
+                title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w700)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickPropertyImage(ImageSource.gallery);
+                },
+              ),
+              if (_propertyImageFile != null)
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(color: Color(0xFFFEE2E2), shape: BoxShape.circle),
+                    child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
+                  ),
+                  title: const Text('Remove Photo', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFEF4444))),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() => _propertyImageFile = null);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _loadLandlords() async {
@@ -104,11 +193,18 @@ class _AddPropertyBottomSheetState extends ConsumerState<AddPropertyBottomSheet>
         (m) => m.role == 'LANDLORD' || m.role == 'PROPERTY_MANAGER',
       );
 
+      String? imageUrl;
+      if (_propertyImageFile != null) {
+        final bytes = await _propertyImageFile!.readAsBytes();
+        imageUrl = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      }
+
       await ref.read(propertiesRepositoryProvider).createProperty(
             managerWorkspace.workspaceId,
             name: _nameController.text.trim(),
             address: _addressController.text.trim(),
             ownerId: _selectedOwnerId,
+            imageUrl: imageUrl,
             units: _units,
           );
 
@@ -163,6 +259,84 @@ class _AddPropertyBottomSheetState extends ConsumerState<AddPropertyBottomSheet>
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+
+              // Optional Property Photo Upload Card
+              GestureDetector(
+                onTap: _showImagePickerSheet,
+                child: Container(
+                  width: double.infinity,
+                  height: 130,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _propertyImageFile != null ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1),
+                      width: _propertyImageFile != null ? 2 : 1.2,
+                    ),
+                  ),
+                  child: _propertyImageFile != null
+                      ? Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(
+                                _propertyImageFile!,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.65),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.edit_rounded, color: Colors.white, size: 13),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Change',
+                                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 42,
+                              height: 42,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEFF6FF),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.add_a_photo_outlined, color: Color(0xFF2563EB), size: 20),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Add Property Picture (Optional)',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Tap to upload estate / building photo from camera or gallery',
+                              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                ),
               ),
               const SizedBox(height: 16),
 

@@ -118,7 +118,7 @@ class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
   }
 
   void _showConfigurePayoutModal() {
-    String selectedBankCode = _owner.bankCode ?? '058';
+    String? selectedBankCode = _owner.bankCode;
     String selectedStrategy = _owner.payoutStrategy ?? 'DIRECT_TO_LANDLORD';
     final accNumController = TextEditingController(text: _owner.accountNumber ?? '');
     final accNameController = TextEditingController(text: _owner.accountName ?? '');
@@ -175,7 +175,8 @@ class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: nigerianBankMap.containsKey(selectedBankCode) ? selectedBankCode : '058',
+                value: (selectedBankCode != null && nigerianBankMap.containsKey(selectedBankCode)) ? selectedBankCode : null,
+                hint: const Text('Select Settlement Bank'),
                 decoration: InputDecoration(
                   labelText: 'Settlement Bank',
                   prefixIcon: const Icon(Icons.account_balance_rounded),
@@ -293,7 +294,7 @@ class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
 
   void _showAssignPropertyModal() {
     final propNameController = TextEditingController();
-    final unitInfoController = TextEditingController(text: 'Unit 4 • 3 Units Total');
+    final unitInfoController = TextEditingController();
 
     showModalBottomSheet(
       context: context,
@@ -321,7 +322,7 @@ class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
               controller: propNameController,
               decoration: InputDecoration(
                 labelText: 'Property Name',
-                hintText: "e.g. Solomon's Heights",
+                hintText: 'e.g. Sunrise Apartments',
                 prefixIcon: const Icon(Icons.apartment_rounded),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -331,6 +332,7 @@ class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
               controller: unitInfoController,
               decoration: InputDecoration(
                 labelText: 'Unit Details',
+                hintText: 'e.g. Unit 1A, Unit 2B',
                 prefixIcon: const Icon(Icons.meeting_room_rounded),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),

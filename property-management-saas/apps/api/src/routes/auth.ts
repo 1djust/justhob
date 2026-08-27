@@ -569,8 +569,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
       });
 
       if (!user) {
-        const role =
+        let role =
           (data.user.user_metadata?.role as any) || "PROPERTY_MANAGER";
+        // Security: Prevent privilege escalation via client-controlled metadata
+        if (role === "SUPER_ADMIN") {
+          role = "PROPERTY_MANAGER";
+        }
         const name =
           data.user.user_metadata?.name || cleanEmail.split("@")[0];
 
@@ -794,14 +798,19 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
         // User WAS registered by a manager (has membership) but their Prisma
         // profile doesn't exist yet — safe to create it now.
-        const role =
-          existingMembership.role || data.user.user_metadata.role || "TENANT";
+        let role = (existingMembership.role ||
+          data.user.user_metadata?.role ||
+          "TENANT") as string;
+        // Security: Prevent privilege escalation via client-controlled metadata
+        if (role === "SUPER_ADMIN") {
+          role = "TENANT";
+        }
         const newUser = await prisma.user.create({
           data: {
             id: data.user.id,
             email: data.user.email!,
-            name: data.user.user_metadata.name || null,
-            role: role,
+            name: data.user.user_metadata?.name || null,
+            role: role as any,
           },
           include: {
             workspaces: {

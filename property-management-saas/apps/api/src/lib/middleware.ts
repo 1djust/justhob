@@ -60,9 +60,15 @@ export const authenticate = async (
   const hashedToken = tokenHash(token);
   const cached = authCache.get(hashedToken) || authCache.get(token);
   if (cached && cached.expiresAt > now) {
-    if (cached.globalUserRole === "SUPER_ADMIN" && !cached.isAdminVerified) {
+    if (cached.globalUserRole === "SUPER_ADMIN") {
+      const verifiedExpiry =
+        verifiedAdminTokens.get(hashedToken) ||
+        verifiedAdminTokens.get(token);
+      const isStillVerified = Boolean(
+        cached.isAdminVerified || (verifiedExpiry && verifiedExpiry > now),
+      );
       const isVerifyRoute = request.raw.url?.endsWith("/verify");
-      if (!isVerifyRoute) {
+      if (!isStillVerified && !isVerifyRoute) {
         return reply.status(401).send({
           error: "Admin Security Key verification required.",
           code: "ADMIN_KEY_REQUIRED",
@@ -104,7 +110,10 @@ export const authenticate = async (
   let isAAL2 = false;
   let isAdminVerified = false;
   if (dbUser.role === "SUPER_ADMIN") {
-    isAdminVerified = verifiedAdminTokens.has(hashedToken);
+    const verifiedExpiry =
+      verifiedAdminTokens.get(hashedToken) ||
+      verifiedAdminTokens.get(token);
+    isAdminVerified = Boolean(verifiedExpiry && verifiedExpiry > now);
     const isVerifyRoute = request.raw.url?.endsWith("/verify");
     if (!isAdminVerified && !isVerifyRoute) {
       return reply.status(401).send({

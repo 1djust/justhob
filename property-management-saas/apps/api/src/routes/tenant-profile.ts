@@ -95,11 +95,6 @@ async function getAuthenticatedTenant(userId: string) {
           role: "TENANT",
         },
       }).catch(() => {});
-    } else if (existingMember.role !== "TENANT") {
-      await prisma.workspaceMember.update({
-        where: { id: existingMember.id },
-        data: { role: "TENANT" },
-      }).catch(() => {});
     }
 
     // 2. Link tenant ID if created with temp ID
@@ -285,6 +280,14 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
           // Lock the workspace record to prevent race conditions on limit checks
           await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
 
+          // Security: Verify the property belongs to this workspace
+          const property = await tx.property.findFirst({
+            where: { id: propertyId, workspaceId, deletedAt: null },
+          });
+          if (!property) {
+            throw new Error("PROPERTY_NOT_FOUND");
+          }
+
           const workspace = await tx.workspace.findUnique({
             where: { id: workspaceId },
           });
@@ -313,18 +316,25 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
           });
         })
         .catch((err: unknown) => {
-          if ((err as Error).message === "LIMIT_MAINTENANCE") {
+          const errMessage = (err as Error).message;
+          if (errMessage === "LIMIT_MAINTENANCE") {
             throw {
               statusCode: 402,
               message:
                 "Free plan limit reached: Maximum 3 active maintenance tickets allowed. Please upgrade your plan.",
             };
           }
+          if (errMessage === "PROPERTY_NOT_FOUND") {
+            throw {
+              statusCode: 404,
+              message: "Property not found in this workspace",
+            };
+          }
           throw err;
         });
 
       // Emit real-time update to the workspace room
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("MAINTENANCE_CREATED", {
           requestId: maintenanceRequest.id,
@@ -405,6 +415,21 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         return reply
           .status(400)
           .send({ error: "Lease ID and amount are required" });
+      }
+
+      if (Number(amount) <= 0 || isNaN(Number(amount))) {
+        return reply
+          .status(400)
+          .send({ error: "Amount must be a positive number" });
+      }
+
+      if (
+        amountPaid !== undefined &&
+        (Number(amountPaid) <= 0 || isNaN(Number(amountPaid)))
+      ) {
+        return reply
+          .status(400)
+          .send({ error: "Amount paid must be a positive number" });
       }
 
       // Verify lease belongs to this tenant
@@ -510,7 +535,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       */
 
         return reply.status(201).send({
-          message: "Payment record created (Gateway Bypass)",
+          message: "Payment record created successfully",
           paymentId: payment.id,
         });
       } catch (e: unknown) {
@@ -608,7 +633,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         }
 
         // Emit real-time update to the workspace room
-        (fastify as unknown as { io: import("socket.io").Server }).io
+        fastify.io
           .to(`workspace:${workspaceId}`)
           .emit("PAYMENT_UPDATED", {
             paymentId: id,
@@ -779,12 +804,12 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       });
 
       // Broadcast to the maintenance room
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`maintenance:${id}`)
         .emit("maintenance-message", message);
 
       // Notify the workspace (managers) for unread badges
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${membership.workspaceId}`)
         .emit("maintenance-notification", {
           requestId: id,
@@ -886,7 +911,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
         const room = `workspace:${membership.workspaceId}`;
         console.log(`[TenantProfile] Emitting LEASE_RENEWED to ${room}`);
-        (fastify as unknown as { io: import("socket.io").Server }).io
+        fastify.io
           .to(room)
           .emit("LEASE_RENEWED", {
             leaseId: newLease.id,
@@ -930,7 +955,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         console.log(
           `[TenantProfile] Emitting LEASE_RENEWAL_REJECTED to ${room}`,
         );
-        (fastify as unknown as { io: import("socket.io").Server }).io
+        fastify.io
           .to(room)
           .emit("LEASE_RENEWAL_REJECTED", {
             leaseId: offer.lease.id,
@@ -1014,7 +1039,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         });
       }
 
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${membership.workspaceId}`)
         .emit("LEASE_UPDATED", {
           leaseId,
@@ -1081,7 +1106,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         });
       }
 
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${membership.workspaceId}`)
         .emit("LEASE_UPDATED", {
           leaseId,

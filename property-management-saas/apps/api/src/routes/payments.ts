@@ -146,6 +146,12 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           .send({ error: "Lease ID, amount, and due date are required" });
       }
 
+      if (Number(amount) <= 0 || isNaN(Number(amount))) {
+        return reply
+          .status(400)
+          .send({ error: "Amount must be a positive number" });
+      }
+
       // Verify lease belongs to this workspace
       const lease = await prisma.lease.findFirst({
         where: { id: leaseId, tenant: { workspaceId } },
@@ -279,7 +285,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         });
 
         // Emit real-time update to all members in the workspace room
-        (fastify as unknown as { io: import("socket.io").Server }).io
+        fastify.io
           .to(`workspace:${workspaceId}`)
           .emit("PAYMENT_UPDATED", {
             paymentId: id,
@@ -458,7 +464,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         },
       });
 
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("PAYMENT_UPDATED", {
           paymentId: id,
@@ -617,7 +623,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
       }
 
       // Emit real-time update to all members in the workspace room (Manager, Tenant, Landlord)
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("PAYMENT_UPDATED", {
           paymentId: id,

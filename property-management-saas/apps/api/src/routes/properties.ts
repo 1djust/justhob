@@ -120,55 +120,58 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
 
       // Atomic subscription limit check and creation with row-level locking
       const property = await prisma
-        .$transaction(async (tx: Prisma.TransactionClient) => {
-          // Lock the workspace record to prevent race conditions on limit checks
-          await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
+        .$transaction(
+          async (tx: Prisma.TransactionClient) => {
+            // Lock the workspace record to prevent race conditions on limit checks
+            await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
 
-          const workspace = await tx.workspace.findUnique({
-            where: { id: workspaceId },
-          });
-          const plan = workspace?.plan || "FREE";
-
-          // Enforcement of tier limits
-          if (plan === "FREE" || plan === "PRO") {
-            const propertiesCount = await tx.property.count({
-              where: { workspaceId, deletedAt: null },
+            const workspace = await tx.workspace.findUnique({
+              where: { id: workspaceId },
             });
+            const plan = workspace?.plan || "FREE";
 
-            const limitProps = plan === "FREE" ? 1 : 10;
-            if (propertiesCount >= limitProps) {
-              throw new Error(`LIMIT_PROPERTIES:${limitProps}`);
+            // Enforcement of tier limits
+            if (plan === "FREE" || plan === "PRO") {
+              const propertiesCount = await tx.property.count({
+                where: { workspaceId, deletedAt: null },
+              });
+
+              const limitProps = plan === "FREE" ? 1 : 10;
+              if (propertiesCount >= limitProps) {
+                throw new Error(`LIMIT_PROPERTIES:${limitProps}`);
+              }
+
+              const newUnitsCount = units ? units.length : 0;
+              const currentUnitsCount = await tx.unit.count({
+                where: { workspaceId },
+              });
+
+              const limitUnits = plan === "FREE" ? 3 : 50;
+              if (currentUnitsCount + newUnitsCount > limitUnits) {
+                throw new Error(`LIMIT_UNITS:${limitUnits}`);
+              }
             }
 
-            const newUnitsCount = units ? units.length : 0;
-            const currentUnitsCount = await tx.unit.count({
-              where: { workspaceId },
-            });
-
-            const limitUnits = plan === "FREE" ? 3 : 50;
-            if (currentUnitsCount + newUnitsCount > limitUnits) {
-              throw new Error(`LIMIT_UNITS:${limitUnits}`);
-            }
-          }
-
-          return await tx.property.create({
-            data: {
-              name,
-              address,
-              imageUrl,
-              ownerId: ownerId || null,
-              workspaceId,
-              units: {
-                create: (units || []).map((u) => ({
-                  unitNumber: u.unitNumber,
-                  type: u.type,
-                  workspace: { connect: { id: workspaceId } },
-                })),
+            return await tx.property.create({
+              data: {
+                name,
+                address,
+                imageUrl,
+                ownerId: ownerId || null,
+                workspaceId,
+                units: {
+                  create: (units || []).map((u) => ({
+                    unitNumber: u.unitNumber,
+                    type: u.type,
+                    workspace: { connect: { id: workspaceId } },
+                  })),
+                },
               },
-            },
-            include: { units: true },
-          });
-        })
+              include: { units: true },
+            });
+          },
+          { maxWait: 10000, timeout: 20000 },
+        )
         .catch((err: unknown) => {
           const errorMsg = (err as Error).message;
           if (errorMsg?.startsWith("LIMIT_PROPERTIES")) {
@@ -189,7 +192,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
         });
 
       // Emit real-time update to the workspace room
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("PROPERTY_CREATED", {
           propertyId: property.id,
@@ -344,7 +347,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
         throw err;
       }
 
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("PROPERTY_CREATED", {
           propertyId,
@@ -391,7 +394,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
         });
 
         // Emit real-time update to the workspace room
-        (fastify as unknown as { io: import("socket.io").Server }).io
+        fastify.io
           .to(`workspace:${workspaceId}`)
           .emit("PROPERTY_DELETED", {
             propertyId: id,

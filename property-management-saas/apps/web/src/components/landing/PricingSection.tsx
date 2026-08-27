@@ -124,9 +124,9 @@ export function PricingSection() {
   const [copied, setCopied] = useState(false);
 
   const bankDetails = {
-    bank: "Opay",
-    accountNumber: "08782188",
-    accountName: "Babatunde Justus",
+    bank: process.env.NEXT_PUBLIC_SUBSCRIPTION_BANK_NAME || "Zenith Bank",
+    accountNumber: process.env.NEXT_PUBLIC_SUBSCRIPTION_ACCOUNT_NUMBER || "1229088194",
+    accountName: process.env.NEXT_PUBLIC_SUBSCRIPTION_ACCOUNT_NAME || "PropertyStack Technologies Ltd",
   };
 
   const handleCopy = () => {

@@ -33,6 +33,8 @@ import socketPlugin from "./plugins/socket";
 import { setupOverdueChecker } from "./cron/overdue-checker";
 import { setupLeaseExpiryReminder } from "./cron/lease-expiry-reminder";
 import { setupIntegrityChecker } from "./cron/integrity-checker";
+import { setupDataRetention } from "./cron/data-retention";
+import { setupRegistrationReminder } from "./cron/registration-reminder";
 
 interface FastifyErrorWithMeta extends Error {
   statusCode?: number;
@@ -126,6 +128,12 @@ export function buildApp() {
   );
   setupIntegrityChecker(
     fastify as unknown as Parameters<typeof setupIntegrityChecker>[0],
+  );
+  setupDataRetention(
+    fastify as unknown as Parameters<typeof setupDataRetention>[0],
+  );
+  setupRegistrationReminder(
+    fastify as unknown as Parameters<typeof setupRegistrationReminder>[0],
   );
 
   // Global Security & Cache-Control Hook

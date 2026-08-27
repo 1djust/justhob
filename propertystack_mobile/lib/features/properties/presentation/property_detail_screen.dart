@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -81,17 +82,10 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   Widget _buildHeroImageHeader(BuildContext context, PropertyModel property) {
     return Stack(
       children: [
-        // Image Container
         SizedBox(
           height: 270,
           width: double.infinity,
-          child: property.imageUrl != null && property.imageUrl!.isNotEmpty
-              ? Image.network(
-                  property.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
-                )
-              : _buildPlaceholderImage(),
+          child: _buildPropertyHeroImage(property.imageUrl),
         ),
 
         // Gradient overlay for button contrast
@@ -162,6 +156,27 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPropertyHeroImage(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return _buildPlaceholderImage();
+    if (imageUrl.startsWith('data:image')) {
+      try {
+        final base64String = imageUrl.split(',').last;
+        return Image.memory(
+          base64Decode(base64String),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildPlaceholderImage(),
+        );
+      } catch (_) {
+        return _buildPlaceholderImage();
+      }
+    }
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _buildPlaceholderImage(),
     );
   }
 
@@ -264,9 +279,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: _buildOverviewMetricCard(
-                title: 'M/M Revenue',
-                value: '₦1.4M',
-                valueColor: const Color(0xFF059669), // Emerald Green
+                title: 'Active Tenants',
+                value: '${property.activeLeasesCount}',
+                valueColor: const Color(0xFF2563EB),
               ),
             ),
           ],
@@ -440,36 +455,73 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
 
   /// 3. Finances Tab
   Widget _buildFinancesTab(BuildContext context, PropertyModel property) {
+    final occupiedUnits = property.activeLeasesCount;
+    final vacantUnits = property.totalUnits - occupiedUnits;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'Financial Performance',
+            children: [
+              const Text(
+                'Financial & Occupancy Summary',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF0F172A),
                 ),
               ),
-              SizedBox(height: 12),
-              Text(
-                'Total Annual Expected: ₦16,800,000',
-                style: TextStyle(fontSize: 14, color: Color(0xFF475569)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Occupied Units', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+                  Text('$occupiedUnits units', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF059669))),
+                ],
               ),
-              SizedBox(height: 4),
-              Text(
-                'Collected YTD: ₦14,200,000',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF059669)),
+              const Divider(height: 24, color: Color(0xFFF1F5F9)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Vacant Units', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+                  Text('$vacantUnits units', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFD97706))),
+                ],
+              ),
+              const Divider(height: 24, color: Color(0xFFF1F5F9)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total Portfolio Units', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+                  Text('${property.totalUnits} units', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF64748B)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Revenue figures update automatically as rental invoices and receipts are confirmed.',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

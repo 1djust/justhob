@@ -29,7 +29,7 @@ async function main() {
   const { supabaseAdmin } = await import("../lib/supabase");
   const { sendEmail } = await import("../lib/mailer");
 
-  const adminEmail = process.env.ADMIN_EMAIL || "ogunduyijustus@gmail.com";
+  const adminEmail = process.env.ADMIN_EMAIL || "propertystackapp@gmail.com";
   const retentionWebhookDays = parseInt(process.env.DATA_RETENTION_WEBHOOK_DAYS || "30", 10);
   const retentionErrorLogDays = parseInt(process.env.DATA_RETENTION_ERROR_LOG_DAYS || "90", 10);
   const retentionSecurityLogDays = parseInt(process.env.DATA_RETENTION_SECURITY_LOG_DAYS || "180", 10);

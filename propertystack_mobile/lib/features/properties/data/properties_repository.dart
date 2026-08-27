@@ -33,6 +33,7 @@ class PropertiesRepository {
     required String name,
     required String address,
     String? ownerId,
+    String? imageUrl,
     List<Map<String, String>>? units,
   }) async {
     try {
@@ -40,6 +41,7 @@ class PropertiesRepository {
         'name': name,
         'address': address,
         if (ownerId != null && ownerId.isNotEmpty) 'ownerId': ownerId,
+        if (imageUrl != null && imageUrl.isNotEmpty) 'imageUrl': imageUrl,
         if (units != null && units.isNotEmpty)
           'units': units
               .map((u) => {

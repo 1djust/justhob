@@ -274,7 +274,10 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         if (errMessage && errMessage.includes("Owner limit reached")) {
           return reply.status(402).send({ error: errMessage });
         }
-        return reply.status(500).send(error);
+        request.log.error({ err: error }, "[Add Landlord Error]");
+        return reply
+          .status(500)
+          .send({ error: "Failed to add landlord to workspace" });
       }
     },
   );

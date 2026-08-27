@@ -43,10 +43,10 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
     final dateFormatter = DateFormat('MMM dd, yyyy');
 
     final leaseMap = payment.lease;
-    final tenantName = leaseMap?['tenant']?['name'] ?? 'Amara Chidi';
+    final tenantName = leaseMap?['tenant']?['name'] ?? 'Tenant';
     final propertyName = leaseMap?['property']?['name'] != null
-        ? "${leaseMap!['property']['name']}, Unit ${leaseMap['unit']?['unitNumber'] ?? '2'}"
-        : "Solomon's Heights, Unit 2";
+        ? "${leaseMap!['property']['name']}${leaseMap['unit']?['unitNumber'] != null ? ', Unit ${leaseMap['unit']['unitNumber']}' : ''}"
+        : "Assigned Property";
 
     final formattedDueDate = dateFormatter.format(payment.dueDate);
     final categoryName = payment.note != null && payment.note!.isNotEmpty
@@ -300,9 +300,11 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
                                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF1E3A8A)),
                                 ),
                                 const SizedBox(height: 2),
-                                const Text(
-                                  'Ref: TXN-89471028 | Access Bank / GTBank',
-                                  style: TextStyle(fontSize: 12, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
+                                Text(
+                                  payment.receiptId != null
+                                      ? 'Ref: ${payment.receiptId}'
+                                      : 'Payment ID: #${payment.id.length > 8 ? payment.id.substring(0, 8).toUpperCase() : payment.id.toUpperCase()}',
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
@@ -1038,14 +1040,12 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
 
     setState(() => _isActionLoading = true);
     try {
-      if (!payment.id.startsWith('pay-')) {
-        await ref.read(landlordPaymentsRepositoryProvider).reviewPayment(
-          workspaceId: workspaceId,
-          paymentId: payment.id,
-          status: 'PAID',
-          approvedAmountPaid: approvedAmount,
-        );
-      }
+      await ref.read(landlordPaymentsRepositoryProvider).reviewPayment(
+        workspaceId: workspaceId,
+        paymentId: payment.id,
+        status: 'PAID',
+        approvedAmountPaid: approvedAmount,
+      );
       ref.invalidate(landlordPaymentsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1203,14 +1203,12 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
 
     setState(() => _isActionLoading = true);
     try {
-      if (!payment.id.startsWith('pay-')) {
-        await ref.read(landlordPaymentsRepositoryProvider).reviewPayment(
-          workspaceId: workspaceId,
-          paymentId: payment.id,
-          status: 'REJECTED',
-          rejectionReason: reason,
-        );
-      }
+      await ref.read(landlordPaymentsRepositoryProvider).reviewPayment(
+        workspaceId: workspaceId,
+        paymentId: payment.id,
+        status: 'REJECTED',
+        rejectionReason: reason,
+      );
       ref.invalidate(landlordPaymentsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1265,6 +1263,9 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
     final currencyFormatter = NumberFormat.currency(symbol: '₦', decimalDigits: 2);
     final isOverdue = payment.status == 'OVERDUE';
     final amountDueStr = currencyFormatter.format(payment.amount - (payment.amountPaid ?? 0));
+    final propertyName = payment.lease?['property']?['name'] != null
+        ? "${payment.lease!['property']['name']}${payment.lease!['unit']?['unitNumber'] != null ? ', Unit ${payment.lease!['unit']['unitNumber']}' : ''}"
+        : "your unit";
 
     showModalBottomSheet(
       context: context,
@@ -1374,8 +1375,8 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
                 ),
                 child: Text(
                   isOverdue
-                      ? 'Dear $tenantName,\nYour rent invoice balance of $amountDueStr for Solomon\'s Heights is currently OVERDUE. Please log in to PropertyStack to upload your payment receipt or make payment immediately.'
-                      : 'Dear $tenantName,\nThis is a friendly reminder regarding your upcoming rent invoice balance of $amountDueStr. Please log in to PropertyStack to submit your payment proof.',
+                      ? 'Dear $tenantName,\nYour rent invoice balance of $amountDueStr for $propertyName is currently OVERDUE. Please log in to PropertyStack to upload your payment receipt or make payment immediately.'
+                      : 'Dear $tenantName,\nThis is a friendly reminder regarding your upcoming rent invoice balance of $amountDueStr for $propertyName. Please log in to PropertyStack to submit your payment proof.',
                   style: const TextStyle(fontSize: 12, height: 1.5, color: Color(0xFF334155), fontWeight: FontWeight.w500),
                 ),
               ),
@@ -1412,12 +1413,10 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
 
     setState(() => _isActionLoading = true);
     try {
-      if (!payment.id.startsWith('pay-')) {
-        await ref.read(landlordPaymentsRepositoryProvider).sendReminder(
-          workspaceId: workspaceId,
-          paymentId: payment.id,
-        );
-      }
+      await ref.read(landlordPaymentsRepositoryProvider).sendReminder(
+        workspaceId: workspaceId,
+        paymentId: payment.id,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1431,9 +1430,9 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Reminder dispatched to $tenantName (Demo mode)'),
+            content: Text('Failed to send reminder: ${e.toString().replaceFirst("Exception: ", "")}'),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF2563EB),
+            backgroundColor: const Color(0xFFEF4444),
           ),
         );
       }
@@ -1598,16 +1597,16 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
                         final pdfBytes = await ReceiptService.generateReceipt(
                           payment: payment,
                           tenant: Tenant(
-                            id: payment.lease?['tenant']?['id'] ?? 't1',
+                            id: payment.lease?['tenant']?['id'] ?? '',
                             name: tenantName,
                             email: payment.lease?['tenant']?['email'] ?? '',
                             phone: payment.lease?['tenant']?['phone'] ?? '',
                             workspaceId: payment.lease?['workspaceId'] ?? '',
                           ),
                           property: Property(
-                            id: payment.lease?['property']?['id'] ?? 'p1',
+                            id: payment.lease?['property']?['id'] ?? '',
                             name: propertyName,
-                            address: payment.lease?['property']?['address'] ?? 'Property Address',
+                            address: payment.lease?['property']?['address'] ?? '',
                           ),
                         );
 

@@ -88,8 +88,8 @@ class _LandlordPaymentsScreenState extends ConsumerState<LandlordPaymentsScreen>
                       ],
                     );
                   },
-                  loading: () => _buildHeroCollectedCard('₦450,000'),
-                  error: (_, __) => _buildHeroCollectedCard('₦450,000'),
+                  loading: () => _buildHeroCollectedCard('₦0', paidRatio: 0, pendingRatio: 0, overdueRatio: 0),
+                  error: (_, __) => _buildHeroCollectedCard('₦0', paidRatio: 0, pendingRatio: 0, overdueRatio: 0),
                 ),
                 const SizedBox(height: 16),
 
@@ -258,13 +258,14 @@ class _LandlordPaymentsScreenState extends ConsumerState<LandlordPaymentsScreen>
   /// 2. Hero Blue Total Collected Card
   Widget _buildHeroCollectedCard(
     String totalCollectedAmount, {
-    double paidRatio = 0.60,
-    double pendingRatio = 0.15,
-    double overdueRatio = 0.25,
+    double paidRatio = 0.0,
+    double pendingRatio = 0.0,
+    double overdueRatio = 0.0,
   }) {
     final paidPct = (paidRatio * 100).round();
     final pendingPct = (pendingRatio * 100).round();
     final overduePct = (overdueRatio * 100).round();
+    final hasMetrics = paidRatio > 0 || pendingRatio > 0 || overdueRatio > 0;
 
     return Container(
       width: double.infinity,
@@ -313,24 +314,29 @@ class _LandlordPaymentsScreenState extends ConsumerState<LandlordPaymentsScreen>
             child: SizedBox(
               height: 8,
               width: double.infinity,
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: (paidRatio * 100).round().clamp(1, 100),
-                    child: Container(color: const Color(0xFF22C55E)), // Emerald Green
-                  ),
-                  const SizedBox(width: 2),
-                  Expanded(
-                    flex: (pendingRatio * 100).round().clamp(1, 100),
-                    child: Container(color: const Color(0xFFF59E0B)), // Amber
-                  ),
-                  const SizedBox(width: 2),
-                  Expanded(
-                    flex: (overdueRatio * 100).round().clamp(1, 100),
-                    child: Container(color: const Color(0xFFEF4444)), // Red
-                  ),
-                ],
-              ),
+              child: hasMetrics
+                  ? Row(
+                      children: [
+                        if (paidPct > 0)
+                          Expanded(
+                            flex: paidPct.clamp(1, 100),
+                            child: Container(color: const Color(0xFF22C55E)), // Emerald Green
+                          ),
+                        if (paidPct > 0 && (pendingPct > 0 || overduePct > 0)) const SizedBox(width: 2),
+                        if (pendingPct > 0)
+                          Expanded(
+                            flex: pendingPct.clamp(1, 100),
+                            child: Container(color: const Color(0xFFF59E0B)), // Amber
+                          ),
+                        if (pendingPct > 0 && overduePct > 0) const SizedBox(width: 2),
+                        if (overduePct > 0)
+                          Expanded(
+                            flex: overduePct.clamp(1, 100),
+                            child: Container(color: const Color(0xFFEF4444)), // Red
+                          ),
+                      ],
+                    )
+                  : Container(color: Colors.white.withAlpha(40)),
             ),
           ),
           const SizedBox(height: 14),
@@ -498,7 +504,7 @@ class _LandlordPaymentsScreenState extends ConsumerState<LandlordPaymentsScreen>
 
     String? selectedLeaseId;
     String status = 'PAID';
-    final amountController = TextEditingController(text: '150000');
+    final amountController = TextEditingController();
     final noteController = TextEditingController();
     DateTime dueDate = DateTime.now();
 
@@ -582,30 +588,26 @@ class _LandlordPaymentsScreenState extends ConsumerState<LandlordPaymentsScreen>
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             isExpanded: true,
-                            hint: const Text('Choose tenant lease...'),
+                            hint: Text(
+                              tenants.isEmpty ? 'No active tenants available' : 'Choose tenant lease...',
+                              style: const TextStyle(color: Color(0xFF94A3B8)),
+                            ),
                             value: selectedLeaseId,
                             items: tenants.isEmpty
-                                ? [
-                                    const DropdownMenuItem(
-                                      value: 'lease-demo-1',
-                                      child: Text('Amara Chidi — Solomon\'s Heights (Unit 2)'),
-                                    ),
-                                    const DropdownMenuItem(
-                                      value: 'lease-demo-2',
-                                      child: Text('Tunde Femi — Luxury Estates (Unit 4)'),
-                                    ),
-                                  ]
+                                ? []
                                 : tenants.map((t) {
                                     return DropdownMenuItem<String>(
                                       value: t.leaseId ?? t.id,
                                       child: Text('${t.name} — ${t.propertyName} (Unit ${t.unitNumber})'),
                                     );
                                   }).toList(),
-                            onChanged: (val) {
-                              setSheetState(() {
-                                selectedLeaseId = val;
-                              });
-                            },
+                            onChanged: tenants.isEmpty
+                                ? null
+                                : (val) {
+                                    setSheetState(() {
+                                      selectedLeaseId = val;
+                                    });
+                                  },
                           ),
                         ),
                       ),
@@ -622,6 +624,7 @@ class _LandlordPaymentsScreenState extends ConsumerState<LandlordPaymentsScreen>
                         keyboardType: TextInputType.number,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                         decoration: InputDecoration(
+                          hintText: 'e.g. 500000',
                           prefixText: '₦ ',
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
@@ -708,13 +711,24 @@ class _LandlordPaymentsScreenState extends ConsumerState<LandlordPaymentsScreen>
                         height: 52,
                         child: ElevatedButton(
                           onPressed: () async {
-                            final leaseId = selectedLeaseId ?? 'lease-demo-1';
-                            final amount = double.tryParse(amountController.text.trim()) ?? 150000.0;
+                            if (selectedLeaseId == null) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(content: Text('Please select an active tenant lease.')),
+                              );
+                              return;
+                            }
+                            final parsedAmount = double.tryParse(amountController.text.trim());
+                            if (parsedAmount == null || parsedAmount <= 0) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(content: Text('Please enter a valid payment amount.')),
+                              );
+                              return;
+                            }
                             final note = noteController.text.trim();
                             Navigator.of(ctx).pop();
                             await _performRecordOfflinePayment(
-                              leaseId: leaseId,
-                              amount: amount,
+                              leaseId: selectedLeaseId!,
+                              amount: parsedAmount,
                               dueDate: DateFormat('yyyy-MM-dd').format(dueDate),
                               status: status,
                               note: note.isNotEmpty ? note : null,

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/add_units_bottom_sheet.dart';
 import '../../../../core/widgets/add_property_bottom_sheet.dart';
+import '../../../../core/widgets/property_filter_bottom_sheet.dart';
 import '../../../../core/widgets/landlord_bottom_nav_bar.dart';
 import '../../../../core/widgets/header_action_icons.dart';
 import '../domain/property_model.dart';
@@ -20,9 +22,18 @@ class PropertiesScreen extends ConsumerStatefulWidget {
 class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All'; // 'All', 'Residential', 'Commercial'
+  String _selectedOccupancy = 'All'; // 'All', 'Fully Occupied', 'Partially Occupied', 'Vacant'
+  String _selectedSortBy = 'Default';
+  String _selectedLocation = 'All';
   String _searchQuery = '';
 
   final List<String> _categoryOptions = ['All', 'Residential', 'Commercial', 'Location'];
+
+  bool get _hasActiveFilters =>
+      _selectedCategory != 'All' ||
+      _selectedOccupancy != 'All' ||
+      _selectedSortBy != 'Default' ||
+      _selectedLocation != 'All';
 
 
 
@@ -54,12 +65,40 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
                 const SizedBox(height: 20),
 
                 // 2. Search & Filter Bar
-                _buildSearchAndFilterBar(context),
+                _buildSearchAndFilterBar(context, propertiesAsync.valueOrNull ?? []),
                 const SizedBox(height: 16),
 
                 // 3. Horizontal Category Chips Row
-                _buildCategoryChipsRow(context),
+                _buildCategoryChipsRow(context, propertiesAsync.valueOrNull ?? []),
                 const SizedBox(height: 20),
+
+                // Active Filters Clear Bar (if active)
+                if (_hasActiveFilters) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Filtered by: ${_selectedCategory != "All" ? _selectedCategory : ""}${_selectedOccupancy != "All" ? " • $_selectedOccupancy" : ""}${_selectedLocation != "All" ? " • $_selectedLocation" : ""}${_selectedSortBy != "Default" ? " • $_selectedSortBy" : ""}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = 'All';
+                            _selectedOccupancy = 'All';
+                            _selectedSortBy = 'Default';
+                            _selectedLocation = 'All';
+                          });
+                        },
+                        child: const Text(
+                          'Clear All',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFEF4444)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                ],
 
                 // 4. Properties List
                 propertiesAsync.when(
@@ -153,17 +192,71 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
   }
 
   List<PropertyModel> _filterProperties(List<PropertyModel> list) {
-    return list.where((p) {
+    var filtered = list.where((p) {
       final matchesSearch = _searchQuery.isEmpty ||
           p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           p.address.toLowerCase().contains(_searchQuery.toLowerCase());
 
       final matchesCategory = _selectedCategory == 'All' ||
           _selectedCategory == 'Location' ||
+          _selectedCategory == 'All Types' ||
           p.category.toLowerCase() == _selectedCategory.toLowerCase();
 
-      return matchesSearch && matchesCategory;
+      final matchesLocation = _selectedLocation == 'All' ||
+          p.address.toLowerCase().contains(_selectedLocation.toLowerCase());
+
+      bool matchesOccupancy = true;
+      if (_selectedOccupancy == 'Fully Occupied') {
+        matchesOccupancy = p.occupancyPercentage >= 100;
+      } else if (_selectedOccupancy == 'Partially Occupied') {
+        matchesOccupancy = p.occupancyPercentage > 0 && p.occupancyPercentage < 100;
+      } else if (_selectedOccupancy == 'Vacant') {
+        matchesOccupancy = p.occupancyPercentage == 0;
+      }
+
+      return matchesSearch && matchesCategory && matchesLocation && matchesOccupancy;
     }).toList();
+
+    if (_selectedSortBy == 'Name (A-Z)') {
+      filtered.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } else if (_selectedSortBy == 'Highest Units') {
+      filtered.sort((a, b) => b.totalUnits.compareTo(a.totalUnits));
+    } else if (_selectedSortBy == 'Most Occupied') {
+      filtered.sort((a, b) => b.occupancyPercentage.compareTo(a.occupancyPercentage));
+    }
+
+    return filtered;
+  }
+
+  void _openFilterBottomSheet(List<PropertyModel> properties) async {
+    final availableLocations = <String>{'All'};
+    for (final p in properties) {
+      if (p.address.isNotEmpty) {
+        final parts = p.address.split(',');
+        final loc = parts.last.trim();
+        if (loc.isNotEmpty) {
+          availableLocations.add(loc);
+        }
+      }
+    }
+
+    final result = await PropertyFilterBottomSheet.show(
+      context,
+      selectedCategory: _selectedCategory,
+      selectedOccupancy: _selectedOccupancy,
+      selectedSortBy: _selectedSortBy,
+      selectedLocation: _selectedLocation,
+      availableLocations: availableLocations.toList(),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedCategory = result.category;
+        _selectedOccupancy = result.occupancy;
+        _selectedSortBy = result.sortBy;
+        _selectedLocation = result.location;
+      });
+    }
   }
 
   /// 1. Header Bar with Title & Action Icons
@@ -201,7 +294,7 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
   }
 
   /// 2. Search Field & Filter Button Row
-  Widget _buildSearchAndFilterBar(BuildContext context) {
+  Widget _buildSearchAndFilterBar(BuildContext context, List<PropertyModel> properties) {
     return Row(
       children: [
         // Search TextField
@@ -245,27 +338,26 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _hasActiveFilters ? const Color(0xFF2563EB) : Colors.white,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(
+              color: _hasActiveFilters ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(5),
-                blurRadius: 4,
+                color: _hasActiveFilters ? const Color(0xFF2563EB).withOpacity(0.3) : Colors.black.withAlpha(5),
+                blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
           child: IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Advanced property filter coming soon!'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            icon: const Icon(Icons.tune_rounded, color: Color(0xFF0F172A), size: 20),
+            onPressed: () => _openFilterBottomSheet(properties),
+            icon: Icon(
+              Icons.tune_rounded,
+              color: _hasActiveFilters ? Colors.white : const Color(0xFF0F172A),
+              size: 20,
+            ),
           ),
         ),
       ],
@@ -273,7 +365,7 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
   }
 
   /// 3. Horizontal Category Filter Chips Row
-  Widget _buildCategoryChipsRow(BuildContext context) {
+  Widget _buildCategoryChipsRow(BuildContext context, List<PropertyModel> properties) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -286,9 +378,13 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
             child: InkWell(
               onTap: () {
                 HapticFeedback.selectionClick();
-                setState(() {
-                  _selectedCategory = cat;
-                });
+                if (isLocation) {
+                  _openFilterBottomSheet(properties);
+                } else {
+                  setState(() {
+                    _selectedCategory = cat;
+                  });
+                }
               },
               borderRadius: BorderRadius.circular(20),
               child: Container(
@@ -369,13 +465,7 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
             child: SizedBox(
               height: 180,
               width: double.infinity,
-              child: property.imageUrl != null && property.imageUrl!.isNotEmpty
-                  ? Image.network(
-                      property.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
-                    )
-                  : _buildImagePlaceholder(),
+              child: _buildPropertyImage(property.imageUrl),
             ),
           ),
 
@@ -544,6 +634,27 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
     ),
   );
 }
+
+  Widget _buildPropertyImage(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return _buildImagePlaceholder();
+    if (imageUrl.startsWith('data:image')) {
+      try {
+        final base64String = imageUrl.split(',').last;
+        return Image.memory(
+          base64Decode(base64String),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
+        );
+      } catch (_) {
+        return _buildImagePlaceholder();
+      }
+    }
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
+    );
+  }
 
   Widget _buildImagePlaceholder() {
     return Container(

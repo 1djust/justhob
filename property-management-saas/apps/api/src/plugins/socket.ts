@@ -1,15 +1,9 @@
 import { FastifyInstance, FastifyPluginAsync } from "fastify";
 import fastifySocketIO from "fastify-socket.io";
 import fp from "fastify-plugin";
-import { Server, Socket } from "socket.io";
+import { Socket } from "socket.io";
 import { supabaseAdmin } from "../lib/supabase";
 import { prisma } from "../lib/database";
-
-declare module "fastify" {
-  interface FastifyInstance {
-    io: Server;
-  }
-}
 
 const socketPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   const allowedOrigins = [

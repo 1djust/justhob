@@ -19,7 +19,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   String _selectedLanguage = 'English';
   String _selectedAppearance = 'Light Mode';
   String _selectedCurrency = 'NGN ₦';
-  final bool _biometricsEnabled = true;
   File? _profileImageFile;
   final ImagePicker _picker = ImagePicker();
 
@@ -136,9 +135,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _showEditPersonalInfoModal(String currentName) {
+    final user = ref.read(authStateProvider).valueOrNull;
+    final workspaceName = user?.workspaces.firstOrNull?.workspace.name ?? '';
     final nameController = TextEditingController(text: currentName);
-    final phoneController = TextEditingController(text: '+234 812 345 6789');
-    final companyController = TextEditingController(text: 'Solomon Real Estate Ltd');
+    final phoneController = TextEditingController();
+    final companyController = TextEditingController(text: workspaceName);
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -179,8 +180,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: phoneController,
+                keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   labelText: 'Phone Number',
+                  hintText: 'e.g. +234 801 234 5678',
                   prefixIcon: const Icon(Icons.phone_outlined),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -190,6 +193,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 controller: companyController,
                 decoration: InputDecoration(
                   labelText: 'Company / Brand Name',
+                  hintText: 'e.g. Apex Properties Ltd',
                   prefixIcon: const Icon(Icons.business_rounded),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -204,14 +208,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       : () async {
                           final newName = nameController.text.trim();
                           if (newName.isEmpty) return;
+                          final messenger = ScaffoldMessenger.of(context);
+                          final navigator = Navigator.of(context);
                           setModalState(() => isSaving = true);
                           final success = await ref
                               .read(authStateProvider.notifier)
                               .updateProfile(name: newName);
                           setModalState(() => isSaving = false);
                           if (mounted && success) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            navigator.pop();
+                            messenger.showSnackBar(
                               const SnackBar(
                                 content: Text('Personal info updated successfully!'),
                                 backgroundColor: Color(0xFF16A34A),
@@ -243,9 +249,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _showPayoutBankModal() {
-    final bankController = TextEditingController(text: 'Guaranty Trust Bank (GTB)');
-    final accNumController = TextEditingController(text: '0123456789');
-    final accNameController = TextEditingController(text: 'SOLOMON RUTH MANAGEMENT');
+    final bankController = TextEditingController();
+    final accNumController = TextEditingController();
+    final accNameController = TextEditingController();
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -315,6 +321,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   onPressed: isSaving
                       ? null
                       : () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final navigator = Navigator.of(context);
                           setModalState(() => isSaving = true);
                           final success = await ref.read(authStateProvider.notifier).updateProfile(
                                 bankCode: bankController.text,
@@ -323,8 +331,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               );
                           setModalState(() => isSaving = false);
                           if (mounted && success) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            navigator.pop();
+                            messenger.showSnackBar(
                               const SnackBar(
                                 content: Text('Payout bank account saved successfully!'),
                                 backgroundColor: Color(0xFF16A34A),
@@ -427,14 +435,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             );
                             return;
                           }
+                          final messenger = ScaffoldMessenger.of(context);
+                          final navigator = Navigator.of(context);
                           setModalState(() => isSaving = true);
                           final success = await ref
                               .read(authStateProvider.notifier)
                               .changePassword(pass);
                           setModalState(() => isSaving = false);
                           if (mounted && success) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            navigator.pop();
+                            messenger.showSnackBar(
                               const SnackBar(
                                 content: Text('Password updated successfully!'),
                                 backgroundColor: Color(0xFF16A34A),
@@ -470,8 +480,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final authState = ref.watch(authStateProvider);
     final user = authState.value;
 
-    final userName = user?.name?.isNotEmpty == true ? user!.name! : 'Solomon';
-    final userEmail = user?.email.isNotEmpty == true ? user!.email : 'solomon@propertystack.co';
+    final userName = user?.name?.isNotEmpty == true
+        ? user!.name!
+        : (user?.email.isNotEmpty == true ? user!.email.split('@').first : 'User');
+    final userEmail = user?.email ?? '';
     const userPlan = 'Free Plan';
 
     return Scaffold(
@@ -546,8 +558,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 Container(
                                   width: 68,
                                   height: 68,
-                                  decoration: const BoxDecoration(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF6FF),
                                     shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0xFFDBEAFE),
+                                      width: 2,
+                                    ),
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(34),
@@ -558,15 +575,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                             height: 68,
                                             fit: BoxFit.cover,
                                           )
-                                        : Image.network(
-                                            'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150',
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => Container(
-                                              color: const Color(0xFF0F172A),
-                                              child: const Icon(
-                                                Icons.person_rounded,
-                                                size: 40,
-                                                color: Colors.white,
+                                        : Center(
+                                            child: Text(
+                                              userName.isNotEmpty
+                                                  ? userName.trim()[0].toUpperCase()
+                                                  : 'U',
+                                              style: const TextStyle(
+                                                fontSize: 26,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFF2563EB),
                                               ),
                                             ),
                                           ),
@@ -576,16 +593,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   right: 0,
                                   bottom: 0,
                                   child: Container(
-                                    width: 22,
-                                    height: 22,
+                                    width: 24,
+                                    height: 24,
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF2563EB),
                                       shape: BoxShape.circle,
                                       border: Border.all(color: Colors.white, width: 2),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.12),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
                                     child: const Icon(
                                       Icons.camera_alt_rounded,
-                                      size: 11,
+                                      size: 12,
                                       color: Colors.white,
                                     ),
                                   ),
@@ -656,7 +680,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       _SettingsRow(
                         icon: Icons.account_balance_outlined,
                         title: 'Payout Bank Account',
-                        trailingText: 'GTBank • 0123',
+                        trailingText: 'Configure',
                         isLast: true,
                         onTap: _showPayoutBankModal,
                       ),
@@ -711,8 +735,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       _SettingsRow(
                         icon: Icons.shield_outlined,
-                        title: 'Security & Biometrics',
-                        trailingText: _biometricsEnabled ? 'FaceID On' : 'Off',
+                        title: 'Privacy & Security',
                         isLast: true,
                         onTap: () {
                           Navigator.push(
@@ -884,22 +907,56 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Currency',
+              'Operating Currency',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
             ),
+            const SizedBox(height: 8),
+            const Text(
+              'PropertyStack currently processes all rental invoices, automated disbursements, and bank transfers exclusively in Nigerian Naira (NGN).',
+              style: TextStyle(fontSize: 13, height: 1.4, color: Color(0xFF64748B)),
+            ),
             const SizedBox(height: 16),
-            ...['NGN ₦', 'USD \$', 'GBP £', 'EUR €'].map(
-              (curr) => RadioListTile<String>(
-                title: Text(curr, style: const TextStyle(fontWeight: FontWeight.w600)),
-                value: curr,
-                groupValue: _selectedCurrency,
-                activeColor: const Color(0xFF2563EB),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedCurrency = val);
-                    Navigator.pop(context);
-                  }
-                },
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB), size: 22),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'NGN ₦ (Nigerian Naira)',
+                          style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1E3A8A), fontSize: 14),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Active currency for all transactions',
+                          style: TextStyle(color: Color(0xFF3B82F6), fontWeight: FontWeight.w500, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Got it', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
           ],

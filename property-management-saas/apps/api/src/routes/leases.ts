@@ -88,7 +88,7 @@ export default async function leaseRoutes(fastify: FastifyInstance) {
         data: dataToUpdate,
       });
 
-      (fastify as unknown as { io: import("socket.io").Server }).io
+      fastify.io
         .to(`workspace:${workspaceId}`)
         .emit("LEASE_UPDATED", {
           leaseId: id,

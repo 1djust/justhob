@@ -2689,6 +2689,63 @@ interface UserAudit {
   workspaces: UserWorkspaceMember[];
 }
 
+interface UserProfileWorkspace {
+  workspaceId: string;
+  name: string;
+  role: string;
+  plan: string;
+}
+
+interface UserProfileProperty {
+  id: string;
+  name: string;
+  address: string;
+}
+
+interface UserProfileLeasePayment {
+  id: string;
+  dueDate: string;
+  amount: number;
+  status: string;
+}
+
+interface UserProfileLease {
+  id: string;
+  property: string;
+  unit: string;
+  startDate: string;
+  endDate?: string | null;
+  status: string;
+  payments: UserProfileLeasePayment[];
+}
+
+interface UserProfileMaintenanceRequest {
+  id: string;
+  title?: string;
+  description?: string;
+  createdAt: string;
+  status?: string;
+}
+
+interface UserProfileData {
+  user: {
+    id: string;
+    email: string;
+    name?: string | null;
+    role: string;
+    createdAt: string;
+    status: string;
+    isSuperAdmin?: boolean;
+    bannedAt?: string | null;
+  };
+  workspaces: UserProfileWorkspace[];
+  propertiesOwned: UserProfileProperty[];
+  tenantDetails?: {
+    leases: UserProfileLease[];
+    maintenanceRequests: UserProfileMaintenanceRequest[];
+  } | null;
+}
+
 function UsersTab() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [page, setPage] = React.useState(1);
@@ -2696,14 +2753,14 @@ function UsersTab() {
     string | null
   >(null);
 
-  const { data: profileDetails, isLoading: isProfileLoading } = useQuery({
+  const { data: profileDetails, isLoading: isProfileLoading } = useQuery<UserProfileData | null>({
     queryKey: ["super-admin-user-profile", selectedProfileId],
     queryFn: async () => {
       if (!selectedProfileId) return null;
       const res = await apiFetch(
         `${API_BASE_URL}/api/super-admin/users/${selectedProfileId}/profile`,
       );
-      return res as any;
+      return res as UserProfileData;
     },
     enabled: !!selectedProfileId,
   });
@@ -3340,7 +3397,7 @@ function UsersTab() {
                       </p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {profileDetails.workspaces.map((w: any) => (
+                        {profileDetails.workspaces.map((w: UserProfileWorkspace) => (
                           <div
                             key={w.workspaceId}
                             className="p-3 bg-muted/30 border border-border/50 rounded-xl flex items-center justify-between"
@@ -3370,7 +3427,7 @@ function UsersTab() {
                         {profileDetails.propertiesOwned.length})
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {profileDetails.propertiesOwned.map((p: any) => (
+                        {profileDetails.propertiesOwned.map((p: UserProfileProperty) => (
                           <div
                             key={p.id}
                             className="p-3 bg-muted/30 border border-border/50 rounded-xl"
@@ -3395,7 +3452,7 @@ function UsersTab() {
                       </h4>
 
                       {/* Leases & Invoices */}
-                      {profileDetails.tenantDetails.leases.map((lease: any) => (
+                      {profileDetails.tenantDetails.leases.map((lease: UserProfileLease) => (
                         <div
                           key={lease.id}
                           className="p-4 border border-border/80 bg-muted/10 rounded-2xl space-y-4"
@@ -3442,7 +3499,7 @@ function UsersTab() {
                                   <span>Status</span>
                                 </div>
                                 <div className="divide-y divide-border/60 max-h-[150px] overflow-y-auto">
-                                  {lease.payments.map((pay: any) => (
+                                  {lease.payments.map((pay: UserProfileLeasePayment) => (
                                     <div
                                       key={pay.id}
                                       className="grid grid-cols-3 p-2.5 font-semibold text-foreground items-center"
@@ -3489,7 +3546,7 @@ function UsersTab() {
                         ) : (
                           <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                             {profileDetails.tenantDetails.maintenanceRequests.map(
-                              (req: any) => (
+                              (req: UserProfileMaintenanceRequest) => (
                                 <div
                                   key={req.id}
                                   className="p-3 border border-border/60 rounded-xl bg-card flex items-start justify-between gap-3"
