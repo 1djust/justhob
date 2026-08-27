@@ -33,7 +33,7 @@ async function main() {
     process.env.PUBLIC_FRONTEND_URL ||
     (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes("localhost")
       ? process.env.FRONTEND_URL
-      : "https://justhob.vercel.app");
+      : "https://propertystack.vercel.app");
 
   const adminEmail = process.env.ADMIN_EMAIL || "propertystackapp@gmail.com";
   const smtpUser = process.env.SMTP_USER || "propertystackapp@gmail.com";
