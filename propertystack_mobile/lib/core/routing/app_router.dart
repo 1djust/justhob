@@ -159,9 +159,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 
           switch (action) {
             case 'register':
-              return email != null
-                  ? '/register?email=${Uri.encodeComponent(email)}'
-                  : '/register';
+              final step = state.uri.queryParameters['step'];
+              final queryParams = <String, String>{};
+              if (email != null) queryParams['email'] = email;
+              if (step != null) queryParams['step'] = step;
+              return Uri(
+                path: '/register',
+                queryParameters: queryParams.isNotEmpty ? queryParams : null,
+              ).toString();
             case 'dashboard':
               return '/landlord';
             case 'onboarding':

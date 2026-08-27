@@ -136,8 +136,12 @@ export function RegisterForm() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const urlEmail = params.get("email");
+      const step = params.get("step");
       if (urlEmail) {
         setEmail(urlEmail);
+      }
+      if (step === "otp") {
+        setSuccess(true);
       }
     }
   }, []);

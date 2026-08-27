@@ -17,11 +17,21 @@ const ACTION_ROUTES: Record<
   register: {
     web: (p) => {
       const email = p.get("email");
-      return email ? `/register?email=${encodeURIComponent(email)}` : "/register";
+      const step = p.get("step");
+      const query = new URLSearchParams();
+      if (email) query.set("email", email);
+      if (step) query.set("step", step);
+      const qs = query.toString();
+      return qs ? `/register?${qs}` : "/register";
     },
     mobile: (p) => {
       const email = p.get("email");
-      return email ? `register?email=${encodeURIComponent(email)}` : "register";
+      const step = p.get("step");
+      const query = new URLSearchParams();
+      if (email) query.set("email", email);
+      if (step) query.set("step", step);
+      const qs = query.toString();
+      return qs ? `register?${qs}` : "register";
     },
   },
   login: {

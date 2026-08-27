@@ -35,7 +35,7 @@ export function buildRegistrationReminderEmail(params: {
 }): { subject: string; text: string; html: string } {
   const { email, name, stage, frontendUrl } = params;
   const displayName = name && name.trim().length > 0 ? name.trim() : "there";
-  const actionUrl = `${frontendUrl.replace(/\/$/, "")}/link?action=register&email=${encodeURIComponent(email)}`;
+  const actionUrl = `${frontendUrl.replace(/\/$/, "")}/link?action=register&step=otp&email=${encodeURIComponent(email)}`;
   const currentYear = new Date().getFullYear();
 
   const logoUrl = "https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png";
