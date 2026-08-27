@@ -15,7 +15,7 @@ async function main() {
   const { supabaseAdmin } = await import("../lib/supabase");
   const { prisma } = await import("../lib/database");
 
-  const email = "bitachonattorneys@gmail.com";
+  const email = (process.argv[2] || "bitachonattorneys@gmail.com").toLowerCase().trim();
   console.log("==================================================");
   console.log("🔍 USER STATUS AUDIT: " + email);
   console.log("==================================================");
