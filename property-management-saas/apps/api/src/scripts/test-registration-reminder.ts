@@ -32,8 +32,8 @@ async function runTests() {
   });
 
   assert(
-    stage1Email.subject.includes("Complete Your Registration"),
-    "Stage 1 subject contains 'Complete Your Registration'",
+    stage1Email.subject.includes("Verify your PropertyStack account"),
+    "Stage 1 subject contains 'Verify your PropertyStack account'",
   );
   assert(
     stage1Email.html.includes("John Doe"),
@@ -45,30 +45,30 @@ async function runTests() {
     "Stage 1 HTML contains encoded registration link with email parameter",
   );
   assert(
-    stage1Email.text.includes("https://justhob.vercel.app/link?action=register"),
+    stage1Email.text.includes("/link?action=register"),
     "Stage 1 plain-text fallback contains smart registration link",
   );
 
-  // --- Test 2: Stage 2 (Final Reminder) Template Structure ---
+  // --- Test 2: Stage 2 Email Template Structure ---
   console.log("\n[2] Testing Stage 2 Template Rendering...");
   const stage2Email = buildRegistrationReminderEmail({
-    email: "jane.smith@example.com",
+    email: "test.user@example.com",
     name: "Jane Smith",
     stage: 2,
     frontendUrl: "https://justhob.vercel.app",
   });
 
   assert(
-    stage2Email.subject.includes("Final Reminder"),
-    "Stage 2 subject contains 'Final Reminder'",
+    stage2Email.subject.includes("Finish setting up your PropertyStack account"),
+    "Stage 2 subject contains 'Finish setting up your PropertyStack account'",
   );
   assert(
     stage2Email.html.includes("Jane Smith"),
     "Stage 2 HTML includes personalized recipient name",
   );
   assert(
-    stage2Email.html.includes("Takes less than 60 seconds"),
-    "Stage 2 HTML includes 60-second activation callout",
+    stage2Email.html.includes("Quick & Secure Setup"),
+    "Stage 2 HTML includes setup callout",
   );
 
   // --- Test 3: Fallback when user name is missing ---

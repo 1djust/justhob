@@ -51,13 +51,21 @@ export const sendEmail = async (
 ) => {
   try {
     const fromAddress =
-      process.env.SMTP_USER || "notifications@propertystack.com";
+      process.env.SMTP_USER || "propertystackapp@gmail.com";
     const info = await transporter.sendMail({
       from: `"PropertyStack" <${fromAddress}>`,
       to,
+      replyTo: `"PropertyStack Support" <${fromAddress}>`,
       subject,
       text: content,
       html: html || content,
+      headers: {
+        "X-Mailer": "PropertyStack Engine v1.0",
+        "X-Auto-Response-Suppress": "OOF, AutoReply",
+        "List-Unsubscribe": `<mailto:${fromAddress}?subject=Unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        "Feedback-ID": "transactional:propertystack:notification",
+      },
     });
     console.log(
       `[Mailer] Delivered to ${to} | ID: ${info.messageId} | Accepted: ${JSON.stringify(info.accepted)}`,

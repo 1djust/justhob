@@ -41,8 +41,8 @@ export function buildRegistrationReminderEmail(params: {
   const logoUrl = "https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png";
 
   if (stage === 1) {
-    const subject = "👋 Complete Your Registration — PropertyStack";
-    const text = `Hi ${displayName},\n\nWe noticed you recently started creating your PropertyStack account, but haven't finished verifying your email yet.\n\nYou're just one quick step away from unlocking your property management workspace:\n- Centralized property and lease management\n- Automated rent invoicing and instant receipts\n- Streamlined tenant maintenance requests\n\nComplete your registration now by visiting:\n${actionUrl}\n\nIf you have any questions or need help, simply reply to this email.\n\nBest regards,\nThe PropertyStack Team`;
+    const subject = "Verify your PropertyStack account";
+    const text = `Hi ${displayName},\n\nThank you for signing up for PropertyStack.\n\nPlease verify your email to activate your property management workspace:\n- Centralized property and lease management\n- Automated rent invoicing and instant receipts\n- Streamlined tenant maintenance requests\n\nVerify your account now:\n${actionUrl}\n\nIf you have any questions or need help, simply reply to this email.\n\nBest regards,\nThe PropertyStack Team`;
 
     const html = `
 <!DOCTYPE html>
@@ -123,10 +123,13 @@ export function buildRegistrationReminderEmail(params: {
           <tr>
             <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b;">
-                If you did not initiate this registration, you can safely ignore this message.
+                You received this email because you signed up for an account on PropertyStack (${email}).
+              </p>
+              <p style="margin: 0 0 6px 0; font-size: 12px; color: #94a3b8;">
+                If you did not initiate this request, you can safely ignore this email.
               </p>
               <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                &copy; ${currentYear} PropertyStack. All rights reserved.
+                &copy; ${currentYear} PropertyStack Inc. All rights reserved.
               </p>
             </td>
           </tr>
@@ -141,9 +144,9 @@ export function buildRegistrationReminderEmail(params: {
     return { subject, text, html };
   }
 
-  // Stage 2: Final Reminder (72 hours)
-  const subject = "⏳ Final Reminder: Complete Your Registration on PropertyStack";
-  const text = `Hi ${displayName},\n\nThis is a friendly final reminder that your PropertyStack account is waiting for you.\n\nVerifying your account takes less than 60 seconds and gives you immediate access to your property management dashboard.\n\nVerify and activate your account now:\n${actionUrl}\n\nNeed assistance? Feel free to reach out to our support team.\n\nBest regards,\nThe PropertyStack Team`;
+  // Stage 2: Follow-up Reminder (72 hours)
+  const subject = "Finish setting up your PropertyStack account";
+  const text = `Hi ${displayName},\n\nYour PropertyStack account is ready for activation.\n\nVerifying your account takes less than a minute and gives you immediate access to your property management dashboard.\n\nVerify and activate your account now:\n${actionUrl}\n\nNeed assistance? Feel free to reach out to our support team.\n\nBest regards,\nThe PropertyStack Team`;
 
   const html = `
 <!DOCTYPE html>
@@ -174,7 +177,7 @@ export function buildRegistrationReminderEmail(params: {
                   </td>
                   <td style="vertical-align: middle; text-align: left;">
                     <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2;">PropertyStack</h1>
-                    <p style="margin: 2px 0 0 0; color: #60A5FA; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Final Reminder</p>
+                    <p style="margin: 2px 0 0 0; color: #60A5FA; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Account Setup</p>
                   </td>
                 </tr>
               </table>
@@ -189,16 +192,16 @@ export function buildRegistrationReminderEmail(params: {
                 Hi <strong>${displayName}</strong>,
               </p>
               <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
-                This is a final reminder that your PropertyStack registration is incomplete. Your workspace is set up and waiting for you to finish verification.
+                Your PropertyStack workspace is configured and waiting for you. Verify your email to begin managing your rental properties.
               </p>
               
               <!-- Callout Box -->
               <div style="background-color: #EFF6FF; border-left: 4px solid #0066FF; border-radius: 4px; padding: 16px 20px; margin: 0 0 28px 0;">
                 <p style="margin: 0; font-size: 14px; color: #1E40AF; font-weight: 600;">
-                  ⏱️ Takes less than 60 seconds
+                  Quick & Secure Setup
                 </p>
                 <p style="margin: 4px 0 0 0; font-size: 13px; color: #1E3A8A; line-height: 1.5;">
-                  Click the button below to complete verification and access your live property management workspace.
+                  Click the button below to verify your code and enter your property management workspace.
                 </p>
               </div>
 
@@ -215,10 +218,10 @@ export function buildRegistrationReminderEmail(params: {
           <tr>
             <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b;">
-                This is the final automated reminder for this registration attempt.
+                You received this email because you signed up for an account on PropertyStack (${email}).
               </p>
               <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                &copy; ${currentYear} PropertyStack. All rights reserved.
+                &copy; ${currentYear} PropertyStack Inc. All rights reserved.
               </p>
             </td>
           </tr>
@@ -439,7 +442,7 @@ export function buildOnboardingReminderEmail(params: {
   const logoUrl = "https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png";
   const currentYear = new Date().getFullYear();
 
-  const subject = "🏢 Complete Your Setup: Add Your First Property on PropertyStack";
+  const subject = "Set up your PropertyStack workspace";
   const text = `Hi ${displayName},\n\nWelcome to PropertyStack! Your manager account is verified and ready for action.\n\nTo begin automating rent collection, generating lease agreements, and tracking maintenance requests, the next step is adding your first property.\n\nGet started now by adding your property:\n${actionUrl}\n\nNeed assistance? Reply to this email anytime and our team will be glad to assist.\n\nBest regards,\nThe PropertyStack Team`;
 
   const html = `
@@ -521,10 +524,10 @@ export function buildOnboardingReminderEmail(params: {
           <tr>
             <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b;">
-                You received this email because you signed up as a Property Manager on PropertyStack.
+                You received this email because you signed up as a Property Manager on PropertyStack (${params.email}).
               </p>
               <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                &copy; ${currentYear} PropertyStack. All rights reserved.
+                &copy; ${currentYear} PropertyStack Inc. All rights reserved.
               </p>
             </td>
           </tr>
