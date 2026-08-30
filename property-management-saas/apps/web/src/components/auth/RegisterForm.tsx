@@ -67,19 +67,38 @@ export function RegisterForm() {
     setOtpSuccessMessage("");
 
     try {
-      // 1. Verify OTP with Supabase or Fastify API
-      const res = await apiFetch(`${API_BASE_URL}/api/auth/verify-otp`, {
-        method: "POST",
-        body: JSON.stringify({
-          email: email.trim(),
-          token: otpCode.trim(),
-          type: "signup",
-        }),
+      // 1. Verify OTP with Supabase client first
+      const { data, error: supabaseError } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: otpCode.trim(),
+        type: "signup",
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || "Invalid or expired verification code.");
+      if (supabaseError) {
+        // Fallback: Verify via Fastify backend endpoint
+        const fetchRes = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            token: otpCode.trim(),
+            type: "signup",
+          }),
+        });
+
+        const fetchJson = (await fetchRes.json().catch(() => ({}))) as {
+          message?: string;
+          error?: string;
+        };
+
+        if (!fetchRes.ok) {
+          throw new Error(
+            fetchJson.message ||
+              fetchJson.error ||
+              supabaseError.message ||
+              "Invalid or expired verification code."
+          );
+        }
       }
 
       setOtpSuccessMessage("Email verified! Redirecting to login...");
@@ -100,17 +119,36 @@ export function RegisterForm() {
     setOtpSuccessMessage("");
 
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/auth/resend-otp`, {
-        method: "POST",
-        body: JSON.stringify({
-          email: email.trim(),
-          type: "signup",
-        }),
+      // 1. Resend via Supabase client
+      const { error: supabaseError } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim().toLowerCase(),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || "Failed to resend OTP.");
+      if (supabaseError) {
+        // Fallback: Resend via Fastify API
+        const fetchRes = await fetch(`${API_BASE_URL}/api/auth/resend-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            type: "signup",
+          }),
+        });
+
+        const fetchJson = (await fetchRes.json().catch(() => ({}))) as {
+          message?: string;
+          error?: string;
+        };
+
+        if (!fetchRes.ok) {
+          throw new Error(
+            fetchJson.message ||
+              fetchJson.error ||
+              supabaseError.message ||
+              "Failed to resend OTP."
+          );
+        }
       }
 
       setTimeLeft(600);
@@ -140,7 +178,7 @@ export function RegisterForm() {
       if (urlEmail) {
         setEmail(urlEmail);
       }
-      if (step === "otp") {
+      if (step === "otp" || step === "verify") {
         setSuccess(true);
       }
     }
@@ -150,7 +188,7 @@ export function RegisterForm() {
     e.preventDefault();
 
     if (!isPasswordValid) {
-      setError("Please ensure your password meets all requirements");
+      setError("Please ensure your password meets all complexity requirements");
       return;
     }
 
@@ -169,37 +207,47 @@ export function RegisterForm() {
 
     try {
       // 1. Pre-validate name similarity with backend (80% - 100% duplicate protection)
-      const checkRes = await apiFetch(`${API_BASE_URL}/api/auth/check-name`, {
-        method: "POST",
-        body: JSON.stringify({ name: name.trim() }),
-      });
+      try {
+        const checkData = (await apiFetch(
+          `${API_BASE_URL}/api/auth/check-name`,
+          {
+            method: "POST",
+            body: JSON.stringify({ name: name.trim() }),
+            silent: true,
+          }
+        )) as { available?: boolean; matchPercent?: number };
 
-      if (checkRes.ok) {
-        const checkData = await checkRes.json();
-        if (!checkData.available) {
+        if (checkData && checkData.available === false) {
           setError(
             `The full name "${name}" is too similar to an existing account (${checkData.matchPercent}% match). For identity security, please use your distinct full name or include your middle initial.`
           );
           setLoading(false);
           return;
         }
+      } catch {
+        // Ignore pre-check failures and proceed
       }
 
       // 2. Pre-validate email similarity with backend (80% - 100% duplicate protection)
-      const emailCheckRes = await apiFetch(`${API_BASE_URL}/api/auth/check-email-similarity`, {
-        method: "POST",
-        body: JSON.stringify({ email: email.trim() }),
-      });
+      try {
+        const emailCheckData = (await apiFetch(
+          `${API_BASE_URL}/api/auth/check-email-similarity`,
+          {
+            method: "POST",
+            body: JSON.stringify({ email: email.trim() }),
+            silent: true,
+          }
+        )) as { available?: boolean; matchPercent?: number };
 
-      if (emailCheckRes.ok) {
-        const emailCheckData = await emailCheckRes.json();
-        if (!emailCheckData.available) {
+        if (emailCheckData && emailCheckData.available === false) {
           setError(
             `The email "${email}" is too similar to an existing account (${emailCheckData.matchPercent}% match). If this is your account, please sign in. Otherwise, please use a distinct email address.`
           );
           setLoading(false);
           return;
         }
+      } catch {
+        // Ignore pre-check failures and proceed
       }
 
       const { data, error: sbError } = await supabase.auth.signUp({
