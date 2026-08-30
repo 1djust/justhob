@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { renderEmailLayout } from "./email-template";
 
 // Configure transporter fallback - uses SMTP environment variables if available, otherwise logs to console
 const createTransporter = () => {
@@ -44,7 +45,47 @@ const createTransporter = () => {
 const transporter = createTransporter();
 
 /**
- * Sends an email using Brevo/Resend (Production transactional standard) with automatic Nodemailer SMTP fallback.
+ * Derives a standardized header badge from the email subject.
+ */
+function deriveHeaderBadge(subject: string): string {
+  const s = subject.toLowerCase();
+  if (s.includes("verify") || s.includes("register") || s.includes("account") || s.includes("setup")) {
+    return "ACCOUNT SETUP";
+  }
+  if (s.includes("workspace") || s.includes("onboarding") || s.includes("first property")) {
+    return "MANAGER ONBOARDING";
+  }
+  if (s.includes("payment") || s.includes("rent") || s.includes("receipt") || s.includes("invoice")) {
+    return "PAYMENT NOTIFICATION";
+  }
+  if (s.includes("maintenance") || s.includes("request") || s.includes("repair")) {
+    return "MAINTENANCE UPDATE";
+  }
+  if (s.includes("lease") || s.includes("legal") || s.includes("agreement") || s.includes("renewal")) {
+    return "LEASE AGREEMENT";
+  }
+  if (s.includes("security") || s.includes("alert") || s.includes("locked") || s.includes("critical")) {
+    return "SECURITY ALERT";
+  }
+  return "NOTIFICATION";
+}
+
+/**
+ * Converts plain text into clean styled HTML paragraphs.
+ */
+function formatPlainTextToHtml(text: string): string {
+  return text
+    .split(/\n\n+/)
+    .map((paragraph) => {
+      const escaped = paragraph.replace(/\n/g, "<br/>");
+      return `<p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">${escaped}</p>`;
+    })
+    .join("");
+}
+
+/**
+ * Sends an email using Brevo/Resend with automatic Nodemailer fallback,
+ * strictly guaranteeing the standardized PropertyStack Header & Footer layout.
  */
 export const sendEmail = async (
   to: string,
@@ -58,6 +99,19 @@ export const sendEmail = async (
     process.env.SMTP_USER || "propertystackapp@gmail.com";
   const resendFrom =
     process.env.RESEND_FROM || "PropertyStack <onboarding@resend.dev>";
+
+  // Ensure every email has the exact official PropertyStack Header & Footer
+  let finalHtml = html;
+  if (!finalHtml || !finalHtml.includes("PropertyStack Logo")) {
+    const badge = deriveHeaderBadge(subject);
+    const bodyHtml = finalHtml || formatPlainTextToHtml(content);
+    finalHtml = renderEmailLayout({
+      title: subject,
+      badge,
+      bodyHtml,
+      recipientEmail: to,
+    });
+  }
 
   // 1. Primary Driver: Brevo REST API (300 free emails/day to any recipient)
   if (brevoApiKey) {
@@ -76,7 +130,7 @@ export const sendEmail = async (
           },
           to: [{ email: to }],
           subject,
-          htmlContent: html || content,
+          htmlContent: finalHtml,
           textContent: content,
           replyTo: {
             name: "PropertyStack Support",
@@ -121,7 +175,7 @@ export const sendEmail = async (
           to: [to],
           subject,
           text: content,
-          html: html || content,
+          html: finalHtml,
           reply_to: `PropertyStack Support <${fromAddress}>`,
           headers: {
             "X-Mailer": "PropertyStack Resend Engine v1.0",
@@ -156,7 +210,7 @@ export const sendEmail = async (
       replyTo: `"PropertyStack Support" <${fromAddress}>`,
       subject,
       text: content,
-      html: html || content,
+      html: finalHtml,
       headers: {
         "X-Mailer": "PropertyStack Engine v1.0",
         "X-Auto-Response-Suppress": "OOF, AutoReply",
