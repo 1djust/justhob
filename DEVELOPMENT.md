@@ -150,6 +150,114 @@ If newly registered managers or tenants do not receive verification emails:
 
 ---
 
+## 4. Automated Testing (Playwright E2E & Vitest API)
+
+### A. Web E2E Testing (Playwright)
+Located in `property-management-saas/apps/web/`:
+
+```bash
+cd property-management-saas/apps/web
+
+# Run all E2E tests across Desktop & Mobile
+pnpm test
+
+# Run Chromium only (fastest feedback loop)
+pnpm test:chromium
+
+# Run Android emulator profile (matches running emulator-5554)
+pnpm test:android
+
+# Interactive visual UI mode
+pnpm test:ui
+
+# View latest HTML test report
+pnpm test:report
+
+# Run live production smoke tests
+pnpm test:live
+```
+For in-depth details on test fixtures, authentication caching, and writing tests, see **[apps/web/TESTING.md](file:///home/djust/projects/justhub/property-management-saas/apps/web/TESTING.md)**.
+
+### B. API Unit & Integration Tests (Vitest)
+Located in `property-management-saas/apps/api/`:
+```bash
+cd property-management-saas/apps/api
+pnpm test
+```
+
+### C. Mobile Integration Testing (Flutter on Android Emulator)
+Located in `propertystack_mobile/integration_test/`. These tests launch the **real app** on the Android emulator so you can **watch every tap, scroll, and navigation** live on screen.
+
+#### Quick Start
+```bash
+cd ~/projects/justhub/propertystack_mobile
+
+# Run ALL 64 test cases
+./integration_test.sh
+
+# Or run a specific flow
+./integration_test.sh auth
+```
+
+#### Available Flows
+
+| Flow | Command | Tests | What It Covers |
+|:-----|:--------|:------|:---------------|
+| **Auth** | `./integration_test.sh auth` | A1-A6 (6) | Login, invalid login, validation, password toggle, register nav |
+| **Dashboard** | `./integration_test.sh dashboard` | D1-D8 (8) | Welcome banner, metrics grid, timeframe selector, bottom nav |
+| **Properties** | `./integration_test.sh properties` | P1-P6 (6) | List, search, filters, detail, back nav, pull-to-refresh |
+| **Tenants** | `./integration_test.sh tenants` | T1-T5 (5) | List, search, tap card, pull-to-refresh, create new tenant |
+| **Owners** | `./integration_test.sh owners` | O1-O6 (6) | List via More, detail, back nav, add button, refresh, create new landlord |
+| **Payments** | `./integration_test.sh payments` | LP1-LP7 (7) | List, status badges, review screen, tabs, back nav, refresh |
+| **Maintenance** | `./integration_test.sh maintenance` | M1-M5 (5) | List via More, status badges, detail/chat, back nav, refresh |
+| **Occupancy** | `./integration_test.sh occupancy` | OC1-OC3 (3) | Screen load, data display, back nav |
+| **Profile** | `./integration_test.sh profile` | PR1-PR10 (10) | All settings (notifications, privacy, help, password, appearance, language, currency, version, logout) |
+| **Notifications** | `./integration_test.sh notifications` | N1-N3 (3) | Screen load, cards, back nav |
+| **Navigation** | `./integration_test.sh navigation` | NV1-NV5 (5) | Deep links, tab preservation, all bottom nav, More sub-items, profile accessibility |
+
+#### Test Reports
+After each run, a **JSON report** is saved to `propertystack_mobile/integration_test/reports/` with timestamps, pass/fail counts, and per-module breakdowns. A summary is also printed to the terminal:
+
+```
+╔══════════════════════════════════════════════════╗
+║  PropertyStack — Test Report                      ║
+║  ✅ PASSED: 58 / 62                               ║
+║  ❌ FAILED: 3                                      ║
+║  ⚠️  SKIPPED: 1                                    ║
+╚══════════════════════════════════════════════════╝
+```
+
+#### Email Reports to Admin (Automatic by Default)
+Every test execution automatically sends the diagnostic HTML report to `ADMIN_EMAIL` (`propertystackapp@gmail.com`) upon completion:
+```bash
+# Runs tests and automatically emails the full diagnostic report
+./integration_test.sh auth
+./integration_test.sh tenants
+./integration_test.sh                  # all 62 tests + auto-email
+
+# To skip sending email:
+./integration_test.sh auth --no-email
+
+# Or send the latest report manually without re-running tests:
+cd property-management-saas/apps/api
+npx tsx src/scripts/send-test-report.ts
+```
+The email is sent through the official mailer chain (Brevo → Resend → SMTP) with pass rates, module breakdowns, failure diagnostics, location traces, and actionable remediation steps.
+
+#### Prerequisites
+- **Android Emulator running** (API 34+, typically `emulator-5554`)
+- **Backend API server running** (`bash wsl_start_dev.sh`)
+- **Flutter SDK** installed and on PATH
+
+#### Troubleshooting
+- **"VM Service connection refused"**: This is a WSL2 ↔ Windows networking limitation. The tests still execute on the emulator — press `Ctrl+C` after seeing test output complete.
+- **`pumpAndSettle` hangs**: All tests use `pump()` loops instead of `pumpAndSettle()` because the app has always-running services (SocketService, UpdateService). This is handled automatically.
+- **`FlutterError.onError` crash**: The test helpers save and restore the error handler around `app.main()` to prevent conflicts with the app's global error boundary.
+
+For full architecture details, see **[propertystack_mobile/integration_test/README.md](file:///home/djust/projects/justhub/propertystack_mobile/integration_test/README.md)**.
+
+---
+
 ## 5. Production Readiness & Pre-deployment Checklist
 Before deploying the application to production, you should run the master checklist script to verify security, linting, database schema integrity, tests, SEO, and performance:
 

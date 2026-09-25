@@ -30,9 +30,14 @@ class ApiClient {
   String? inMemoryToken;
   void Function()? onUnauthorized;
 
+  bool _initialized = false;
+  bool get isInitialized => _initialized;
+
   ApiClient._internal();
 
   Future<void> init() async {
+    if (_initialized) return;
+    _initialized = true;
     // Configure secure storage with encryptedSharedPreferences for physical Android devices.
     // Without this, the Android Keystore can silently fail on real hardware.
     if (Platform.isAndroid) {

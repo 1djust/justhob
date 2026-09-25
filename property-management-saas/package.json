@@ -17,6 +17,10 @@
     "start": "turbo run start",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:e2e": "pnpm --filter web test",
+    "test:android": "pnpm --filter web test:android",
+    "test:mobile": "pnpm --filter web test:mobile",
+    "test:ui": "pnpm --filter web test:ui",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "dependencies": {

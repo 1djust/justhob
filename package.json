@@ -1,0 +1,19 @@
+{
+  "name": "justhub-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "bash wsl_start_dev.sh",
+    "test": "cd property-management-saas/apps/web && pnpm test",
+    "test:android": "cd property-management-saas/apps/web && pnpm test:android",
+    "test:android:live": "cd property-management-saas/apps/web && pnpm test:android:live",
+    "test:mobile": "cd property-management-saas/apps/web && pnpm test:mobile",
+    "test:chromium": "cd property-management-saas/apps/web && pnpm test:chromium",
+    "test:headed": "cd property-management-saas/apps/web && pnpm test:headed",
+    "test:debug": "cd property-management-saas/apps/web && pnpm test:debug",
+    "test:ui": "cd property-management-saas/apps/web && pnpm test:ui",
+    "test:report": "cd property-management-saas/apps/web && pnpm test:report",
+    "test:live": "cd property-management-saas/apps/web && pnpm test:live",
+    "test:flutter": "cd propertystack_mobile && ./integration_test.sh",
+    "test:flutter:auth": "cd propertystack_mobile && ./integration_test.sh auth"
+  }
+}
