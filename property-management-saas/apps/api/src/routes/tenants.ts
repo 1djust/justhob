@@ -12,6 +12,7 @@ import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { tenantsCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
 import { logAction } from "../lib/audit";
+import { sanitizePromptInput } from "../lib/ai-guardrails";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 const WorkspaceQuery = Type.Object({
@@ -198,8 +199,8 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       const result = await prisma
         .$transaction(
           async (tx: Prisma.TransactionClient) => {
-            // Lock the workspace record to prevent race conditions on limit checks
-            await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
+            // Lock the workspace record to prevent race conditions on limit checks (parameterized with Prisma.sql)
+            await tx.$executeRaw(Prisma.sql`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`);
 
             const workspace = await tx.workspace.findUnique({
               where: { id: workspaceId },
@@ -282,11 +283,11 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
                 if (existingDbUser && existingDbUser.id !== supabaseUserId) {
                   const oldId = existingDbUser.id;
                   const newId = supabaseUserId;
-                  await tx.$executeRaw`UPDATE "WorkspaceMember" SET "userId" = ${newId} WHERE "userId" = ${oldId}`;
-                  await tx.$executeRaw`UPDATE "Notification" SET "userId" = ${newId} WHERE "userId" = ${oldId}`;
-                  await tx.$executeRaw`UPDATE "MaintenanceMessage" SET "senderId" = ${newId} WHERE "senderId" = ${oldId}`;
-                  await tx.$executeRaw`UPDATE "Property" SET "ownerId" = ${newId} WHERE "ownerId" = ${oldId}`;
-                  await tx.$executeRaw`UPDATE "User" SET id = ${newId} WHERE id = ${oldId}`;
+                  await tx.$executeRaw(Prisma.sql`UPDATE "WorkspaceMember" SET "userId" = ${newId} WHERE "userId" = ${oldId}`);
+                  await tx.$executeRaw(Prisma.sql`UPDATE "Notification" SET "userId" = ${newId} WHERE "userId" = ${oldId}`);
+                  await tx.$executeRaw(Prisma.sql`UPDATE "MaintenanceMessage" SET "senderId" = ${newId} WHERE "senderId" = ${oldId}`);
+                  await tx.$executeRaw(Prisma.sql`UPDATE "Property" SET "ownerId" = ${newId} WHERE "ownerId" = ${oldId}`);
+                  await tx.$executeRaw(Prisma.sql`UPDATE "User" SET id = ${newId} WHERE id = ${oldId}`);
                 } else if (!existingDbUser) {
                   await tx.user.create({
                     data: { id: supabaseUserId, email, name, role: "TENANT" },
@@ -531,6 +532,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       const existingLease = await prisma.lease.findFirst({
         where: {
           tenantId: id,
+          tenant: { workspaceId },
           status: {
             in: [
               "ACTIVE",
@@ -734,6 +736,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       const existingLease = await prisma.lease.findFirst({
         where: {
           tenantId,
+          tenant: { workspaceId },
           status: {
             in: [
               "ACTIVE",
@@ -772,12 +775,19 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       const rentNum = Number(yearlyRent) || 0;
       const feeAmount = rentNum * 0.1; // 10% fee
 
+      // Security: Sanitize template inputs to prevent format string, markdown, or delimiter injection
+      const cleanLandlord = sanitizePromptInput(landlordName || "", 100).replace(/[\r\n]+/g, " ");
+      const cleanLandlordAddr = sanitizePromptInput(landlordAddress || "", 150).replace(/[\r\n]+/g, " ");
+      const cleanTenant = sanitizePromptInput(tenantName || "", 100).replace(/[\r\n]+/g, " ");
+      const cleanTenantAddr = sanitizePromptInput(tenantAddress || "", 150).replace(/[\r\n]+/g, " ");
+      const cleanPropName = sanitizePromptInput(property.name || "", 100).replace(/[\r\n]+/g, " ");
+
       // Generate default legal lease agreement text to save
       const agreementText = `LEGAL LEASE AGREEMENT
 
-This Agreement is made on ${new Date().toLocaleDateString()} between ${landlordName} (Landlord) of ${landlordAddress} and ${tenantName} (Tenant) of ${tenantAddress}.
+This Agreement is made on ${new Date().toLocaleDateString()} between ${cleanLandlord} (Landlord) of ${cleanLandlordAddr} and ${cleanTenant} (Tenant) of ${cleanTenantAddr}.
 
-1. PROPERTY & UNIT: The Landlord agrees to rent to the Tenant, and the Tenant agrees to lease, the property located at ${property.name}, specifically Unit ${
+1. PROPERTY & UNIT: The Landlord agrees to rent to the Tenant, and the Tenant agrees to lease, the property located at ${cleanPropName}, specifically Unit ${
         unitId
           ? (await prisma.unit.findUnique({ where: { id: unitId } }))
               ?.unitNumber || ""
@@ -800,10 +810,10 @@ This Agreement is made on ${new Date().toLocaleDateString()} between ${landlordN
 5. SIGNATURES: By signing below, both parties agree to the terms and conditions outlined in this lease agreement.
 
 ____________________________________
-Landlord/Property Manager: ${landlordName}
+Landlord/Property Manager: ${cleanLandlord}
 
 ____________________________________
-Tenant: ${tenantName}`;
+Tenant: ${cleanTenant}`;
 
       // Create the lease first with status PENDING_LEGAL_VERIFICATION
       const lease = await prisma.lease.create({
@@ -895,6 +905,7 @@ Tenant: ${tenantName}`;
         where: {
           id: leaseId,
           tenantId,
+          tenant: { workspaceId },
           status: "PENDING_LEGAL_UPLOAD",
         },
         include: {

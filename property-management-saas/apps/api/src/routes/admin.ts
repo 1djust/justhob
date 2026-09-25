@@ -18,6 +18,13 @@ function tokenHash(token: string): string {
 
 const VerifyAdminBody = Type.Object({ securityKey: Type.String() });
 
+const AuditLogsQuery = Type.Object({
+  eventType: Type.Optional(Type.String()),
+  search: Type.Optional(Type.String()),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 200, default: 100 })),
+  page: Type.Optional(Type.Integer({ minimum: 1, default: 1 })),
+});
+
 export default async function adminRoutes(fastify: FastifyInstance) {
   const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
 
@@ -133,15 +140,74 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       return { managers };
     });
 
-    // Get security audit logs
-    admin.get("/audit-logs", { schema: {} }, async () => {
-      const logs = await prisma.securityAuditLog.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 100,
-      });
+    // Get security audit logs (with login attempts filter, search, pagination, and lockout metrics)
+    admin.get<{ Querystring: Static<typeof AuditLogsQuery> }>(
+      "/audit-logs",
+      { schema: { querystring: AuditLogsQuery } },
+      async (request) => {
+        const { eventType, search, limit = 100, page = 1 } = request.query;
+        const skip = (page - 1) * limit;
 
-      return { logs };
-    });
+        const where: any = {};
+        if (eventType && eventType !== "ALL") {
+          if (eventType === "LOGIN_ATTEMPTS") {
+            where.eventType = { in: ["FAILED_LOGIN", "SUCCESSFUL_LOGIN", "ACCOUNT_LOCKED_OUT"] };
+          } else {
+            where.eventType = eventType;
+          }
+        }
+
+        if (search && search.trim()) {
+          where.OR = [
+            { ipAddress: { contains: search.trim(), mode: "insensitive" } },
+          ];
+        }
+
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const [logs, total, failed24h, success24h, locked24h] = await Promise.all([
+          prisma.securityAuditLog.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            take: limit,
+            skip,
+          }),
+          prisma.securityAuditLog.count({ where }),
+          prisma.securityAuditLog.count({
+            where: {
+              eventType: "FAILED_LOGIN",
+              createdAt: { gte: twentyFourHoursAgo },
+            },
+          }),
+          prisma.securityAuditLog.count({
+            where: {
+              eventType: "SUCCESSFUL_LOGIN",
+              createdAt: { gte: twentyFourHoursAgo },
+            },
+          }),
+          prisma.securityAuditLog.count({
+            where: {
+              eventType: "ACCOUNT_LOCKED_OUT",
+              createdAt: { gte: twentyFourHoursAgo },
+            },
+          }),
+        ]);
+
+        return {
+          logs,
+          total,
+          page,
+          limit,
+          activeLockouts: SecurityService.getActiveLockouts(),
+          blacklistedIps: SecurityService.getBlacklistedIpsList(),
+          stats: {
+            failedLogins24h: failed24h,
+            successfulLogins24h: success24h,
+            lockouts24h: locked24h,
+          },
+        };
+      },
+    );
 
     // Get all tenants platform-wide
     admin.get("/tenants", { schema: {} }, async () => {

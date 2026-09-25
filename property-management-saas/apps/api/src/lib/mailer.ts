@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { renderEmailLayout } from "./email-template";
+import { renderEmailLayout, escapeHtml } from "./email-template";
 
 // Configure transporter fallback - uses SMTP environment variables if available, otherwise logs to console
 const createTransporter = () => {
@@ -77,7 +77,7 @@ function formatPlainTextToHtml(text: string): string {
   return text
     .split(/\n\n+/)
     .map((paragraph) => {
-      const escaped = paragraph.replace(/\n/g, "<br/>");
+      const escaped = escapeHtml(paragraph).replace(/\n/g, "<br/>");
       return `<p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">${escaped}</p>`;
     })
     .join("");
@@ -93,6 +93,10 @@ export const sendEmail = async (
   content: string,
   html?: string,
 ) => {
+  if (process.env.NODE_ENV === "test") {
+    return { messageId: "mock-test-email-id", provider: "mock" };
+  }
+
   const brevoApiKey = process.env.BREVO_API_KEY;
   const resendApiKey = process.env.RESEND_API_KEY;
   const fromAddress =

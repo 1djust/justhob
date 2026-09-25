@@ -203,7 +203,7 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
 
       try {
         const oldRequest = await prisma.maintenanceRequest.findUnique({
-          where: { id },
+          where: { maintenance_workspace_id: { id, workspaceId } },
           include: {
             tenant: { select: { email: true, name: true } },
             workspace: { select: { plan: true } },
@@ -268,6 +268,56 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
         return reply
           .status(404)
           .send({ error: "Maintenance request not found" });
+      }
+    },
+  );
+
+  // AI Maintenance Triage (Prompt-injection hardened)
+  server.post<{
+    Params: Static<typeof MaintenanceParams>;
+  }>(
+    "/:id/ai-triage",
+    {
+      preHandler: requireManager,
+      schema: { params: MaintenanceParams },
+    },
+    async (request, reply) => {
+      const { workspaceId, id } = request.params;
+
+      const ticket = await prisma.maintenanceRequest.findFirst({
+        where: { id, workspaceId },
+        include: {
+          property: { select: { name: true } },
+        },
+      });
+
+      if (!ticket) {
+        return reply
+          .status(404)
+          .send({ error: "Maintenance request not found" });
+      }
+
+      try {
+        const { AiMaintenanceTriageService } = await import(
+          "../services/ai-maintenance-triage"
+        );
+        const triageResult =
+          await AiMaintenanceTriageService.triageMaintenanceTicket(
+            ticket.description,
+            { propertyName: ticket.property.name },
+          );
+
+        return reply.send({ triage: triageResult });
+      } catch (err: unknown) {
+        const message = (err as Error).message || "AI triage failed";
+        if (message.startsWith("SECURITY_VIOLATION")) {
+          return reply.status(400).send({
+            error: "Security Violation",
+            code: "PROMPT_INJECTION_DETECTED",
+            message,
+          });
+        }
+        return reply.status(500).send({ error: message });
       }
     },
   );

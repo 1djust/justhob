@@ -35,7 +35,7 @@ const start = async () => {
 
   // Dynamically import app and prisma after setting environment variables
   const { app } = await import("./app");
-  const { prisma } = await import("./lib/database");
+  const { prisma, Prisma } = await import("./lib/database");
 
   try {
     // Warm up the database connection pool on startup
@@ -47,7 +47,7 @@ const start = async () => {
     // Keep-alive ping to prevent the PgBouncer/Supabase pooled connections from closing
     setInterval(async () => {
       try {
-        await prisma.$queryRaw`SELECT 1`;
+        await prisma.$queryRaw(Prisma.sql`SELECT 1`);
       } catch (err) {
         console.error("Database connection keep-alive ping failed:", err);
       }

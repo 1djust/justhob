@@ -25,7 +25,7 @@ try {
     // DATABASE_URL uses port 6543 (pooler) which listens on 51.21.18.29
     const dbIp = ips.includes("51.21.18.29") ? "51.21.18.29" : ips[0];
     // DIRECT_URL uses port 5432 (direct) which listens on 51.21.189.77
-    const directIp = ips.includes("51.21.189.77") ? "51.21.189.77" : ips[0];
+    const directIp = "51.21.189.77";
 
     if (process.env.DATABASE_URL) {
       process.env.DATABASE_URL = process.env.DATABASE_URL.replace(host, dbIp);

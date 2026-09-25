@@ -25,6 +25,8 @@ export default async function timelineRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { workspaceId } = request.params;
       const { year } = request.query || {};
+      const userRole = request.userRole!;
+      const userId = request.userId!;
 
       const targetYear = parseInt(
         year || new Date().getFullYear().toString(),
@@ -33,12 +35,18 @@ export default async function timelineRoutes(fastify: FastifyInstance) {
       const startOfYear = new Date(targetYear, 0, 1);
       const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59);
 
+      // Security (M-3): Landlords should only see their own properties on the timeline
+      const propertyWhereClause: import("@prisma/client").Prisma.PropertyWhereInput = {
+        workspaceId,
+        deletedAt: null,
+      };
+      if (userRole === "LANDLORD") {
+        propertyWhereClause.ownerId = userId;
+      }
+
       // Fetch all properties for the workspace, including units, and active leases for the year
       const properties = await prisma.property.findMany({
-        where: {
-          workspaceId,
-          deletedAt: null,
-        },
+        where: propertyWhereClause,
         include: {
           units: {
             include: {

@@ -3,6 +3,7 @@ import { FastifyInstance } from "fastify";
 import { supabaseAdmin } from "../lib/supabase";
 import { prisma } from "../lib/database";
 import { sendEmail } from "../lib/mailer";
+import { escapeHtml } from "../lib/email-template";
 
 export interface ReminderExecutionResult {
   totalUnconfirmedEvaluated: number;
@@ -85,7 +86,7 @@ export function buildRegistrationReminderEmail(params: {
             <td style="padding: 36px 32px 28px 32px;">
               <h2 style="margin: 0 0 16px 0; color: #0A192F; font-size: 20px; font-weight: 600;">Complete Your Account Setup</h2>
               <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-                Hi <strong>${displayName}</strong>,
+                Hi <strong>${escapeHtml(displayName)}</strong>,
               </p>
               <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
                 We noticed you recently started registering for <strong>PropertyStack</strong>, but haven't verified your email yet. You are only one step away from simplifying your property operations!
@@ -189,7 +190,7 @@ export function buildRegistrationReminderEmail(params: {
             <td style="padding: 36px 32px 28px 32px;">
               <h2 style="margin: 0 0 16px 0; color: #0A192F; font-size: 20px; font-weight: 600;">Your Account is Ready to Activate</h2>
               <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-                Hi <strong>${displayName}</strong>,
+                Hi <strong>${escapeHtml(displayName)}</strong>,
               </p>
               <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
                 Your PropertyStack workspace is configured and waiting for you. Verify your email to begin managing your rental properties.
@@ -486,7 +487,7 @@ export function buildOnboardingReminderEmail(params: {
             <td style="padding: 36px 32px 28px 32px;">
               <h2 style="margin: 0 0 16px 0; color: #0A192F; font-size: 20px; font-weight: 600;">Welcome! Let's Add Your First Property</h2>
               <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-                Hi <strong>${displayName}</strong>,
+                Hi <strong>${escapeHtml(displayName)}</strong>,
               </p>
               <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
                 Your PropertyStack account is activated and ready. To start managing units, automating rent collection, and tracking tenant leases, simply add your first property.

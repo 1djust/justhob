@@ -122,8 +122,8 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
       const property = await prisma
         .$transaction(
           async (tx: Prisma.TransactionClient) => {
-            // Lock the workspace record to prevent race conditions on limit checks
-            await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
+            // Lock the workspace record to prevent race conditions on limit checks (parameterized with Prisma.sql)
+            await tx.$executeRaw(Prisma.sql`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`);
 
             const workspace = await tx.workspace.findUnique({
               where: { id: workspaceId },

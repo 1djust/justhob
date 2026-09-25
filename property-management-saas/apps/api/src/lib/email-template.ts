@@ -3,6 +3,19 @@
  * Ensures consistent dark navy header (#0A192F), logo, badge, and standardized footer across all application emails.
  */
 
+/**
+ * Security: Escape HTML characters in strings to prevent raw HTML rendering / injection in emails.
+ */
+export function escapeHtml(str: string | null | undefined): string {
+  if (!str || typeof str !== "string") return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export interface EmailLayoutOptions {
   title?: string;
   badge?: string; // e.g. "ACCOUNT SETUP", "PAYMENT NOTIFICATION", "MAINTENANCE UPDATE"
@@ -24,13 +37,18 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
   const logoUrl =
     "https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png";
 
+  const safeTitle = escapeHtml(title);
+  const safeBadge = escapeHtml(badge);
+  const safeRecipientEmail = recipientEmail ? escapeHtml(recipientEmail) : "";
+  const safeFooterNote = footerNote ? escapeHtml(footerNote) : undefined;
+
   return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <title>${safeTitle}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #eef2f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155;">
   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #eef2f6; padding: 40px 16px;">
@@ -53,7 +71,7 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
                   </td>
                   <td style="vertical-align: middle; text-align: left;">
                     <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2;">PropertyStack</h1>
-                    <p style="margin: 2px 0 0 0; color: #60A5FA; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;">${badge}</p>
+                    <p style="margin: 2px 0 0 0; color: #60A5FA; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;">${safeBadge}</p>
                   </td>
                 </tr>
               </table>
@@ -72,9 +90,9 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
             <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b;">
                 ${
-                  footerNote ||
-                  (recipientEmail
-                    ? `You received this email because an account is registered with ${recipientEmail} on PropertyStack.`
+                  safeFooterNote ||
+                  (safeRecipientEmail
+                    ? `You received this email because an account is registered with ${safeRecipientEmail} on PropertyStack.`
                     : "This is an automated notification from PropertyStack.")
                 }
               </p>

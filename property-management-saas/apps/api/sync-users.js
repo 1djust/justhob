@@ -57,7 +57,7 @@ async function main() {
     catch (err) {
         // Silent fallback
     }
-    const { PrismaClient } = await Promise.resolve().then(() => __importStar(require("@prisma/client")));
+    const { PrismaClient, Prisma } = await Promise.resolve().then(() => __importStar(require("@prisma/client")));
     const prisma = new PrismaClient({
         datasources: {
             db: {
@@ -117,7 +117,7 @@ async function main() {
                 });
                 if (existingByEmail) {
                     console.log(`User email ${email} exists with different ID ${existingByEmail.id}. Updating ID...`);
-                    await prisma.$executeRaw `UPDATE "User" SET id = ${supaUser.id} WHERE email = ${email}`;
+                    await prisma.$executeRaw(Prisma.sql`UPDATE "User" SET id = ${supaUser.id} WHERE email = ${email}`);
                     await prisma.user.update({
                         where: { id: supaUser.id },
                         data: {

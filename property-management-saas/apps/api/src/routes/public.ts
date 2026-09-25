@@ -167,8 +167,8 @@ export default async function publicRoutes(fastify: FastifyInstance) {
 
       const maintenanceRequest = await prisma
         .$transaction(async (tx: Prisma.TransactionClient) => {
-          // Lock the workspace record to prevent race conditions on limit checks
-          await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
+          // Lock the workspace record to prevent race conditions on limit checks (parameterized with Prisma.sql)
+          await tx.$executeRaw(Prisma.sql`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`);
 
           // Security: Verify the property belongs to this workspace
           const property = await tx.property.findFirst({
@@ -204,7 +204,7 @@ export default async function publicRoutes(fastify: FastifyInstance) {
               status: "PENDING",
             },
           });
-        })
+        }, { maxWait: 10000, timeout: 20000 })
         .catch((err: unknown) => {
           const errMessage = (err as Error).message;
           if (errMessage === "LIMIT_MAINTENANCE") {

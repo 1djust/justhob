@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../lib/database";
+import { Prisma } from "@prisma/client";
 import { supabaseAdmin } from "../lib/supabase";
 import { AppError, UnauthorizedError } from "../lib/errors";
 import { Type, Static } from "@sinclair/typebox";
@@ -7,6 +8,12 @@ import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { meCache } from "../lib/cache";
 import { SecurityService } from "../services/security";
 import { checkNameSimilarity, checkEmailSimilarity } from "../lib/string-similarity";
+import {
+  SESSION_COOKIE_NAME,
+  CSRF_COOKIE_NAME,
+  getSessionCookieOptions,
+  getCsrfCookieOptions,
+} from "../lib/session";
 
 const SyncBody = Type.Object({ name: Type.Optional(Type.String()) });
 const CheckNameBody = Type.Object({ name: Type.String({ minLength: 1 }) });
@@ -18,6 +25,7 @@ const RegisterBody = Type.Object({
 const LoginBody = Type.Object({
   email: Type.String(),
   password: Type.String(),
+  client: Type.Optional(Type.String()),
 });
 const ChangePasswordBody = Type.Object({
   newPassword: Type.String({
@@ -174,13 +182,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
               `[AUTH/SYNC] Mismatch detected: email ${supaUser.email} has Prisma ID ${oldId} but Supabase ID ${newId}. Healing with FK cascade...`,
             );
             await prisma.$transaction(async (tx) => {
-              // Update all FK references FIRST to prevent cascade delete
-              await tx.$executeRaw`UPDATE "WorkspaceMember" SET "userId" = ${newId} WHERE "userId" = ${oldId}`;
-              await tx.$executeRaw`UPDATE "Notification" SET "userId" = ${newId} WHERE "userId" = ${oldId}`;
-              await tx.$executeRaw`UPDATE "MaintenanceMessage" SET "senderId" = ${newId} WHERE "senderId" = ${oldId}`;
-              await tx.$executeRaw`UPDATE "Property" SET "ownerId" = ${newId} WHERE "ownerId" = ${oldId}`;
+              // Update all FK references FIRST to prevent cascade delete (parameterized with Prisma.sql)
+              await tx.$executeRaw(Prisma.sql`UPDATE "WorkspaceMember" SET "userId" = ${newId} WHERE "userId" = ${oldId}`);
+              await tx.$executeRaw(Prisma.sql`UPDATE "Notification" SET "userId" = ${newId} WHERE "userId" = ${oldId}`);
+              await tx.$executeRaw(Prisma.sql`UPDATE "MaintenanceMessage" SET "senderId" = ${newId} WHERE "senderId" = ${oldId}`);
+              await tx.$executeRaw(Prisma.sql`UPDATE "Property" SET "ownerId" = ${newId} WHERE "ownerId" = ${oldId}`);
               // Now safe to update the User ID
-              await tx.$executeRaw`UPDATE "User" SET id = ${newId} WHERE email = ${supaUser.email || ""}`;
+              await tx.$executeRaw(Prisma.sql`UPDATE "User" SET id = ${newId} WHERE email = ${supaUser.email || ""}`);
             });
 
             // Security: Log auto-heal to audit trail — this is a high-risk operation
@@ -347,13 +355,20 @@ export default async function authRoutes(fastify: FastifyInstance) {
         mustChangePassword: mustChange,
       };
 
-      return { user: userWithWorkspaces };
+      const isProd = process.env.NODE_ENV === "production";
+      if (token) {
+        reply.setCookie(SESSION_COOKIE_NAME, token, getSessionCookieOptions(isProd));
+      }
+
+      return reply.send({ user: userWithWorkspaces });
     },
   );
 
   // Get current user
   server.get("/me", { schema: {} }, async (request, reply) => {
-    const token = request.headers.authorization?.replace("Bearer ", "");
+    const token =
+      request.headers.authorization?.replace("Bearer ", "") ||
+      (request.cookies as Record<string, string> | undefined)?.[SESSION_COOKIE_NAME];
     if (!token) throw new UnauthorizedError();
 
     const now = Date.now();
@@ -589,6 +604,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
+      const isProd = process.env.NODE_ENV === "production";
+      if (data.session?.access_token) {
+        reply.setCookie(
+          SESSION_COOKIE_NAME,
+          data.session.access_token,
+          getSessionCookieOptions(isProd),
+        );
+      }
+
       return reply.send({
         success: true,
         message: "Email verified successfully! You can now log into your account.",
@@ -636,18 +660,26 @@ export default async function authRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // Login (called by mobile app)
+  // Unified Login (Web & Mobile with centralized security tracking & lockout shield)
   server.post<{ Body: Static<typeof LoginBody> }>(
     "/login",
     {
       schema: { body: LoginBody },
-      config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
+      config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
     },
     async (request, reply) => {
-      const { email, password } = request.body;
+      const { email, password, client } = request.body;
+      const userAgent = request.headers["user-agent"] || "unknown";
+      const isMobileClient =
+        client === "mobile" ||
+        (!client && (userAgent.includes("Dart") || userAgent.includes("Flutter")));
+
+      const clientIp =
+        (request.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        request.ip;
 
       // 1. Check Active Lockout Shield
-      const lockout = SecurityService.isAccountOrIpLockedOut(email, request.ip);
+      const lockout = SecurityService.isAccountOrIpLockedOut(email, clientIp);
       if (lockout.isLocked) {
         return reply.status(429).send({
           error: "Account Locked",
@@ -663,19 +695,24 @@ export default async function authRoutes(fastify: FastifyInstance) {
       });
 
       if (error || !data.user || !data.session) {
-        // Record failed attempt and trigger lockout if threshold exceeded
+        // Record failed attempt, trigger lockout if threshold exceeded, and alert Super Admins
         const failureResult = await SecurityService.recordFailedLogin(
           email,
-          request.ip,
+          clientIp,
           error?.message || "Invalid credentials",
+          {
+            userAgent,
+            client: client || (isMobileClient ? "mobile" : "web"),
+          },
         );
 
         if (failureResult.isLocked) {
           return reply.status(429).send({
             error: "Account Locked",
             code: "ACCOUNT_LOCKED_OUT",
-            message: "Too many failed login attempts. Your access is temporarily locked for 15 minutes for security protection.",
-            remainingSeconds: 900,
+            message:
+              "Too many failed login attempts. Your access is temporarily locked for 3 hours for security protection.",
+            remainingSeconds: 10800,
           });
         }
 
@@ -685,8 +722,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
         );
       }
 
-      // Security: Reset failure counter on successful authentication
-      SecurityService.recordSuccessfulLogin(email, request.ip);
+      // Security: Reset failure counter on successful authentication and record audit log
+      SecurityService.recordSuccessfulLogin(email, clientIp, {
+        userAgent,
+        client: client || (isMobileClient ? "mobile" : "web"),
+      });
 
       // Security: Enforce that email must be confirmed before mobile app access is granted
       const isEmailConfirmed =
@@ -694,7 +734,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         Boolean(data.user.confirmed_at) ||
         data.user.user_metadata?.email_verified === true;
 
-      if (!isEmailConfirmed) {
+      if (!isEmailConfirmed && isMobileClient) {
         throw new UnauthorizedError(
           "Please verify your email address before logging in. Check your inbox for the confirmation link.",
           "AUTH_EMAIL_NOT_CONFIRMED",
@@ -712,16 +752,169 @@ export default async function authRoutes(fastify: FastifyInstance) {
       });
 
       if (!user) {
-        // GATEKEEPER: Mobile app is for TENANT, LANDLORD, and PROPERTY_MANAGER users. Check Supabase metadata first.
-        const metadataRole =
-          data.user.user_metadata?.role || "PROPERTY_MANAGER";
+        if (isMobileClient) {
+          // GATEKEEPER: Mobile app is for TENANT, LANDLORD, and PROPERTY_MANAGER users. Check Supabase metadata first.
+          const metadataRole =
+            data.user.user_metadata?.role || "PROPERTY_MANAGER";
+          if (
+            metadataRole !== "TENANT" &&
+            metadataRole !== "LANDLORD" &&
+            metadataRole !== "PROPERTY_MANAGER"
+          ) {
+            console.warn(
+              `[AUTH/LOGIN] REJECTED: Unregistered user ${data.user.email} (${data.user.id}) has metadata role ${metadataRole} attempting mobile login.`,
+            );
+            throw new AppError(
+              "This mobile app is for tenants, landlords, and property managers only.",
+              403,
+              "TENANT_ONLY_APP",
+            );
+          }
+
+          // Check if this user was properly registered by a manager
+          const existingMembership = await prisma.workspaceMember.findFirst({
+            where: { userId: data.user.id },
+            select: { role: true, workspaceId: true },
+          });
+
+          if (!existingMembership) {
+            if (metadataRole === "PROPERTY_MANAGER") {
+              const newUser = await prisma.user.create({
+                data: {
+                  id: data.user.id,
+                  email: data.user.email!,
+                  name: data.user.user_metadata?.name || null,
+                  role: "PROPERTY_MANAGER",
+                },
+                include: {
+                  workspaces: {
+                    include: { workspace: true },
+                  },
+                },
+              });
+
+              const mustChange =
+                data.user.user_metadata?.mustChangePassword === true;
+              return reply.send({
+                access_token: data.session.access_token,
+                session: {
+                  access_token: data.session.access_token,
+                  refresh_token: data.session.refresh_token,
+                  expires_in: data.session.expires_in,
+                  token_type: data.session.token_type,
+                  user: data.session.user,
+                },
+                user: {
+                  ...newUser,
+                  role: "PROPERTY_MANAGER",
+                  globalRole: newUser.role,
+                  workspaceId: null,
+                  isOnboarded: false,
+                  mustChangePassword: mustChange,
+                },
+              });
+            }
+
+            console.warn(
+              `[AUTH/LOGIN] REJECTED: ${data.user.email} (${data.user.id}) authenticated but has no workspace membership. Not registered by any manager.`,
+            );
+            throw new AppError(
+              "Your account has not been set up by a property manager yet. Please contact your property manager to register your access.",
+              403,
+              "ACCOUNT_NOT_REGISTERED",
+            );
+          }
+
+          if (
+            existingMembership.role !== "TENANT" &&
+            existingMembership.role !== "LANDLORD" &&
+            existingMembership.role !== "PROPERTY_MANAGER"
+          ) {
+            console.warn(
+              `[AUTH/LOGIN] REJECTED: New user ${data.user.email} (${data.user.id}) has role ${existingMembership.role} attempting mobile login.`,
+            );
+            throw new AppError(
+              "This mobile app is for tenants, landlords, and property managers only.",
+              403,
+              "TENANT_ONLY_APP",
+            );
+          }
+
+          let role = (existingMembership.role ||
+            data.user.user_metadata?.role ||
+            "TENANT") as string;
+          if (role === "SUPER_ADMIN") {
+            role = "TENANT";
+          }
+          const newUser = await prisma.user.create({
+            data: {
+              id: data.user.id,
+              email: data.user.email!,
+              name: data.user.user_metadata?.name || null,
+              role: role as any,
+            },
+            include: {
+              workspaces: {
+                include: { workspace: true },
+              },
+            },
+          });
+
+          const isProd = process.env.NODE_ENV === "production";
+          reply.setCookie(
+            SESSION_COOKIE_NAME,
+            data.session.access_token,
+            getSessionCookieOptions(isProd),
+          );
+
+          const mustChange =
+            data.user.user_metadata?.mustChangePassword === true;
+          return reply.send({
+            access_token: data.session.access_token,
+            session: {
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+              expires_in: data.session.expires_in,
+              token_type: data.session.token_type,
+              user: data.session.user,
+            },
+            user: {
+              ...newUser,
+              role,
+              globalRole: newUser.role,
+              workspaceId: existingMembership.workspaceId,
+              mustChangePassword: mustChange,
+            },
+          });
+        } else {
+          // Web / Admin client: Create user profile if not yet in database
+          const metadataRole = data.user.user_metadata?.role;
+          const role = metadataRole === "SUPER_ADMIN" ? "SUPER_ADMIN" : "PROPERTY_MANAGER";
+          user = await prisma.user.create({
+            data: {
+              id: data.user.id,
+              email: data.user.email!,
+              name: data.user.user_metadata?.name || null,
+              role: role as any,
+            },
+            include: {
+              workspaces: {
+                include: { workspace: true },
+              },
+            },
+          });
+        }
+      }
+
+      // Mobile app specific gating
+      if (isMobileClient) {
         if (
-          metadataRole !== "TENANT" &&
-          metadataRole !== "LANDLORD" &&
-          metadataRole !== "PROPERTY_MANAGER"
+          user.role !== "TENANT" &&
+          user.role !== "LANDLORD" &&
+          user.role !== "PROPERTY_MANAGER"
         ) {
           console.warn(
-            `[AUTH/LOGIN] REJECTED: Unregistered user ${data.user.email} (${data.user.id}) has metadata role ${metadataRole} attempting mobile login.`,
+            `[AUTH/LOGIN] REJECTED: ${user.email} (${user.id}) is ${user.role} — mobile app does not support this role.`,
           );
           throw new AppError(
             "This mobile app is for tenants, landlords, and property managers only.",
@@ -730,48 +923,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
           );
         }
 
-        // Check if this user was properly registered by a manager
-        // (i.e., has a WorkspaceMember record created during tenant/landlord invitation)
-        const existingMembership = await prisma.workspaceMember.findFirst({
-          where: { userId: data.user.id },
-          select: { role: true, workspaceId: true },
-        });
+        let wsCount = (user.workspaces as unknown[])?.length || 0;
 
-        if (!existingMembership) {
-          // If metadata indicates PROPERTY_MANAGER, create user profile with 0 workspaces (pending onboarding)
-          if (metadataRole === "PROPERTY_MANAGER") {
-            const newUser = await prisma.user.create({
-              data: {
-                id: data.user.id,
-                email: data.user.email!,
-                name: data.user.user_metadata?.name || null,
-                role: "PROPERTY_MANAGER",
-              },
-              include: {
-                workspaces: {
-                  include: { workspace: true },
-                },
-              },
-            });
-
-            const mustChange =
-              data.user.user_metadata?.mustChangePassword === true;
-            return reply.send({
-              access_token: data.session.access_token,
-              user: {
-                ...newUser,
-                role: "PROPERTY_MANAGER",
-                globalRole: newUser.role,
-                workspaceId: null,
-                isOnboarded: false,
-                mustChangePassword: mustChange,
-              },
-            });
-          }
-
-          // GATEKEEPER: Tenants/Landlords without workspace membership must be registered by a manager
+        if (wsCount === 0 && user.role !== "PROPERTY_MANAGER") {
           console.warn(
-            `[AUTH/LOGIN] REJECTED: ${data.user.email} (${data.user.id}) authenticated but has no workspace membership. Not registered by any manager.`,
+            `[AUTH/LOGIN] REJECTED: User ${user.email} (${user.id}) has role ${user.role} but 0 workspace memberships.`,
           );
           throw new AppError(
             "Your account has not been set up by a property manager yet. Please contact your property manager to register your access.",
@@ -779,97 +935,31 @@ export default async function authRoutes(fastify: FastifyInstance) {
             "ACCOUNT_NOT_REGISTERED",
           );
         }
-
-        // GATEKEEPER: Mobile app is for TENANT, LANDLORD, and PROPERTY_MANAGER users. Reject other roles.
-        if (
-          existingMembership.role !== "TENANT" &&
-          existingMembership.role !== "LANDLORD" &&
-          existingMembership.role !== "PROPERTY_MANAGER"
-        ) {
-          console.warn(
-            `[AUTH/LOGIN] REJECTED: New user ${data.user.email} (${data.user.id}) has role ${existingMembership.role} attempting mobile login.`,
-          );
-          throw new AppError(
-            "This mobile app is for tenants, landlords, and property managers only.",
-            403,
-            "TENANT_ONLY_APP",
-          );
-        }
-
-        // User WAS registered by a manager (has membership) but their Prisma
-        // profile doesn't exist yet — safe to create it now.
-        let role = (existingMembership.role ||
-          data.user.user_metadata?.role ||
-          "TENANT") as string;
-        // Security: Prevent privilege escalation via client-controlled metadata
-        if (role === "SUPER_ADMIN") {
-          role = "TENANT";
-        }
-        const newUser = await prisma.user.create({
-          data: {
-            id: data.user.id,
-            email: data.user.email!,
-            name: data.user.user_metadata?.name || null,
-            role: role as any,
-          },
-          include: {
-            workspaces: {
-              include: { workspace: true },
-            },
-          },
-        });
-
-        const mustChange = data.user.user_metadata?.mustChangePassword === true;
-        return reply.send({
-          access_token: data.session.access_token,
-          user: {
-            ...newUser,
-            role,
-            globalRole: newUser.role,
-            workspaceId: existingMembership.workspaceId,
-            mustChangePassword: mustChange,
-          },
-        });
-      }
-
-      // GATEKEEPER: Mobile app is for TENANT, LANDLORD, and PROPERTY_MANAGER users.
-      // Rejects super admins and tenants/managers with 0 memberships.
-      if (
-        user.role !== "TENANT" &&
-        user.role !== "LANDLORD" &&
-        user.role !== "PROPERTY_MANAGER"
-      ) {
-        console.warn(
-          `[AUTH/LOGIN] REJECTED: ${user.email} (${user.id}) is ${user.role} — mobile app does not support this role.`,
-        );
-        throw new AppError(
-          "This mobile app is for tenants, landlords, and property managers only.",
-          403,
-          "TENANT_ONLY_APP",
-        );
-      }
-
-      let wsCount = (user.workspaces as unknown[])?.length || 0;
-
-      if (wsCount === 0 && user.role !== "PROPERTY_MANAGER") {
-        console.warn(
-          `[AUTH/LOGIN] REJECTED: User ${user.email} (${user.id}) has role ${user.role} but 0 workspace memberships.`,
-        );
-        throw new AppError(
-          "Your account has not been set up by a property manager yet. Please contact your property manager to register your access.",
-          403,
-          "ACCOUNT_NOT_REGISTERED",
-        );
       }
 
       const mustChange = data.user.user_metadata?.mustChangePassword === true;
       const primaryWS = getPrimaryWorkspace(user.workspaces as any);
       const role = primaryWS?.role || user.role || "PROPERTY_MANAGER";
       const workspaceId = primaryWS?.workspaceId || null;
+      const wsCount = (user.workspaces as unknown[])?.length || 0;
       const isOnboarded = wsCount > 0;
+
+      const isProd = process.env.NODE_ENV === "production";
+      reply.setCookie(
+        SESSION_COOKIE_NAME,
+        data.session.access_token,
+        getSessionCookieOptions(isProd),
+      );
 
       return reply.send({
         access_token: data.session.access_token,
+        session: {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          expires_in: data.session.expires_in,
+          token_type: data.session.token_type,
+          user: data.session.user,
+        },
         user: {
           ...user,
           role,
@@ -1064,6 +1154,19 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // Logout (no-op since Supabase handles sessions, but kept for compatibility)
   server.post("/logout", { schema: {} }, async (request, reply) => {
+    const isProd = process.env.NODE_ENV === "production";
+    reply.clearCookie(SESSION_COOKIE_NAME, {
+      path: "/",
+      httpOnly: true,
+      secure: isProd,
+      sameSite: "strict",
+    });
+    reply.clearCookie(CSRF_COOKIE_NAME, {
+      path: "/",
+      httpOnly: false,
+      secure: isProd,
+      sameSite: "strict",
+    });
     return reply.send({ success: true });
   });
 

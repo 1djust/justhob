@@ -29,6 +29,8 @@ const SQL_INJECTION_PATTERN = /(?:\bunion\b\s+(?:all\s+)?select|\bselect\b\s+.*\
 // Malicious script payload signatures
 const XSS_INJECTION_PATTERN = /(?:<script\b[^>]*>|javascript:\s*void|vbscript:|onload\s*=\s*["']?alert|onerror\s*=\s*["']?alert|document\.cookie\s*=)/i;
 
+import { detectPromptInjection } from "../lib/ai-guardrails";
+
 function inspectValueForThreats(val: unknown): { threat: boolean; attackType?: string; snippet?: string } {
   if (val === null || val === undefined) return { threat: false };
 
@@ -41,6 +43,14 @@ function inspectValueForThreats(val: unknown): { threat: boolean; attackType?: s
     }
     if (XSS_INJECTION_PATTERN.test(val)) {
       return { threat: true, attackType: "XSS_SCRIPT_PROBE", snippet: val.substring(0, 100) };
+    }
+    const injectionCheck = detectPromptInjection(val);
+    if (injectionCheck.isInjection) {
+      return {
+        threat: true,
+        attackType: `PROMPT_INJECTION_${injectionCheck.attackType}`,
+        snippet: injectionCheck.matchedSnippet,
+      };
     }
   } else if (typeof val === "object") {
     for (const subVal of Object.values(val as Record<string, unknown>)) {

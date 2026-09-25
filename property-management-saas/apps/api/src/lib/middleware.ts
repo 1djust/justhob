@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "./database";
 import { supabaseAdmin } from "./supabase";
 import { createHash } from "crypto";
+import { SESSION_COOKIE_NAME } from "./session";
 
 // Security (C-4): Hash JWT tokens before using as cache keys to prevent
 // token leakage in logs/memory dumps and reduce memory footprint.
@@ -53,7 +54,9 @@ export const authenticate = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ) => {
-  const token = request.headers.authorization?.replace("Bearer ", "");
+  const token =
+    request.headers.authorization?.replace("Bearer ", "") ||
+    (request.cookies as Record<string, string> | undefined)?.[SESSION_COOKIE_NAME];
   if (!token) return reply.status(401).send({ error: "Unauthorized" });
 
   const now = Date.now();

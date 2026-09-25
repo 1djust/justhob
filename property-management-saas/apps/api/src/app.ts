@@ -7,6 +7,7 @@ import rateLimit from "@fastify/rate-limit";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import errorLoggerPlugin from "./plugins/error-logger";
 import securityFirewallPlugin from "./plugins/security-firewall";
+import csrfProtectionPlugin from "./plugins/csrf-protection";
 import publicLogRoutes from "./routes/public-logs";
 import { SecurityService } from "./services/security";
 
@@ -46,6 +47,7 @@ interface FastifyErrorWithMeta extends Error {
 export function buildApp() {
   const fastify = Fastify({
     logger: true,
+    trustProxy: true,
     bodyLimit: 10 * 1024 * 1024, // 10MB for image uploads
   }).withTypeProvider<TypeBoxTypeProvider>();
 
@@ -106,6 +108,9 @@ export function buildApp() {
 
   // Security: Global Web Application Firewall (WAF) & Exploit Blocker
   fastify.register(securityFirewallPlugin);
+
+  // Security: CSRF Protection on all state-changing routes & SameSite cookie enforcement
+  fastify.register(csrfProtectionPlugin);
 
   // Security: Rate limiting — prevents brute force and DDoS
   fastify.register(rateLimit, {

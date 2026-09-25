@@ -277,8 +277,8 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
 
       const maintenanceRequest = await prisma
         .$transaction(async (tx: Prisma.TransactionClient) => {
-          // Lock the workspace record to prevent race conditions on limit checks
-          await tx.$executeRaw`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`;
+          // Lock the workspace record to prevent race conditions on limit checks (parameterized with Prisma.sql)
+          await tx.$executeRaw(Prisma.sql`SELECT id FROM "Workspace" WHERE id = ${workspaceId} FOR UPDATE`);
 
           // Security: Verify the property belongs to this workspace
           const property = await tx.property.findFirst({
@@ -314,7 +314,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
               status: "PENDING",
             },
           });
-        })
+        }, { maxWait: 10000, timeout: 20000 })
         .catch((err: unknown) => {
           const errMessage = (err as Error).message;
           if (errMessage === "LIMIT_MAINTENANCE") {
@@ -748,6 +748,14 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       if (!membership)
         return reply.status(403).send({ error: "No tenant profile found" });
 
+      // Security (C-2): Verify the maintenance request belongs to this tenant
+      const { tenant } = await getAuthenticatedTenant(userId);
+      const ticket = await prisma.maintenanceRequest.findFirst({
+        where: { id, workspaceId: membership.workspaceId, tenantId: tenant?.id ?? userId },
+      });
+      if (!ticket)
+        return reply.status(403).send({ error: "Not your maintenance request" });
+
       const messages = await prisma.maintenanceMessage.findMany({
         where: {
           requestId: id,
@@ -787,6 +795,14 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
       });
       if (!membership)
         return reply.status(403).send({ error: "No tenant profile found" });
+
+      // Security (C-2): Verify the maintenance request belongs to this tenant
+      const { tenant } = await getAuthenticatedTenant(userId);
+      const ticket = await prisma.maintenanceRequest.findFirst({
+        where: { id, workspaceId: membership.workspaceId, tenantId: tenant?.id ?? userId },
+      });
+      if (!ticket)
+        return reply.status(403).send({ error: "Not your maintenance request" });
 
       const message = await prisma.maintenanceMessage.create({
         data: {

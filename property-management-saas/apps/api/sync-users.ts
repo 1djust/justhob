@@ -20,7 +20,7 @@ async function main() {
     // Silent fallback
   }
 
-  const { PrismaClient } = await import("@prisma/client");
+  const { PrismaClient, Prisma } = await import("@prisma/client");
   const prisma = new PrismaClient({
     datasources: {
       db: {
@@ -117,7 +117,7 @@ async function main() {
           console.log(
             `User email ${email} exists with different ID ${existingByEmail.id}. Updating ID...`,
           );
-          await prisma.$executeRaw`UPDATE "User" SET id = ${supaUser.id} WHERE email = ${email}`;
+          await prisma.$executeRaw(Prisma.sql`UPDATE "User" SET id = ${supaUser.id} WHERE email = ${email}`);
 
           await prisma.user.update({
             where: { id: supaUser.id },
