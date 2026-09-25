@@ -8,8 +8,15 @@
     "start": "next start",
     "lint": "eslint",
     "test": "playwright test",
+    "test:chromium": "playwright test --project=chromium",
+    "test:android": "playwright test --project=android-emulator",
+    "test:android:live": "npx tsx tests/e2e/android-live.ts",
+    "test:mobile": "playwright test --project=android-emulator --project=mobile-safari",
     "test:ui": "playwright test --ui",
-    "test:headed": "playwright test --headed"
+    "test:headed": "playwright test --project=android-emulator --headed",
+    "test:debug": "playwright test --project=android-emulator --debug",
+    "test:report": "playwright show-report",
+    "test:live": "playwright test --config=playwright.live.config.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -41,6 +48,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^16.4.5",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",

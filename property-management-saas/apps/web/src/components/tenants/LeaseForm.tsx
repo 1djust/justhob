@@ -5,6 +5,7 @@ import { Plus, Copy, ChevronDown } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
 import { toast } from "sonner";
+import { sanitizeUrl } from "@/lib/sanitize-url";
 
 interface Unit {
   id: string;
@@ -581,7 +582,7 @@ export function LeaseForm({
                   <div className="flex items-center gap-4 bg-white/80 dark:bg-zinc-950/40 border border-zinc-200/80 dark:border-zinc-800 p-3.5 rounded-2xl">
                     <div className="relative w-16 h-16 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white shrink-0">
                       <img
-                        src={proofUrl}
+                        src={sanitizeUrl(proofUrl)}
                         alt="Proof upload preview"
                         className="w-full h-full object-cover"
                       />

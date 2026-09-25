@@ -10,6 +10,7 @@ import {
   ThumbsUp,
 } from "lucide-react";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
+import { sanitizeUrl } from "@/lib/sanitize-url";
 import { Button } from "@/components/shared/Button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Payment, PaymentTransaction } from "./types";
@@ -192,7 +193,7 @@ export function ReviewPaymentModal({
           {payment.proofUrl && (
             <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
               <img
-                src={payment.proofUrl}
+                src={sanitizeUrl(payment.proofUrl)}
                 alt="Proof"
                 className="w-full max-h-[200px] object-contain bg-zinc-50 dark:bg-zinc-900"
               />

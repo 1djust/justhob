@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { API_BASE_URL } from "@/lib/api";
+import { sanitizeUrl } from "@/lib/sanitize-url";
 
 interface MaintenanceRequest {
   id: string;
@@ -550,7 +551,7 @@ export default function TenantPortalPage() {
                 <div className="mt-3 w-32 h-32 rounded-md overflow-hidden border border-border">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={imageString}
+                    src={sanitizeUrl(imageString)}
                     alt="Preview"
                     className="w-full h-full object-cover"
                   />

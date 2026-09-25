@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/shared/Button";
+import { sanitizeUrl } from "@/lib/sanitize-url";
 import type { Payment } from "./types";
 
 interface ProofViewerModalProps {
@@ -64,7 +65,7 @@ export function ProofViewerModal({ payment, onClose }: ProofViewerModalProps) {
         <div className="p-6 flex items-center justify-center overflow-auto max-h-[60vh]">
           {payment.proofUrl ? (
             <img
-              src={payment.proofUrl}
+              src={sanitizeUrl(payment.proofUrl)}
               alt="Proof of payment"
               className="max-w-full max-h-full rounded-xl object-contain border border-zinc-200 dark:border-zinc-800"
             />

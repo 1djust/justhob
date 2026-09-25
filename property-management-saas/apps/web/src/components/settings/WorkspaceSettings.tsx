@@ -18,6 +18,7 @@ import {
 import { apiFetch, API_BASE_URL } from "@/lib/api";
 import { Button } from "../shared/Button";
 import { toast } from "sonner";
+import { sanitizeUrl } from "@/lib/sanitize-url";
 
 const NIGERIAN_BANKS = [
   { code: "044", name: "Access Bank" },
@@ -777,7 +778,7 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string }) {
                             Proof Attached Successfully
                           </p>
                           <a
-                            href={proofUrl}
+                            href={sanitizeUrl(proofUrl)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[10px] text-zinc-500 underline hover:text-zinc-600 font-semibold pointer-events-auto"

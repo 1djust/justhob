@@ -31,6 +31,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ExportButton } from "@/components/shared/ExportButton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { sanitizeUrl } from "@/lib/sanitize-url";
 
 interface Lease {
   id: string;
@@ -582,7 +583,7 @@ function PropertyGridCard({
       {/* Property Image */}
       <div className="relative h-[180px] overflow-hidden">
         <img
-          src={image}
+          src={sanitizeUrl(image)}
           alt={property.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
@@ -715,7 +716,7 @@ function PropertyListRow({
       {/* Thumbnail */}
       <div className="w-[64px] h-[48px] rounded-xl overflow-hidden">
         <img
-          src={image}
+          src={sanitizeUrl(image)}
           alt={property.name}
           className="w-full h-full object-cover"
           loading="lazy"
@@ -990,7 +991,7 @@ function ImageUploader({
       ) : value ? (
         <div className="relative h-32 rounded-xl overflow-hidden shadow-sm">
           <img
-            src={value}
+            src={sanitizeUrl(value)}
             alt="Preview"
             className="w-full h-full object-cover"
           />

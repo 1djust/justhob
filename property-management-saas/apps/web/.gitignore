@@ -40,7 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Playwright reports and results
+# Playwright reports, results, and auth state
 playwright-report/
 test-results/
+tests/.auth/
+
+# Allow the env template to be committed
+!.env.test.example
 

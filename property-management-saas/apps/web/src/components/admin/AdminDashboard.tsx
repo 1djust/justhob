@@ -38,6 +38,7 @@ import { SecurityLogs } from "./SecurityLogs";
 import { AuditTrail } from "./AuditTrail";
 import { useRealtime } from "@/components/providers/RealtimeProvider";
 import { supabase } from "@/lib/supabase";
+import { sanitizeUrl } from "@/lib/sanitize-url";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -2079,7 +2080,7 @@ function SecurityTab() {
             <div className="flex flex-col items-center justify-center p-6 bg-muted/20 rounded-xl border border-border/60">
               <div className="bg-white p-3 rounded-2xl mb-4 border border-border/80 shadow-sm">
                 <img
-                  src={qrCode}
+                  src={sanitizeUrl(qrCode)}
                   alt="MFA QR Sync Code"
                   width={170}
                   height={170}
@@ -2501,13 +2502,13 @@ function UpgradeRequestsTab() {
             <div className="flex-1 bg-muted/30 p-6 overflow-auto flex items-center justify-center min-h-[40vh] border-b border-border">
               {previewProofUrl.toLowerCase().endsWith(".pdf") ? (
                 <iframe
-                  src={previewProofUrl}
+                  src={sanitizeUrl(previewProofUrl)}
                   className="w-full h-[55vh] rounded-2xl border border-border bg-white"
                   title="PDF Transaction Proof"
                 />
               ) : (
                 <img
-                  src={previewProofUrl}
+                  src={sanitizeUrl(previewProofUrl)}
                   alt="Payment Transaction Receipt"
                   className="max-h-[55vh] object-contain rounded-2xl border border-border shadow-sm"
                 />
@@ -2515,7 +2516,7 @@ function UpgradeRequestsTab() {
             </div>
             <div className="p-4 px-6 flex justify-end gap-3 bg-muted/40">
               <a
-                href={previewProofUrl}
+                href={sanitizeUrl(previewProofUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-2 border border-border hover:bg-muted text-foreground text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors shadow-sm"
@@ -3864,7 +3865,7 @@ function LegalLeaseRequestsTab() {
             </h3>
             <div className="w-full h-[60vh] flex items-center justify-center bg-muted/20 border border-border/60 rounded-2xl overflow-auto">
               <img
-                src={previewProofUrl}
+                src={sanitizeUrl(previewProofUrl)}
                 alt="Proof of payment document"
                 className="max-w-full max-h-full object-contain"
               />

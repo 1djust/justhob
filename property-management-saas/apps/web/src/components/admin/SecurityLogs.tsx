@@ -81,6 +81,20 @@ export function SecurityLogs() {
           badgeClass:
             "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
         };
+      case "SUCCESSFUL_LOGIN":
+        return {
+          label: "Successful Login",
+          icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />,
+          badgeClass:
+            "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
+        };
+      case "ACCOUNT_LOCKED_OUT":
+        return {
+          label: "Account / IP Locked Out",
+          icon: <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />,
+          badgeClass:
+            "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20",
+        };
       case "UNAUTHORIZED_API_ACCESS":
         return {
           label: "Unauthorized API Access",
@@ -150,12 +164,28 @@ export function SecurityLogs() {
   };
 
   const filteredLogs = logs.filter((log) => {
-    const matchesType = filterType === "ALL" || log.eventType === filterType;
+    let matchesType = false;
+    if (filterType === "ALL") {
+      matchesType = true;
+    } else if (filterType === "LOGIN_ATTEMPTS") {
+      matchesType =
+        log.eventType === "FAILED_LOGIN" ||
+        log.eventType === "SUCCESSFUL_LOGIN" ||
+        log.eventType === "ACCOUNT_LOCKED_OUT";
+    } else {
+      matchesType = log.eventType === filterType;
+    }
+
+    const email = log.details?.email ? String(log.details.email).toLowerCase() : "";
+    const url = log.details?.url ? String(log.details.url).toLowerCase() : "";
+    const ip = log.ipAddress.toLowerCase();
+    const query = searchIp.toLowerCase();
+
     const matchesIp =
       !searchIp ||
-      log.ipAddress.toLowerCase().includes(searchIp.toLowerCase()) ||
-      (log.details?.url &&
-        String(log.details.url).toLowerCase().includes(searchIp.toLowerCase()));
+      ip.includes(query) ||
+      url.includes(query) ||
+      email.includes(query);
     return matchesType && matchesIp;
   });
 
@@ -233,8 +263,11 @@ export function SecurityLogs() {
             className="w-full pl-9 pr-8 py-2 text-xs bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary shadow-sm appearance-none cursor-pointer font-medium"
           >
             <option value="ALL">All Event Types</option>
+            <option value="LOGIN_ATTEMPTS">All Login Attempts (Success & Fail)</option>
+            <option value="FAILED_LOGIN">Failed Logins Only</option>
+            <option value="SUCCESSFUL_LOGIN">Successful Logins Only</option>
+            <option value="ACCOUNT_LOCKED_OUT">Account Lockouts</option>
             <option value="UNAUTHORIZED_API_ACCESS">Unauthorized Access</option>
-            <option value="FAILED_LOGIN">Failed Logins</option>
             <option value="RATE_LIMIT_EXCEEDED">Rate Limits Exceeded</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
@@ -297,6 +330,18 @@ export function SecurityLogs() {
                       <Globe className="w-3 h-3 text-muted-foreground" />
                       {log.ipAddress}
                     </span>
+
+                    {Boolean(details?.email) && (
+                      <span className="inline-flex items-center gap-1 font-mono text-[11px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded border border-amber-500/20">
+                        Target: {String(details?.email)}
+                      </span>
+                    )}
+
+                    {Boolean(details?.reason) && (
+                      <span className="text-[11px] text-muted-foreground italic">
+                        ({String(details?.reason)})
+                      </span>
+                    )}
 
                     {getMethodBadge(method)}
 

@@ -1,4 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from "path";
+import dotenv from "dotenv";
+
+// Load test credentials from .env.test
+dotenv.config({ path: path.resolve(__dirname, ".env.test") });
+
+const MANAGER_STATE = path.join(__dirname, "tests", ".auth", "manager-state.json");
+const TENANT_STATE = path.join(__dirname, "tests", ".auth", "tenant-state.json");
 
 /**
  * Playwright E2E test configuration for the Property Management Web Dashboard.
@@ -24,29 +32,73 @@ export default defineConfig({
     trace: "on-first-retry",
     /* Capture screenshot on failure */
     screenshot: "only-on-failure",
+    /* Record video on first retry for better debugging */
+    video: "on-first-retry",
   },
 
   /* Configure projects for major browsers */
   projects: [
+    // --- Auth Setup (runs first, logs in and saves session state) ---
+    {
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+    },
+
+    // --- Main test suites (depend on setup) ---
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: MANAGER_STATE,
+      },
+      dependencies: ["setup"],
+      testIgnore: /live\//,
     },
     {
       name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
+      use: {
+        ...devices["Desktop Firefox"],
+        storageState: MANAGER_STATE,
+      },
+      dependencies: ["setup"],
+      testIgnore: /live\//,
     },
     {
       name: "webkit",
-      use: { ...devices["Desktop Safari"] },
+      use: {
+        ...devices["Desktop Safari"],
+        storageState: MANAGER_STATE,
+      },
+      dependencies: ["setup"],
+      testIgnore: /live\//,
+    },
+
+    // --- Mobile & Android Emulator Projects ---
+    {
+      name: "android-emulator",
+      use: {
+        ...devices["Pixel 7"],
+        storageState: MANAGER_STATE,
+      },
+      dependencies: ["setup"],
+      testIgnore: /live\//,
+    },
+    {
+      name: "mobile-safari",
+      use: {
+        ...devices["iPhone 14"],
+        storageState: MANAGER_STATE,
+      },
+      dependencies: ["setup"],
+      testIgnore: /live\//,
     },
   ],
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: "npm run dev",
+    command: "pnpm dev",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120_000,
   },
 });

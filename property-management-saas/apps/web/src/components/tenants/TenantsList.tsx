@@ -18,6 +18,7 @@ import {
 import { apiFetch, API_BASE_URL } from "@/lib/api";
 import { useRealtime } from "@/components/providers/RealtimeProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { sanitizeUrl } from "@/lib/sanitize-url";
 import { LeaseForm } from "./LeaseForm";
 import { TenantDrawerForm } from "./TenantDrawerForm";
 import { TenantSettingsModal } from "./TenantSettingsModal";
@@ -427,17 +428,24 @@ export function TenantsList({
 
   const handleViewAttachment = (lease: Lease) => {
     if (lease.legalDocUrl) {
-      // HTTP URLs: open directly in new tab
-      if (lease.legalDocUrl.startsWith("http")) {
-        window.open(lease.legalDocUrl, "_blank");
+      const safeUrl = sanitizeUrl(lease.legalDocUrl);
+      // HTTP URLs: open directly in new tab if safe
+      if (safeUrl.startsWith("http")) {
+        window.open(safeUrl, "_blank", "noopener,noreferrer");
         return;
       }
-      // Base64 data URLs: convert to blob URL and open
-      if (lease.legalDocUrl.startsWith("data:")) {
+      // Base64 data URLs: convert to blob URL and open ONLY for safe media types
+      if (safeUrl.startsWith("data:")) {
         try {
-          const [header, base64Data] = lease.legalDocUrl.split(",");
+          const [header, base64Data] = safeUrl.split(",");
           const mimeMatch = header.match(/data:([^;]+)/);
-          const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+          const mime = mimeMatch ? mimeMatch[1].toLowerCase() : "application/octet-stream";
+          const allowedMimes = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+          if (!allowedMimes.includes(mime)) {
+            setViewingLease(lease);
+            return;
+          }
+
           const byteString = atob(base64Data);
           const ab = new ArrayBuffer(byteString.length);
           const ia = new Uint8Array(ab);
@@ -446,7 +454,7 @@ export function TenantsList({
           }
           const blob = new Blob([ab], { type: mime });
           const blobUrl = URL.createObjectURL(blob);
-          window.open(blobUrl, "_blank");
+          window.open(blobUrl, "_blank", "noopener,noreferrer");
         } catch {
           // If blob conversion fails, fall back to modal
           setViewingLease(lease);

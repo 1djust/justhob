@@ -144,13 +144,30 @@ export function LoginForm() {
     setError("");
 
     try {
-      const { data, error: sbError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // 1. Centralized Fastify API authentication with lockout shield & audit logging
+      const loginRes = (await apiFetch("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password, client: "web" }),
+      })) as {
+        access_token: string;
+        session?: {
+          access_token: string;
+          refresh_token: string;
+        };
+      };
+
+      if (!loginRes?.session?.access_token || !loginRes?.session?.refresh_token) {
+        throw new Error("Failed to authenticate session");
+      }
+
+      // 2. Hydrate browser Supabase session
+      const { data, error: sessionError } = await supabase.auth.setSession({
+        access_token: loginRes.session.access_token,
+        refresh_token: loginRes.session.refresh_token,
       });
 
-      if (sbError || !data.user) {
-        throw new Error(sbError?.message || "Failed to login");
+      if (sessionError || !data.user) {
+        throw new Error(sessionError?.message || "Failed to initialize session");
       }
 
       // Security Gatekeeper: Enforce email verification before granting access

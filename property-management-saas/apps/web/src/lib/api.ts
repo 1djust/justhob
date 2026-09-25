@@ -44,6 +44,12 @@ export class ApiError extends Error {
   }
 }
 
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export async function apiFetch(url: string, options: ApiOptions = {}) {
   const targetUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
   const isTrustedTarget =
@@ -64,6 +70,28 @@ export async function apiFetch(url: string, options: ApiOptions = {}) {
   }
 
   const method = options.method?.toUpperCase() || "GET";
+
+  // Security: CSRF protection on state-changing requests
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method) && isTrustedTarget) {
+    headers.set("X-Requested-With", "XMLHttpRequest");
+    let csrfToken = getCookie("csrf_token");
+    if (!csrfToken && typeof window !== "undefined") {
+      try {
+        const csrfRes = await fetch(`${API_BASE_URL}/api/csrf-token`, {
+          credentials: "include",
+        });
+        if (csrfRes.ok) {
+          const csrfData = (await csrfRes.json()) as { csrfToken?: string };
+          csrfToken = csrfData.csrfToken || getCookie("csrf_token");
+        }
+      } catch {
+        // Fall back gracefully if offline or mock
+      }
+    }
+    if (csrfToken) {
+      headers.set("X-CSRF-Token", csrfToken);
+    }
+  }
 
   // Ensure Content-Type is set if body is present or if it's a mutation, and not form data
   if (
@@ -88,6 +116,7 @@ export async function apiFetch(url: string, options: ApiOptions = {}) {
     url.startsWith("http") ? url : `${API_BASE_URL}${url}`,
     {
       ...options,
+      credentials: options.credentials || "include",
       body: finalBody,
       headers,
     },

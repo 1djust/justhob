@@ -25,16 +25,29 @@ export function AdminLoginForm() {
 
     try {
       if (step === 1) {
-        // 1. Authenticate with Supabase first
-        const { data, error: sbError } = await supabase.auth.signInWithPassword(
-          {
-            email,
-            password,
-          },
-        );
+        // 1. Authenticate via centralized API with Super Admin attack notifications & lockout shield
+        const loginRes = (await apiFetch("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password, client: "web_admin" }),
+        })) as {
+          access_token: string;
+          session?: {
+            access_token: string;
+            refresh_token: string;
+          };
+        };
 
-        if (sbError || !data.user) {
-          throw new Error(sbError?.message || "Invalid login credentials");
+        if (!loginRes?.session?.access_token || !loginRes?.session?.refresh_token) {
+          throw new Error("Failed to authenticate admin session");
+        }
+
+        const { data, error: sessionError } = await supabase.auth.setSession({
+          access_token: loginRes.session.access_token,
+          refresh_token: loginRes.session.refresh_token,
+        });
+
+        if (sessionError || !data.user) {
+          throw new Error(sessionError?.message || "Invalid login credentials");
         }
 
         // Check if MFA is required
