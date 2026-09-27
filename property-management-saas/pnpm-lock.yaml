@@ -34,7 +34,7 @@ importers:
   apps/api:
     dependencies:
       '@fastify/cookie':
-        specifier: ^9.3.1
+        specifier: ^9.4.0
         version: 9.4.0
       '@fastify/cors':
         specifier: ^9.0.1
@@ -61,7 +61,7 @@ importers:
         specifier: ^2.100.1
         version: 2.112.4(@opentelemetry/api@1.9.1)
       dotenv:
-        specifier: ^16.4.5
+        specifier: ^16.6.1
         version: 16.6.1
       fastify:
         specifier: ^4.26.2
@@ -79,7 +79,7 @@ importers:
         specifier: ^0.18.0
         version: 0.18.0
       resend:
-        specifier: ^4.1.2
+        specifier: ^4.8.0
         version: 4.8.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       socket.io:
         specifier: ^4.8.3
@@ -110,7 +110,7 @@ importers:
         specifier: ^5.4.3
         version: 5.9.3
       vitest:
-        specifier: ^4.1.4
+        specifier: ^4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(vite@8.2.2(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))
 
   apps/web:
@@ -143,7 +143,7 @@ importers:
         specifier: ^4.1.0
         version: 4.4.0
       framer-motion:
-        specifier: ^12.38.0
+        specifier: ^12.43.0
         version: 12.43.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       jspdf:
         specifier: ^4.2.1
@@ -198,7 +198,7 @@ importers:
         specifier: ^19
         version: 19.2.5(@types/react@19.2.18)
       dotenv:
-        specifier: ^16.4.5
+        specifier: ^16.6.1
         version: 16.6.1
       eslint:
         specifier: ^9
