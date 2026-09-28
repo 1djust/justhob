@@ -105,7 +105,7 @@ export function AdminLoginForm() {
         // Final sync to ensure everything is set up
         await apiFetch("/api/auth/sync", { method: "POST" });
 
-        router.push("/dashboard");
+        router.push("/super-admin");
       }
     } catch (err: unknown) {
       const errorObj = err as Error;

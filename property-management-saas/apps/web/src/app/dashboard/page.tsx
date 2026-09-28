@@ -391,12 +391,14 @@ export default function DashboardPage() {
           <WorkspaceSettings workspaceId={selectedWorkspaceId} />
         ) : null;
       case "admin-overview":
+      case "admin-users":
       case "admin-workspaces":
       case "admin-upgrades":
       case "admin-errors":
       case "admin-payments":
       case "admin-security":
       case "admin-legal-leases":
+      case "admin-audit-trail":
         return user?.globalRole === "SUPER_ADMIN" ? (
           <AdminDashboard
             activeTab={activeView.replace("admin-", "") as AdminTab}
