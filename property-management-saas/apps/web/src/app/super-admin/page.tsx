@@ -17,6 +17,7 @@ import {
   LogOut,
   ExternalLink,
   Lock,
+  LayoutGrid,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -131,11 +132,11 @@ export default function SuperAdminPage() {
 
           <button
             onClick={() => router.push("/dashboard")}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-300 transition-colors"
-            title="Switch to Landlord / Manager View"
+            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white border border-zinc-800 hover:border-zinc-700 transition-all shadow-sm"
+            title="Return to Property Management Application"
           >
-            <span>Manager Dashboard</span>
-            <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+            <LayoutGrid className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Exit to App</span>
           </button>
 
           <button
