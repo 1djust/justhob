@@ -132,11 +132,10 @@ class AuthRepository {
       return false;
     } on DioException catch (e) {
       debugPrint('Caught verifyOtp error: $e');
-      String message = 'Invalid or expired verification code.';
-      if (e.response?.data is Map && e.response?.data['message'] != null) {
-        message = e.response!.data['message'].toString();
-      }
-      throw Exception(message);
+      throw Exception(
+        _extractDioErrorMessage(e,
+            defaultError: 'Invalid or expired verification code.'),
+      );
     } catch (e) {
       throw Exception('Failed to verify OTP: ${e.toString()}');
     }
@@ -153,11 +152,10 @@ class AuthRepository {
       });
     } on DioException catch (e) {
       debugPrint('Caught resendOtp error: $e');
-      String message = 'Failed to resend verification code.';
-      if (e.response?.data is Map && e.response?.data['message'] != null) {
-        message = e.response!.data['message'].toString();
-      }
-      throw Exception(message);
+      throw Exception(
+        _extractDioErrorMessage(e,
+            defaultError: 'Failed to resend verification code.'),
+      );
     } catch (e) {
       throw Exception('Failed to resend code: ${e.toString()}');
     }
