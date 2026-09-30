@@ -20,6 +20,7 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface AdminUser {
   id: string;
@@ -100,52 +101,56 @@ export default function SuperAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+    <div className="min-h-screen bg-zinc-50/70 dark:bg-zinc-950 text-foreground flex flex-col transition-colors duration-200">
       {/* Top God-Mode Command Bar */}
-      <header className="h-16 border-b border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-50">
+      <header className="h-16 border-b border-border/80 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-50 transition-colors duration-200">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold tracking-tight text-white text-base">PropertyStack</span>
-              <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded bg-red-500/10 text-red-400 border border-red-500/30">
+              <span className="font-extrabold tracking-tight text-foreground text-base">PropertyStack</span>
+              <span className="px-2 py-0.5 text-[9px] font-mono font-black uppercase tracking-wider rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/25">
                 GOD MODE
               </span>
             </div>
-            <p className="text-xs text-zinc-400">Super Administrator Control Center</p>
+            <p className="text-xs text-muted-foreground">Super Administrator Control Center</p>
           </div>
         </div>
 
         {/* Global telemetry & Admin Profile */}
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-xs">
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-950 border border-border text-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-zinc-400 font-mono">System: Operational</span>
+            <span className="text-muted-foreground font-mono font-medium">System: Operational</span>
           </div>
 
           <div className="text-right hidden sm:block">
-            <div className="text-xs font-medium text-white">{user?.name || "Super Admin"}</div>
-            <div className="text-[11px] text-zinc-500 font-mono">{user?.email}</div>
+            <div className="text-xs font-bold text-foreground">{user?.name || "Super Admin"}</div>
+            <div className="text-[11px] text-muted-foreground font-mono">{user?.email}</div>
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-medium transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
-          </button>
+          <div className="pl-1 border-l border-border/60 flex items-center gap-2">
+            <ThemeToggle />
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 text-xs font-bold transition-all"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Navigation Sidebar */}
-        <aside className="w-64 border-r border-zinc-800/80 bg-zinc-900/50 p-4 flex flex-col justify-between shrink-0 hidden md:flex">
+        <aside className="w-64 border-r border-border/80 bg-white/70 dark:bg-zinc-900/60 backdrop-blur-md p-4 flex flex-col justify-between shrink-0 hidden md:flex transition-colors duration-200">
           <nav className="space-y-1">
-            <div className="px-3 pb-2 text-[10px] font-mono font-semibold uppercase tracking-wider text-zinc-500">
+            <div className="px-3 pb-2 text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground/80">
               Platform Governance
             </div>
             {TABS.map((tab) => {
@@ -155,33 +160,33 @@ export default function SuperAdminPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                     isActive
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold"
-                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-zinc-100/80 dark:hover:bg-zinc-800/50"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-emerald-400" : "text-zinc-500"}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`} />
                   <span>{tab.label}</span>
                 </button>
               );
             })}
           </nav>
 
-          <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800/80 text-[11px] text-zinc-500 space-y-1">
+          <div className="p-3.5 rounded-2xl bg-zinc-100/80 dark:bg-zinc-950 border border-border/80 text-[11px] text-muted-foreground space-y-1.5">
             <div className="flex justify-between">
               <span>Security Level:</span>
-              <span className="text-emerald-400 font-mono font-semibold">Tier-4 Root</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">Tier-4 Root</span>
             </div>
             <div className="flex justify-between">
               <span>API Gateway:</span>
-              <span className="text-zinc-300 font-mono">Render Prod</span>
+              <span className="text-foreground font-mono font-medium">Render Prod</span>
             </div>
           </div>
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-zinc-950">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-zinc-50/70 dark:bg-zinc-950 transition-colors duration-200">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Mobile Tab Pills */}
             <div className="md:hidden flex gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -192,10 +197,10 @@ export default function SuperAdminPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs whitespace-nowrap font-medium ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs whitespace-nowrap font-semibold transition-all ${
                       isActive
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                        : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
+                        : "bg-card text-muted-foreground border border-border"
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
