@@ -6,6 +6,7 @@ import { apiFetch, API_BASE_URL } from "@/lib/api";
 import { AdminDashboard, type AdminTab } from "@/components/admin/AdminDashboard";
 import {
   ShieldCheck,
+  ShieldAlert,
   Activity,
   Users,
   Building2,
@@ -47,6 +48,8 @@ export default function SuperAdminPage() {
   const [activeTab, setActiveTab] = React.useState<AdminTab>("overview");
   const [user, setUser] = React.useState<AdminUser | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -79,7 +82,18 @@ export default function SuperAdminPage() {
     };
   }, [router]);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showLogoutConfirm && !isLoggingOut) {
+        setShowLogoutConfirm(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showLogoutConfirm, isLoggingOut]);
+
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     try {
       await apiFetch(`${API_BASE_URL}/api/auth/logout`, { method: "POST" });
       const { supabase } = await import("@/lib/supabase");
@@ -135,7 +149,7 @@ export default function SuperAdminPage() {
             <ThemeToggle />
 
             <button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 text-xs font-bold transition-all"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -215,6 +229,63 @@ export default function SuperAdminPage() {
           </div>
         </main>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => !isLoggingOut && setShowLogoutConfirm(false)}
+          />
+          <div className="relative w-full max-w-sm rounded-3xl bg-card border border-border shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex flex-col items-center justify-center pt-8 pb-3 text-center px-6">
+              <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center mb-4 text-rose-600 dark:text-rose-400">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <h3 className="font-extrabold text-foreground text-xl tracking-tight">End Admin Session?</h3>
+              <span className="mt-1 px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                Revoke Elevated Privileges
+              </span>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 pb-6 text-center">
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Are you sure you want to sign out of the God Mode Console? You will be returned to the Admin Gateway and will need your Master Security Key to re-authenticate.
+              </p>
+            </div>
+
+            {/* Modal Action Buttons */}
+            <div className="p-4 bg-muted/40 border-t border-border flex gap-3">
+              <button
+                disabled={isLoggingOut}
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl bg-card hover:bg-muted text-foreground border border-border font-bold text-sm shadow-sm transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isLoggingOut}
+                onClick={handleLogout}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isLoggingOut ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Signing out...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
