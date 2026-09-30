@@ -6,7 +6,7 @@ const cspHeader = `
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://images.unsplash.com;
   font-src 'self' data: https://fonts.gstatic.com;
-  connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.onrender.com http://localhost:3001 ws://localhost:3001 http://127.0.0.1:3001 ws://127.0.0.1:3001;
+  connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.onrender.com http://localhost:3001 ws://localhost:3001 http://127.0.0.1:3001 ws://127.0.0.1:3001 http://localhost:3002 ws://localhost:3002 http://127.0.0.1:3002 ws://127.0.0.1:3002;
   frame-ancestors 'none';
   form-action 'self';
   base-uri 'self';
