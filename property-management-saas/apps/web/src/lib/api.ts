@@ -58,7 +58,8 @@ export async function apiFetch(url: string, options: ApiOptions = {}) {
     url.includes("supabase.co") ||
     url.includes("onrender.com") ||
     url.includes("localhost:3002") ||
-    url.includes("127.0.0.1:3002");
+    url.includes("127.0.0.1:3002") ||
+    url.includes("[::1]:3002");
 
   const { data } = await supabase.auth.getSession();
   const session = data?.session;

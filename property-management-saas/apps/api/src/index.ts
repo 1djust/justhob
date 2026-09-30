@@ -54,7 +54,8 @@ const start = async () => {
     }, 50 * 1000).unref();
 
     const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
-    await app.listen({ port, host: "0.0.0.0" });
+    const host = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "::");
+    await app.listen({ port, host });
     console.log(`API running on http://localhost:${port}`);
   } catch (err) {
     app.log.error(err);

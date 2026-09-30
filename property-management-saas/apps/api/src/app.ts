@@ -71,6 +71,8 @@ export function buildApp() {
           lower === "http://localhost" ||
           lower.startsWith("http://127.0.0.1:") ||
           lower === "http://127.0.0.1" ||
+          lower.startsWith("http://[::1]:") ||
+          lower === "http://[::1]" ||
           lower.startsWith("http://10.0.2.2:")
         ) {
           return cb(null, true);
