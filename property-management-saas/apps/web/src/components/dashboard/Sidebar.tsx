@@ -26,7 +26,9 @@ import {
   DollarSign,
   ShieldCheck,
   History,
+  ExternalLink,
 } from "lucide-react";
+import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
 import { clsx, type ClassValue } from "clsx";
@@ -257,32 +259,19 @@ export function Sidebar({
     { id: "settings", label: "Settings", icon: Settings, managerOnly: true },
   ];
 
-  const filteredItems = isSuperAdmin
-    ? []
-    : navItems.filter((item) => {
-        if (userRole === "LANDLORD") {
-          return [
-            "dashboard",
-            "properties",
-            "payments",
-            "occupancy",
-            "maintenance",
-          ].includes(item.id);
-        }
-        return !item.managerOnly || isPropertyManager;
-      });
-
-  const adminItems = [
-    { id: "admin-overview", label: "Overview", icon: Activity },
-    { id: "admin-users", label: "Users Management", icon: Users },
-    { id: "admin-workspaces", label: "Workspaces", icon: Building2 },
-    { id: "admin-upgrades", label: "Upgrade Requests", icon: TrendingUp },
-    { id: "admin-errors", label: "System Logs", icon: AlertOctagon },
-    { id: "admin-payments", label: "Payments", icon: DollarSign },
-    { id: "admin-security", label: "Security & MFA", icon: ShieldCheck },
-    { id: "admin-legal-leases", label: "Legal Leases", icon: FileCheck },
-    { id: "admin-audit-trail", label: "Manager Audit Trail", icon: History },
-  ];
+  const filteredItems = navItems.filter((item) => {
+    if (isSuperAdmin) return true;
+    if (userRole === "LANDLORD") {
+      return [
+        "dashboard",
+        "properties",
+        "payments",
+        "occupancy",
+        "maintenance",
+      ].includes(item.id);
+    }
+    return !item.managerOnly || isPropertyManager;
+  });
 
   return (
     <>
@@ -350,6 +339,40 @@ export function Sidebar({
 
         {/* Navigation Items */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 custom-scrollbar">
+          {isSuperAdmin && (
+            <div className="mb-3 pb-3 border-b border-border/70">
+              <Link
+                href="/super-admin"
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-2xl transition-all duration-200 group relative",
+                  "bg-gradient-to-br from-zinc-900 to-zinc-950 dark:from-zinc-900 dark:to-black text-white",
+                  "border border-zinc-800 hover:border-emerald-500/50 shadow-md hover:shadow-emerald-500/10",
+                  isCollapsed && "justify-center p-2.5",
+                )}
+                title="Launch Super Admin Console"
+              >
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                {!isCollapsed && (
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold tracking-tight text-zinc-100 group-hover:text-emerald-400 transition-colors">
+                        Super Admin
+                      </span>
+                      <span className="px-1.5 py-0.5 text-[8px] font-mono font-extrabold uppercase rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                        GOD MODE
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 truncate flex items-center gap-1 mt-0.5">
+                      Platform Console <ExternalLink className="w-3 h-3 inline opacity-60" />
+                    </p>
+                  </div>
+                )}
+              </Link>
+            </div>
+          )}
+
           {filteredItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
@@ -394,55 +417,11 @@ export function Sidebar({
               </button>
             );
           })}
-
-          {isSuperAdmin && (
-            <div className="mt-6 pt-4 border-t border-border/80">
-              <p className="px-3 mb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground/80">
-                Super Admin Console
-              </p>
-              {adminItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeView === item.id;
-
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      onViewChange(item.id as DashboardView);
-                      if (isMobileOpen) setIsMobileOpen(false);
-                    }}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative text-sm",
-                      isActive
-                        ? "bg-primary/10 text-primary font-bold shadow-sm"
-                        : "text-muted-foreground hover:text-foreground dark:hover:text-zinc-200 hover:bg-muted/50 dark:hover:bg-zinc-800/30",
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "h-5 w-5 flex-shrink-0 transition-transform duration-200",
-                        isActive ? "scale-100" : "group-hover:scale-115",
-                      )}
-                    />
-                    {!isCollapsed && (
-                      <span className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
-                        {item.label}
-                      </span>
-                    )}
-                    {isActive && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-primary rounded-r-full" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </nav>
 
         {/* Notification Bell Section */}
-        {!isSuperAdmin && (
-          <div
-            ref={notifRef}
+        <div
+          ref={notifRef}
             className="relative px-4 py-2 border-t border-border"
           >
             <button
@@ -558,7 +537,6 @@ export function Sidebar({
               </div>
             )}
           </div>
-        )}
 
         {/* Bottom Actions/Footer */}
         <div className="p-4 border-t border-border bg-secondary/50/50 dark:bg-card/20">

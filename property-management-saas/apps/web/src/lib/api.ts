@@ -113,9 +113,7 @@ export async function apiFetch(url: string, options: ApiOptions = {}) {
     finalBody = JSON.stringify({});
   }
 
-  const response = await fetch(
-    url.startsWith("http") ? url : `${API_BASE_URL}${url}`,
-    {
+  const response = await fetch(targetUrl, {
       ...options,
       credentials: options.credentials || "include",
       body: finalBody,

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
 import { PropertiesList } from "@/components/properties/PropertiesList";
@@ -106,9 +107,6 @@ export default function DashboardPage() {
           return;
         }
         setUser(data.user);
-        if (data.user?.globalRole === "SUPER_ADMIN") {
-          setActiveView("admin-overview");
-        }
         if (data.user?.workspaces?.length > 0) {
           const priority: Record<string, number> = {
             PROPERTY_MANAGER: 1,
@@ -324,6 +322,25 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                ) : user?.globalRole === "SUPER_ADMIN" ? (
+                  <div className="text-center py-10 px-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm max-w-lg mx-auto">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto mb-4">
+                      <ShieldCheck className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-bold text-foreground mb-1">
+                      Super Administrator Account
+                    </h3>
+                    <p className="text-xs text-muted-foreground mb-5 max-w-sm mx-auto">
+                      You are authenticated with platform-wide privileges. You can create workspaces here or launch the dedicated God Mode console to oversee all tenants and telemetry.
+                    </p>
+                    <Link
+                      href="/super-admin"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-bold transition-all shadow-md hover:scale-[1.02]"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+                      Open Super Admin Console ↗
+                    </Link>
                   </div>
                 ) : (
                   <p className="text-zinc-500 text-center py-12 font-medium">
