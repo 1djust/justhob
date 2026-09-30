@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/database";
+import { Prisma, Role } from "@prisma/client";
 import { authenticate, requireSuperAdmin } from "../lib/middleware";
 import { supabaseAdmin } from "../lib/supabase";
 import {
@@ -59,6 +60,21 @@ const PaginationQuery = Type.Object({
   page: Type.Optional(Type.Number({ minimum: 1 })),
   limit: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
   search: Type.Optional(Type.String({ maxLength: 200 })),
+  showTestUsers: Type.Optional(Type.Boolean()),
+});
+
+const UsersQuery = Type.Object({
+  page: Type.Optional(Type.Number({ minimum: 1 })),
+  limit: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
+  search: Type.Optional(Type.String({ maxLength: 200 })),
+  userType: Type.Optional(
+    Type.Union([
+      Type.Literal("real"),
+      Type.Literal("test"),
+      Type.Literal("all"),
+    ]),
+  ),
+  role: Type.Optional(Type.String({ maxLength: 50 })),
   showTestUsers: Type.Optional(Type.Boolean()),
 });
 
@@ -591,30 +607,64 @@ export default async function superAdminRoutes(
   // =====================================================================
   // GET /users — Full user audit list
   // =====================================================================
-  server.get<{ Querystring: Static<typeof PaginationQuery> }>(
+  server.get<{ Querystring: Static<typeof UsersQuery> }>(
     "/users",
     {
-      schema: { querystring: PaginationQuery },
+      schema: { querystring: UsersQuery },
     },
     async (request) => {
-      const { page = 1, limit = 20, search, showTestUsers = false } = request.query;
+      const {
+        page = 1,
+        limit = 20,
+        search,
+        userType = "real",
+        role,
+        showTestUsers,
+      } = request.query;
       const skip = (page - 1) * limit;
 
-      const where: Record<string, any> = {
-        role: "PROPERTY_MANAGER",
-      };
+      const testEmailConditions: Prisma.UserWhereInput[] = [
+        { email: { contains: "e2e-", mode: "insensitive" } },
+        { email: { contains: "test-", mode: "insensitive" } },
+        { email: { contains: "-test", mode: "insensitive" } },
+        { email: { contains: "test_", mode: "insensitive" } },
+        { email: { contains: "_test", mode: "insensitive" } },
+        { email: { endsWith: "@security.com" } },
+        { email: { endsWith: "@limits.com" } },
+        { email: { endsWith: "@test.com" } },
+        { email: { endsWith: "@test-gatekeeper.com" } },
+        { email: { endsWith: "@audittest.com" } },
+        { email: { endsWith: "@logstest.com" } },
+        { email: { endsWith: "@legaltest.com" } },
+        { email: { endsWith: "@preparmy.com" } },
+        { email: { endsWith: "@example.com" } },
+        { email: { endsWith: "@justhob.com" } },
+        { id: { startsWith: "admin-shield" } },
+        { id: { startsWith: "sec-user" } },
+        { id: { startsWith: "test-" } },
+      ];
 
-      const andFilters: any[] = [];
+      const where: Prisma.UserWhereInput = {};
+      if (role && role !== "ALL") {
+        where.role = role as Role;
+      }
 
-      if (!showTestUsers) {
-        andFilters.push(
-          { email: { not: { contains: "e2e-" } } },
-          { email: { not: { contains: "test-" } } },
-          { email: { not: { endsWith: "@test-gatekeeper.com" } } },
-          { email: { not: { endsWith: "@limits.com" } } },
-          { email: { not: { endsWith: "@preparmy.com" } } },
-          { email: { not: { endsWith: "@example.com" } } },
-        );
+      const andFilters: Prisma.UserWhereInput[] = [];
+
+      // Determine active filter type (respect legacy showTestUsers if provided)
+      let activeType = userType;
+      if (showTestUsers !== undefined) {
+        activeType = showTestUsers ? "all" : "real";
+      }
+
+      if (activeType === "real") {
+        andFilters.push({
+          NOT: testEmailConditions,
+        });
+      } else if (activeType === "test") {
+        andFilters.push({
+          OR: testEmailConditions,
+        });
       }
 
       if (search) {
@@ -630,7 +680,9 @@ export default async function superAdminRoutes(
         where.AND = andFilters;
       }
 
-      const [users, total] = await Promise.all([
+      const roleFilter: Prisma.UserWhereInput = role && role !== "ALL" ? { role: role as Role } : {};
+
+      const [users, total, realCount, testCount, allCount] = await Promise.all([
         prisma.user.findMany({
           where,
           skip,
@@ -660,6 +712,21 @@ export default async function superAdminRoutes(
           },
         }),
         prisma.user.count({ where }),
+        prisma.user.count({
+          where: {
+            ...roleFilter,
+            NOT: testEmailConditions,
+          },
+        }),
+        prisma.user.count({
+          where: {
+            ...roleFilter,
+            OR: testEmailConditions,
+          },
+        }),
+        prisma.user.count({
+          where: roleFilter,
+        }),
       ]);
 
       return {
@@ -668,6 +735,87 @@ export default async function superAdminRoutes(
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        counts: {
+          real: realCount,
+          test: testCount,
+          all: allCount,
+        },
+      };
+    },
+  );
+
+  // =====================================================================
+  // POST /users/purge-test-users — Purge synthetic test accounts safely
+  // =====================================================================
+  server.post(
+    "/users/purge-test-users",
+    { schema: {} },
+    async (request) => {
+      const testEmailConditions: Prisma.UserWhereInput[] = [
+        { email: { contains: "e2e-", mode: "insensitive" } },
+        { email: { contains: "test-", mode: "insensitive" } },
+        { email: { contains: "-test", mode: "insensitive" } },
+        { email: { contains: "test_", mode: "insensitive" } },
+        { email: { contains: "_test", mode: "insensitive" } },
+        { email: { endsWith: "@security.com" } },
+        { email: { endsWith: "@limits.com" } },
+        { email: { endsWith: "@test.com" } },
+        { email: { endsWith: "@test-gatekeeper.com" } },
+        { email: { endsWith: "@audittest.com" } },
+        { email: { endsWith: "@logstest.com" } },
+        { email: { endsWith: "@legaltest.com" } },
+        { email: { endsWith: "@preparmy.com" } },
+        { email: { endsWith: "@example.com" } },
+        { email: { endsWith: "@justhob.com" } },
+        { id: { startsWith: "admin-shield" } },
+        { id: { startsWith: "sec-user" } },
+        { id: { startsWith: "test-" } },
+      ];
+
+      const requesterEmail = (request as any).user?.email;
+      const notFilters: Prisma.UserWhereInput[] = [
+        { email: { endsWith: "@gmail.com" } },
+        { role: "SUPER_ADMIN" },
+      ];
+      if (requesterEmail) {
+        notFilters.push({ email: requesterEmail });
+      }
+
+      // CRITICAL SAFETY CHECK: NEVER purge real admin accounts or @gmail.com accounts
+      const candidateTestUsers = await prisma.user.findMany({
+        where: {
+          OR: testEmailConditions,
+          NOT: notFilters,
+        },
+        select: { id: true, email: true },
+      });
+
+      const userIds = candidateTestUsers.map((u) => u.id);
+
+      if (userIds.length === 0) {
+        return { success: true, count: 0, message: "No test accounts found to purge." };
+      }
+
+      // 1. Clean up database foreign keys in transaction
+      await prisma.$transaction([
+        prisma.workspaceMember.deleteMany({ where: { userId: { in: userIds } } }),
+        prisma.notification.deleteMany({ where: { userId: { in: userIds } } }),
+        prisma.upgradeRequest.deleteMany({ where: { userId: { in: userIds } } }),
+        prisma.property.updateMany({ where: { ownerId: { in: userIds } }, data: { ownerId: null } }),
+        prisma.user.deleteMany({ where: { id: { in: userIds } } }),
+      ]);
+
+      // 2. Best-effort Supabase Auth user deletion
+      Promise.allSettled(
+        userIds.map((uid) => supabaseAdmin.auth.admin.deleteUser(uid)),
+      ).catch((err) => {
+        request.log.warn({ err }, "Background Supabase Auth test accounts cleanup warning");
+      });
+
+      return {
+        success: true,
+        count: userIds.length,
+        message: `Successfully purged ${userIds.length} test accounts.`,
       };
     },
   );

@@ -33,6 +33,9 @@ import {
   Network,
   User,
   FileText,
+  FlaskConical,
+  Trash2,
+  Globe,
 } from "lucide-react";
 import { SecurityLogs } from "./SecurityLogs";
 import { AuditTrail } from "./AuditTrail";
@@ -2819,16 +2822,38 @@ function UsersTab() {
     enabled: !!expandedManagerId,
   });
 
+  const [userType, setUserType] = React.useState<"real" | "test" | "all">("real");
+  const [roleFilter, setRoleFilter] = React.useState<string>("ALL");
+  const [showPurgeConfirm, setShowPurgeConfirm] = React.useState(false);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["super-admin-users", page, searchTerm],
+    queryKey: ["super-admin-users", page, searchTerm, userType, roleFilter],
     queryFn: () => {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", "15");
+      params.set("userType", userType);
+      if (roleFilter !== "ALL") params.set("role", roleFilter);
       if (searchTerm) params.set("search", searchTerm);
       return apiFetch(
         `${API_BASE_URL}/api/super-admin/users?${params.toString()}`,
       );
+    },
+  });
+
+  const purgeMutation = useMutation({
+    mutationFn: async () => {
+      return apiFetch(`${API_BASE_URL}/api/super-admin/users/purge-test-users`, {
+        method: "POST",
+      });
+    },
+    onSuccess: (res: any) => {
+      toast.success(res?.message || "Test accounts purged successfully");
+      setShowPurgeConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ["super-admin-users"] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to purge test accounts");
     },
   });
 
@@ -2856,10 +2881,119 @@ function UsersTab() {
 
   const users: UserAudit[] = data?.users || [];
   const totalPages = data?.totalPages || 1;
+  const counts = data?.counts || { real: 0, test: 0, all: 0 };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Filters */}
+      {/* Sub-tabs Segmentation & Actions */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        {/* Segmented Sub-tabs */}
+        <div className="flex items-center p-1 rounded-2xl bg-muted/60 border border-border self-start">
+          <button
+            onClick={() => {
+              setUserType("real");
+              setPage(1);
+            }}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+              userType === "real"
+                ? "bg-card text-foreground shadow-sm border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Users className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Real Users</span>
+            <span
+              className={cn(
+                "px-2 py-0.5 rounded-full text-[10px] font-mono",
+                userType === "real"
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-black"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {counts.real}
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setUserType("test");
+              setPage(1);
+            }}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+              userType === "test"
+                ? "bg-card text-foreground shadow-sm border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <FlaskConical className="w-3.5 h-3.5 text-amber-500" />
+            <span>Test Accounts</span>
+            <span
+              className={cn(
+                "px-2 py-0.5 rounded-full text-[10px] font-mono",
+                userType === "test"
+                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-black"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {counts.test}
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setUserType("all");
+              setPage(1);
+            }}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+              userType === "all"
+                ? "bg-card text-foreground shadow-sm border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Globe className="w-3.5 h-3.5 text-blue-500" />
+            <span>All Users</span>
+            <span
+              className={cn(
+                "px-2 py-0.5 rounded-full text-[10px] font-mono",
+                userType === "all"
+                  ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-black"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {counts.all}
+            </span>
+          </button>
+        </div>
+
+        {/* Purge Test Data Button */}
+        {userType === "test" && counts.test > 0 && (
+          <button
+            onClick={() => setShowPurgeConfirm(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 text-xs font-bold transition-all cursor-pointer shadow-sm self-start sm:self-auto"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Purge All Test Accounts</span>
+          </button>
+        )}
+      </div>
+
+      {/* Test Accounts Quarantine Notice */}
+      {userType === "test" && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+          <FlaskConical className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <p className="font-bold text-foreground">Isolated Test & Synthetic Accounts</p>
+            <p className="text-muted-foreground mt-0.5 leading-relaxed">
+              These accounts were generated by automated security audits, tier limit tests, and API integration checks. They are quarantined here and kept separate from legitimate customers.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Filters (Search & Role) */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -2874,6 +3008,21 @@ function UsersTab() {
             className="w-full pl-11 pr-4 py-3 rounded-xl bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm transition-all"
           />
         </div>
+
+        <select
+          value={roleFilter}
+          onChange={(e) => {
+            setRoleFilter(e.target.value);
+            setPage(1);
+          }}
+          className="px-4 py-3 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm cursor-pointer"
+        >
+          <option value="ALL">All Roles</option>
+          <option value="PROPERTY_MANAGER">Property Managers</option>
+          <option value="LANDLORD">Landlords</option>
+          <option value="TENANT">Tenants</option>
+          <option value="SUPER_ADMIN">Super Admins</option>
+        </select>
       </div>
 
       {isLoading ? (
@@ -3595,6 +3744,60 @@ function UsersTab() {
                 className="px-5 py-2 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Purge Test Accounts Confirmation Modal */}
+      {showPurgeConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => !purgeMutation.isPending && setShowPurgeConfirm(false)}
+          />
+          <div className="relative w-full max-w-md rounded-3xl bg-card border border-border shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center justify-center pt-8 pb-3 text-center px-6">
+              <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center mb-4 text-rose-600 dark:text-rose-400">
+                <Trash2 className="w-8 h-8" />
+              </div>
+              <h3 className="font-extrabold text-foreground text-xl tracking-tight">Purge All Test Accounts?</h3>
+              <span className="mt-1 px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                {counts.test} Accounts Will Be Removed
+              </span>
+            </div>
+
+            <div className="px-6 pb-6 text-center">
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                This will permanently remove all synthetic test accounts from both the database and Supabase Auth. Real customer data, registered landlords, and your admin profile will be completely untouched.
+              </p>
+            </div>
+
+            <div className="p-4 bg-muted/40 border-t border-border flex gap-3">
+              <button
+                disabled={purgeMutation.isPending}
+                onClick={() => setShowPurgeConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl bg-card hover:bg-muted text-foreground border border-border font-bold text-sm shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={purgeMutation.isPending}
+                onClick={() => purgeMutation.mutate()}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                {purgeMutation.isPending ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Purging...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Purge {counts.test} Accounts</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
