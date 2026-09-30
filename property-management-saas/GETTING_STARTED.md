@@ -75,37 +75,29 @@ COOKIE_SECRET="another-secret-key-here"
 
 ## 3. Run the Application
 
-### 3.1 Backend API & Web App (WSL / Ubuntu)
+### 3.1 Backend API & Web App (Windows Native)
 
-For performance reasons, the API and Web apps must be run inside your WSL 2 (Ubuntu) environment:
+The API and Web apps run natively on Windows via Turborepo:
 
-1. Open your Ubuntu terminal.
-2. Navigate to the project directory:
+1. Open PowerShell or your VS Code terminal.
+2. From the repository root or `property-management-saas`:
 
-```bash
-cd ~/projects/justhub/property-management-saas
-```
-
-3. Start the development server:
-
-```bash
-npm run dev
+```powershell
+pnpm dev
 ```
 
 - **Frontend**: [http://localhost:3000](http://localhost:3000)
-- **Backend API**: [http://localhost:3001](http://localhost:3001)
+- **Backend API**: [http://localhost:3002](http://localhost:3002)
 
-_(Note: Windows 11 automatically bridges these ports, allowing you to access them from your Windows browser)._
+### 3.2 Mobile App (Flutter)
 
-### 3.2 Mobile App (Windows)
+The Flutter mobile app (`propertystack_mobile`) runs natively on Windows:
 
-The Flutter mobile app (`propertystack_mobile`) runs directly on Windows to support native USB debugging:
-
-1. Open your terminal in VS Code or Android Studio on Windows.
+1. Open PowerShell or your VS Code terminal.
 2. Navigate to the mobile app directory:
 
 ```powershell
-cd "C:\Users\USER\Desktop\PropertyStack\propertystack_mobile"
+cd propertystack_mobile
 ```
 
 3. Connect an Android device or start an emulator, then run:

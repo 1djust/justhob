@@ -1,19 +1,29 @@
 import "dotenv/config";
+import dns from "dns/promises";
 import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
-
-const prisma = new PrismaClient();
-
 async function main() {
+  const host = "aws-1-eu-north-1.pooler.supabase.com";
+  try {
+    const ips = await dns.resolve4(host);
+    if (ips && ips.length > 0) {
+      const dbIp = ips.includes("51.21.18.29") ? "51.21.18.29" : ips[0];
+      if (process.env.DATABASE_URL) process.env.DATABASE_URL = process.env.DATABASE_URL.replace(host, dbIp);
+      if (process.env.DIRECT_URL) process.env.DIRECT_URL = process.env.DIRECT_URL.replace(host, dbIp);
+    }
+  } catch {}
+
+  const supabaseUrl = process.env.SUPABASE_URL!;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const prisma = new PrismaClient();
   const email = process.argv[2] || "propertystackapp@gmail.com";
-  const newPassword = process.argv[2] || "Admin@123456";
+  const newPassword = process.argv[3] || "Admin@123456";
 
   console.log(`Checking account status for ${email}...`);
 

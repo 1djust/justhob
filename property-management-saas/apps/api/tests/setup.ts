@@ -17,7 +17,7 @@ process.env.NODE_ENV = "test";
 // Suppress noisy logs during testing
 process.env.LOG_LEVEL = "silent";
 
-// Apply the DNS resolution fix for tests running on WSL 2
+// Apply the DNS IPv4 resolution fix for Supabase pooler
 const host = "aws-1-eu-north-1.pooler.supabase.com";
 try {
   const ips = await dns.resolve4(host);

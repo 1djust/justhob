@@ -10,7 +10,7 @@ async function main() {
     process.exit(1);
   }
 
-  // DNS fallback for Supabase pooler in WSL
+  // DNS fallback for Supabase pooler IPv4 resolution
   const host = "aws-1-eu-north-1.pooler.supabase.com";
   try {
     const ips = await dns.resolve4(host);

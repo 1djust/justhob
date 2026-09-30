@@ -40,7 +40,7 @@ require("dotenv/config");
 const promises_1 = __importDefault(require("dns/promises"));
 const supabase_js_1 = require("@supabase/supabase-js");
 async function main() {
-    // DNS fallback for Supabase pooler in WSL
+    // DNS fallback for Supabase pooler IPv4 resolution
     const host = "aws-1-eu-north-1.pooler.supabase.com";
     try {
         const ips = await promises_1.default.resolve4(host);

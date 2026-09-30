@@ -20,14 +20,14 @@ It works in tandem with the `.agents/skills/` directory: every time a bug is log
 
 ---
 
-## 1. Prisma P1001 Database Connection Timeout under WSL 2
+## 1. Prisma P1001 Database Connection Timeout (IPv6 Resolution Bug)
 
 **Date**: June 13, 2026
-**Environment**: WSL 2 (Ubuntu) / Node.js / Vitest
+**Environment**: Node.js / Vitest
 **Bug/Latency**: Test execution (Vitest) hung and timed out with a P1001 error (`Can't reach database server...`) trying to connect to the Supabase pooler.
-**Root Cause**: Prisma's native Rust query engine has a DNS resolution bug in WSL 2 where it fails to resolve hostnames (like `aws-1-eu-north-1.pooler.supabase.com`) or attempts IPv6 paths that are not routable.
+**Root Cause**: Prisma's native Rust query engine had a DNS resolution issue where it fails to resolve hostnames (like `aws-1-eu-north-1.pooler.supabase.com`) or attempts IPv6 paths that are not routable.
 **Resolution**:
-- Modified [setup.ts](file:///home/djust/projects/justhub/property-management-saas/apps/api/tests/setup.ts) and [index.ts](file:///home/djust/projects/justhub/property-management-saas/apps/api/src/index.ts) to dynamically resolve the pooler hostname using Node's `dns.resolve4` at startup.
+- Modified setup.ts and index.ts to dynamically resolve the pooler hostname using Node's `dns.resolve4` at startup.
 - Dynamically swapped the pooler hostname in the database connection string with the resolved IPv4 address before initializing the Prisma Client.
 
 ---

@@ -18,8 +18,8 @@ export const API_BASE_URL =
   (isProduction
     ? "https://propertystack.onrender.com"
     : typeof window !== "undefined"
-      ? `http://${window.location.hostname}:3001`
-      : "http://localhost:3001");
+      ? `http://${window.location.hostname}:3002`
+      : "http://localhost:3002");
 
 export interface ApiOptions extends RequestInit {
   silent?: boolean;
@@ -57,8 +57,8 @@ export async function apiFetch(url: string, options: ApiOptions = {}) {
     url.startsWith(API_BASE_URL) ||
     url.includes("supabase.co") ||
     url.includes("onrender.com") ||
-    url.includes("localhost:3001") ||
-    url.includes("127.0.0.1:3001");
+    url.includes("localhost:3002") ||
+    url.includes("127.0.0.1:3002");
 
   const { data } = await supabase.auth.getSession();
   const session = data?.session;

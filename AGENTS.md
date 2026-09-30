@@ -8,26 +8,23 @@ This is a Turbo monorepo workspace at `C:\Users\USER\Desktop\PropertyStack`. Key
 - `propertystack_mobile/` — Flutter mobile app
 - `.agents/skills/` — Documentation/reference skills for agents
 
-## Development Environment (WSL 2)
+## Development Environment (Native Windows)
 
-> **CRITICAL**: The web application and API have been migrated to native Ubuntu (WSL 2) to resolve performance bottlenecks. 
+> **NOTE**: All development runs natively on Windows. Flutter SDK is at `C:\src\flutter`.
 
 ## Quick Start
-For detailed instructions on setting up and running the project, refer to the [DEVELOPMENT.md](file:///home/djust/projects/justhub/DEVELOPMENT.md) guide.
+For detailed instructions on setting up and running the project, refer to the [DEVELOPMENT.md](file:///c:/Projects/justhub/DEVELOPMENT.md) guide.
 
 ### Starting the Servers
 1. **Web & API Backend**:
    ```bash
-   bash wsl_start_dev.sh
+   pnpm --prefix property-management-saas dev
    ```
 2. **Mobile App**:
    ```bash
    cd propertystack_mobile
-   ./run.sh
+   flutter run
    ```
-
-### Code Syncing (Windows vs Linux)
-Because the codebase is split for performance reasons, always use `git push` from one environment and `git pull` in the other if you have made cross-stack changes.
 
 ## Build, Lint, Test Commands
 

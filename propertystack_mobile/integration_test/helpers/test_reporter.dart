@@ -67,7 +67,7 @@ class TestReporter {
     final str = error.toString().toLowerCase();
     
     if (str.contains('connection refused') || str.contains('socketexception') || str.contains('errno = 111')) {
-      return 'Backend API is unreachable. Ensure the dev server is running (run `bash wsl_start_dev.sh`) and listening on port 3001.';
+      return 'Backend API is unreachable. Ensure the dev server is running (`pnpm --prefix property-management-saas dev`) and listening on port 3002.';
     }
     if (str.contains('403') || str.contains('forbidden') || str.contains('no tenant profile')) {
       return 'Account role mismatch or missing tenant/landlord record. Verify test account workspace membership in the database or seed test data.';

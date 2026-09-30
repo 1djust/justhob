@@ -11,12 +11,12 @@ class ApiConfig {
   static bool get isProduction => _env == 'production' || kReleaseMode;
 
   static const String prodUrl = 'https://propertystack.onrender.com/api';
-  static const String devUrl = 'http://10.0.2.2:3001/api'; // Android Emulator alias
+  static const String devUrl = 'http://10.0.2.2:3002/api'; // Android Emulator alias
 
   static String get baseUrl {
     if (isProduction) return prodUrl;
     if (Platform.isAndroid) return devUrl;
-    return 'http://127.0.0.1:3001/api';
+    return 'http://127.0.0.1:3002/api';
   }
 }
 

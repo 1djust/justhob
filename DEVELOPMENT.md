@@ -1,11 +1,11 @@
 # Development Guide
 
-This document explains how to start and run the local development environment for the PropertyStack project. For tracking live deployments and rollback instructions, refer to the [RELEASE_LOG.md](file:///home/djust/projects/justhub/RELEASE_LOG.md) guide.
+This document explains how to start and run the local development environment for the PropertyStack project. For tracking live deployments and rollback instructions, refer to the [RELEASE_LOG.md](./RELEASE_LOG.md) guide.
 
 ## Prerequisites
-- **WSL 2 (Ubuntu)**: All commands should be run within the WSL environment.
-- **Node.js / npm**: For the web and backend services.
-- **Flutter**: For the mobile tenant application.
+- **Windows (Native)**: All commands run natively on Windows in PowerShell, Command Prompt, or VS Code terminal.
+- **Node.js / pnpm**: For the web and backend services.
+- **Flutter SDK**: Located at `C:\src\flutter` (on PATH) for the mobile tenant application.
 
 ---
 
@@ -13,19 +13,19 @@ This document explains how to start and run the local development environment fo
 The core platform (API and Web) is located in `property-management-saas/`.
 
 ### Starting the Dev Servers
-You can use the shortcut script in the root directory:
-```bash
-bash wsl_start_dev.sh
+From the root workspace directory:
+```powershell
+pnpm --prefix property-management-saas dev
 ```
-Or manually:
-```bash
-cd ~/projects/justhub/property-management-saas
-npm run dev
+Or directly within the subfolder:
+```powershell
+cd property-management-saas
+pnpm dev
 ```
 This starts the **Turbo dev server**, which handles:
-- **API Backend**: Running on port 3001 (typically).
-- **Web Frontend**: Running on port 3000 (typically).
-- **Database Connection**: Ensure your database is accessible.
+- **API Backend**: Running on `http://localhost:3002`.
+- **Web Frontend**: Running on `http://localhost:3000`.
+- **Database Connection**: Configured via Supabase pooler in `.env`.
 
 ---
 
@@ -34,17 +34,48 @@ The mobile application is located in the `propertystack_mobile/` directory.
 
 ### Running the App on Emulator
 
-```bash
-cd ~/projects/justhub/propertystack_mobile
-./run.sh
-```
-**What the script does:**
-- Runs `flutter run` which will automatically detect and attach to your running Android emulator.
+1. **Ensure the Android Emulator is Running**:
+   Confirm your emulator (e.g. `emulator-5554`) is visible:
+   ```powershell
+   flutter devices
+   ```
+
+2. **Start Flutter Run (Interactive Dev Session with Hot Reload)**:
+   ```powershell
+   cd propertystack_mobile
+   flutter run -d emulator-5554
+   ```
+   **Dev Controls while running**:
+   - `r` : **Hot Reload** (instant sub-second UI updates without losing app state)
+   - `R` : **Hot Restart** (re-initializes app state from scratch)
+   - `h` : Repeat this help message
+   - `d` : Open Flutter DevTools in browser
+   - `q` : Quit dev session
+
+3. **Instant App Launch (Without Rebuilding)**:
+   If the app is already installed on the emulator and you just want to open it:
+   ```powershell
+   adb -s emulator-5554 shell am start -n com.propertystack.mobile/.MainActivity
+   ```
+   *(Or click the **PropertyStack** icon directly from the emulator app drawer).*
+
+4. **Attach Hot-Reload to an Already-Running App**:
+   To attach an interactive debugging session without waiting for a full build:
+   ```powershell
+   cd propertystack_mobile
+   flutter attach -d emulator-5554
+   ```
+
+5. **Waking / Unlocking Emulator Screen**:
+   If the emulator goes to sleep or stays on the ambient lock screen:
+   ```powershell
+   adb -s emulator-5554 shell wm dismiss-keyguard
+   adb -s emulator-5554 shell input keyevent 82
+   ```
 
 #### Simulating Fingerprint Authentication
 When testing biometric login on the Android Emulator, the emulator acts as a fresh device with no fingerprints enrolled.
-1. **Enroll a Fingerprint**: Inside the Emulator's Androi
-d Settings app, go to Security -> Screen Lock (set a PIN) -> Fingerprint.
+1. **Enroll a Fingerprint**: Inside the Emulator's Android Settings app, go to Security -> Screen Lock (set a PIN) -> Fingerprint.
 2. **Simulate Touch**: When prompted to touch the sensor by the OS or the Flutter app, use the emulator's Extended Controls (`...` menu) -> Fingerprint -> "Touch Sensor".
 3. **Command Line Bypass**: Alternatively, you can instantly simulate a successful fingerprint touch from your terminal by running:
    ```bash
@@ -53,42 +84,29 @@ d Settings app, go to Security -> Screen Lock (set a PIN) -> Fingerprint.
 
 ### Running on a Physical Android Device (USB)
 
-> ⚠️ This requires a one-time WSL 2 setup. See the full guide:
-> **[docs/ANDROID_PHYSICAL_DEVICE_TESTING.md](./docs/ANDROID_PHYSICAL_DEVICE_TESTING.md)**
-
-**Quick Start (after one-time setup is complete):**
-
-1. Start the Windows ADB server in **Windows PowerShell**:
+1. Plug in your phone via USB and tap **Allow** on the USB Debugging prompt.
+2. In your terminal, run:
    ```powershell
-   $adbPath = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-   & $adbPath kill-server
-   & $adbPath -a nodaemon server start
-   ```
-2. Plug in your phone via USB and tap **Allow** on the USB Debugging prompt.
-3. In your **WSL 2 terminal**, run the app:
-   ```bash
    cd propertystack_mobile
-   unset ADB_SERVER_SOCKET
-   flutter run -d NBQGSKPJVC6DOZEI
+   flutter devices
+   flutter run
    ```
-4. **Watch your phone screen** and tap **Install** when the popup appears.
 
-### Running on Linux Desktop (Fast Local Testing)
-For quick UI iteration without a physical device:
-```bash
+### Running on Chrome / Web (Fast Local Testing)
+For quick UI iteration without an emulator:
+```powershell
 cd propertystack_mobile
-flutter run -d linux
+flutter run -d chrome
 ```
-*Note: This runs as a desktop app inside WSL 2. Requires `dbus-run-session` and `gnome-keyring`.*
 
 ---
 
 ## Summary of Commands
 
-| Component | Directory | Shortcut | Manual Command |
-| :--- | :--- | :--- | :--- |
-| **Web & API** | `property-management-saas/` | `bash wsl_start_dev.sh` | `npm run dev` |
-| **Mobile App** | `propertystack_mobile/` | `./run.sh` | `flutter run -d linux` |
+| Component | Directory | Command |
+| :--- | :--- | :--- |
+| **Web & API** | Root or `property-management-saas/` | `pnpm --prefix property-management-saas dev` |
+| **Mobile App** | `propertystack_mobile/` | `flutter run` |
 
 ---
 
@@ -246,15 +264,14 @@ The email is sent through the official mailer chain (Brevo → Resend → SMTP) 
 
 #### Prerequisites
 - **Android Emulator running** (API 34+, typically `emulator-5554`)
-- **Backend API server running** (`bash wsl_start_dev.sh`)
-- **Flutter SDK** installed and on PATH
+- **Backend API server running** (`pnpm --prefix property-management-saas dev`)
+- **Flutter SDK** installed and on PATH (`C:\src\flutter`)
 
 #### Troubleshooting
-- **"VM Service connection refused"**: This is a WSL2 ↔ Windows networking limitation. The tests still execute on the emulator — press `Ctrl+C` after seeing test output complete.
 - **`pumpAndSettle` hangs**: All tests use `pump()` loops instead of `pumpAndSettle()` because the app has always-running services (SocketService, UpdateService). This is handled automatically.
 - **`FlutterError.onError` crash**: The test helpers save and restore the error handler around `app.main()` to prevent conflicts with the app's global error boundary.
 
-For full architecture details, see **[propertystack_mobile/integration_test/README.md](file:///home/djust/projects/justhub/propertystack_mobile/integration_test/README.md)**.
+For full architecture details, see **[propertystack_mobile/integration_test/README.md](./propertystack_mobile/integration_test/README.md)**.
 
 ---
 
@@ -262,30 +279,52 @@ For full architecture details, see **[propertystack_mobile/integration_test/READ
 Before deploying the application to production, you should run the master checklist script to verify security, linting, database schema integrity, tests, SEO, and performance:
 
 * **Core Checks** (Security, Lint, Schema, Tests, UX, SEO):
-  ```bash
-  python3 .agent/scripts/checklist.py .
+  ```powershell
+  python .agent/scripts/checklist.py .
   ```
 * **Full Production Checks** (Including Performance Lighthouse & Playwright E2E audits):
-  ```bash
-  python3 .agent/scripts/checklist.py . --url https://propertystack.vercel.app
+  ```powershell
+  python .agent/scripts/checklist.py . --url https://propertystack.vercel.app
   ```
 
 ---
 
 ## 6. Troubleshooting
-- **Port Conflicts & "Failed to Fetch" Errors**: Next.js automatically falls back to port 3001 if port 3000 is occupied by a dangling process. This collides with the API backend port (3001) and crashes both services. If you encounter this, kill dangling processes and restart the dev server:
-  ```bash
-  # Check ports
-  ss -lnt
-  # Kill dangling node/next-server processes
-  kill -9 $(pgrep -f "next-server|tsx")
+- **Port Conflicts & "Failed to Fetch" Errors**: If port 3000 or 3002 is occupied by a dangling process:
+  ```powershell
+  # Check ports in PowerShell
+  Get-NetTCPConnection -LocalPort 3000,3002 -ErrorAction SilentlyContinue | Select-Object LocalPort, OwningProcess
+  # Kill dangling node/tsx processes
+  Get-NetTCPConnection -LocalPort 3000,3002 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
   # Restart dev environment
-  bash wsl_start_dev.sh
+  pnpm --prefix property-management-saas dev
   ```
-- **Flutter Keyring**: If `run.sh` fails, ensure `dbus-run-session` and `gnome-keyring` are installed in your WSL environment.
 - **Database**: If the backend fails to start, verify your `.env` file in the `property-management-saas` folder.
 - **Scratch Scripts / Prisma Resolution**: If executing Node.js scratch scripts throws `Cannot find module '@prisma/client'`, ensure you are executing them from the `property-management-saas` directory using `npx tsx scratch/<script>.ts`. Running raw `.js` scripts from directories outside the workspace blocks Node's resolution path.
-- **Known Bugs & Fixes**: For a detailed log of past issues (e.g., Prisma IPv6 database connection timeouts) and their resolutions, please check the [KNOWN_ISSUES.md](./KNOWN_ISSUES.md) file.
+- **Android / Flutter Build & Emulator Issues**:
+  - **Gradle Transform Cache Corruption** (`Could not read workspace metadata from ...\transforms\...\metadata.bin`):
+    Stop running daemons and purge the cached transform:
+    ```powershell
+    Stop-Process -Name java -Force -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force "$env:USERPROFILE\.gradle\caches\8.14\transforms"
+    ```
+  - **Java 21 SSL Handshake with `download.flutter.io`** (`No subject alternative DNS name matching download.flutter.io found` or hanging GCS transfers):
+    Gradle repositories in `android/settings.gradle.kts` and `android/build.gradle.kts` are pre-configured to use the official mirror:
+    `maven("https://storage.flutter-io.cn/download.flutter.io")`
+  - **Emulator Shows Offline or `adb install` Hangs**:
+    Windows ADB daemon occasionally deadlocks when stale logcat background clients remain open. Cycle the ADB server:
+    ```powershell
+    Stop-Process -Name adb -Force -ErrorAction SilentlyContinue
+    adb start-server
+    adb devices
+    ```
+  - **Fast APK Push Bypass**:
+    If `adb install` takes too long to stream the debug APK directly, push and install via the local emulator shell:
+    ```powershell
+    adb -s emulator-5554 push build\app\outputs\flutter-apk\app-debug.apk /data/local/tmp/app.apk
+    adb -s emulator-5554 shell pm install -r -d /data/local/tmp/app.apk
+    ```
+- **Known Bugs & Fixes**: For a detailed log of past issues (e.g., Prisma IPv6 database connection timeouts, Android engine mirrors) and their resolutions, please check the [KNOWN_ISSUES.md](./KNOWN_ISSUES.md) file.
 
 ---
 

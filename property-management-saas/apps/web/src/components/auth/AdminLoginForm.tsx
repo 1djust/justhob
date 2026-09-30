@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, ShieldCheck, Lock } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Lock, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_BASE_URL } from "@/lib/api";
 
 export function AdminLoginForm() {
   const [email, setEmail] = React.useState("");
@@ -15,8 +15,45 @@ export function AdminLoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [loadingMessage, setLoadingMessage] = React.useState("");
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const router = useRouter();
+
+  // Retry wrapper for cold-start resilience
+  const fetchWithRetry = async (
+    url: string,
+    options: RequestInit,
+    maxRetries = 2,
+  ): Promise<ReturnType<typeof apiFetch>> => {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await apiFetch(url, options);
+      } catch (err: unknown) {
+        const isNetworkError =
+          err instanceof TypeError && err.message === "Failed to fetch";
+        const isLastAttempt = attempt === maxRetries;
+
+        if (!isNetworkError || isLastAttempt) throw err;
+
+        // Server is cold-starting — wake it up and retry
+        setLoadingMessage(
+          attempt === 0
+            ? "Waking up server… please wait"
+            : "Almost there… reconnecting",
+        );
+
+        // Ping health endpoint to trigger wake-up
+        try {
+          await fetch(`${API_BASE_URL}/health`, {
+            signal: AbortSignal.timeout(55_000),
+          });
+        } catch {
+          // Health ping failed too, but the server may still be starting
+        }
+      }
+    }
+    throw new Error("Failed to connect to server");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +62,9 @@ export function AdminLoginForm() {
 
     try {
       if (step === 1) {
+        setLoadingMessage("");
         // 1. Authenticate via centralized API with Super Admin attack notifications & lockout shield
-        const loginRes = (await apiFetch("/api/auth/login", {
+        const loginRes = (await fetchWithRetry("/api/auth/login", {
           method: "POST",
           body: JSON.stringify({ email, password, client: "web_admin" }),
         })) as {
@@ -93,7 +131,7 @@ export function AdminLoginForm() {
         // 3. Sync and Verify with Backend using the Security Key
         const verifyResponse = await apiFetch("/api/admin/verify", {
           method: "POST",
-          body: JSON.stringify({ securityKey }),
+          body: JSON.stringify({ securityKey: securityKey.trim() }),
         });
 
         if (!verifyResponse.success) {
@@ -105,7 +143,7 @@ export function AdminLoginForm() {
         // Final sync to ensure everything is set up
         await apiFetch("/api/auth/sync", { method: "POST" });
 
-        router.push("/dashboard");
+        router.push("/super-admin");
       }
     } catch (err: unknown) {
       const errorObj = err as Error;
@@ -119,6 +157,7 @@ export function AdminLoginForm() {
       }
     } finally {
       setLoading(false);
+      setLoadingMessage("");
     }
   };
 
@@ -195,7 +234,10 @@ export function AdminLoginForm() {
               className="flex items-center justify-center gap-2 rounded-2xl text-sm font-black transition-all bg-primary text-white hover:bg-primary/90 hover:scale-[1.02] h-14 w-full mt-6 shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? (
-                <div className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" />
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  {loadingMessage || "Authenticating…"}
+                </span>
               ) : (
                 <>
                   <Lock className="w-4 h-4" />

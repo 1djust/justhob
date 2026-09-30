@@ -52,17 +52,41 @@ export function buildApp() {
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   // Security: Restrict CORS to known frontend origins only
-  // M-1 fix: Only include localhost in development to prevent CORS abuse in production
+  // In development: dynamically allow any localhost, 127.0.0.1, or local emulator origins
   const isProd = process.env.NODE_ENV === "production";
   const allowedOrigins = [
-    ...(isProd ? [] : ["http://localhost:3000"]),
     "https://justhob.vercel.app",
     "https://propertystack.vercel.app",
     process.env.FRONTEND_URL,
   ].filter(Boolean) as string[];
 
   fastify.register(cors, {
-    origin: allowedOrigins,
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+
+      if (!isProd) {
+        const lower = origin.toLowerCase();
+        if (
+          lower.startsWith("http://localhost:") ||
+          lower === "http://localhost" ||
+          lower.startsWith("http://127.0.0.1:") ||
+          lower === "http://127.0.0.1" ||
+          lower.startsWith("http://10.0.2.2:")
+        ) {
+          return cb(null, true);
+        }
+      }
+
+      const match = allowedOrigins.some(
+        (allowed) => allowed && origin.toLowerCase() === allowed.toLowerCase()
+      );
+
+      if (match) {
+        return cb(null, true);
+      }
+
+      return cb(new Error("Not allowed by CORS"), false);
+    },
     credentials: true,
   });
 
@@ -265,6 +289,16 @@ export function buildApp() {
         requestId: request.id,
       },
     });
+  });
+
+  fastify.get("/", { schema: {} }, async () => {
+    return {
+      name: "PropertyStack API",
+      status: "online",
+      health: "/health",
+      version: "0.3.2",
+      docs: "Fastify API running on port 3002",
+    };
   });
 
   fastify.get("/health", { schema: {} }, async () => {

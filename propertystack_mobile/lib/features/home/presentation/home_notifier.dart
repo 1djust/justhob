@@ -47,6 +47,8 @@ class HomeNotifier extends StateNotifier<AsyncValue<Tenant?>> {
   void _startPolling() {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      final user = _ref.read(authStateProvider).valueOrNull;
+      if (user == null) return;
       debugPrint('[HomeNotifier] Periodic poll: refreshing dashboard...');
       _init();
     });

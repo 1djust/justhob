@@ -7,7 +7,7 @@ This guide documents the complete process for deploying a new version of the Ten
 ## Prerequisites
 
 - Access to the [GitHub repository](https://github.com/1djust/justhob)
-- WSL terminal with git configured
+- Terminal (PowerShell / Command Prompt) with git configured
 - The GitHub Actions build must have passed (green checkmark ✅)
 
 ---
@@ -31,17 +31,16 @@ Confirm the latest build shows a **green checkmark** (✅). If it shows a red �
 
 Rename and copy the extracted APK to overwrite the existing one:
 
-```bash
-cp /mnt/c/Users/USER/Downloads/tenant-app-release/app-release.apk \
-   ~/projects/justhub/property-management-saas/apps/web/public/downloads/propertystack-tenant.apk
+```powershell
+Copy-Item "$env:USERPROFILE\Downloads\tenant-app-release\app-release.apk" -Destination "c:\Projects\justhub\property-management-saas\apps\web\public\downloads\propertystack-tenant.apk" -Force
 ```
 
 > **Note:** Adjust the source path if the download location differs. The file **must** be named `propertystack-tenant.apk` to match the OTA download URL.
 
 ### Step 4: Commit and Push
 
-```bash
-cd ~/projects/justhub
+```powershell
+cd c:\Projects\justhub
 git add property-management-saas/apps/web/public/downloads/propertystack-tenant.apk
 git commit -m "feat: upload vX.Y.Z+N APK"
 git push origin main

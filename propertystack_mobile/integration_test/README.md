@@ -38,13 +38,13 @@ integration_test/
 
 ### Prerequisites
 1. **Android Emulator running** — API 34+ recommended (typically `emulator-5554`)
-2. **Backend API running** — `bash wsl_start_dev.sh` from the project root
-3. **Flutter SDK** — installed and available on PATH
+2. **Backend API running** — `pnpm --prefix property-management-saas dev` from the project root
+3. **Flutter SDK** — installed and available on PATH (`C:\src\flutter`)
 
 ### Run All Tests
 ```bash
-cd ~/projects/justhub/propertystack_mobile
-./integration_test.sh
+cd propertystack_mobile
+flutter test integration_test/app_test.dart
 ```
 
 ### Run a Single Flow
@@ -253,7 +253,7 @@ The app runs always-on background services (SocketService, UpdateService, Notifi
 The app's `main.dart` overrides `FlutterError.onError` with a global error boundary. The Flutter test framework also uses `FlutterError.onError` for test assertions. Without saving/restoring, any test failure cascades into a `_pendingExceptionDetails != null` crash. The `TestHelpers.launchApp()` method handles this automatically.
 
 ### Why `flutter run -t` instead of `flutter test`?
-`flutter test integration_test/...` runs headlessly and has WebSocket port forwarding issues in WSL2-to-Windows environments. `flutter run -t` launches the app on the real device, making tests visible and avoiding networking issues.
+`flutter run -t` launches the app directly on the connected Android device/emulator, making test execution visible in real-time and properly supporting Flutter integration test drivers.
 
 ### Why `TextField` finder instead of `TextFormField`?
 Flutter renders `TextFormField` as a `TextField` internally. The `find.byType(TextFormField)` finder doesn't match rendered widgets — `find.byType(TextField)` does.
@@ -319,7 +319,6 @@ testWidgets('XX: Your test name', (tester) async {
 
 | Issue | Solution |
 |-------|----------|
-| "VM Service connection refused" | WSL2 networking limitation. Tests still run. Press `Ctrl+C` after output. |
 | Test hangs indefinitely | Probably using `pumpAndSettle()`. Replace with `pumpFor()`. |
 | `FlutterError.onError` crash | Use `TestHelpers.launchApp()` instead of calling `app.main()` directly. |
 | "No connected devices" | Start Android Emulator first. Check `adb devices`. |

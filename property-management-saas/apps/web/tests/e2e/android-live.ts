@@ -1,4 +1,4 @@
-import { _android as android } from "playwright";
+import { _android as android } from "@playwright/test";
 
 /**
  * Direct Android Device Automation via ADB.
@@ -16,11 +16,11 @@ async function runLiveAndroidTest() {
   console.log(`📱 Connected to Android Device: ${device.model() || "emulator-5554"} (${device.serial()})`);
 
   // Ensure ports are reversed
-  console.log("🔌 Setting up port forwarding (3000 -> 3000, 3001 -> 3001)...");
+  console.log("🔌 Setting up port forwarding (3000 -> 3000, 3002 -> 3002)...");
   try {
     await device.shell("reverse tcp:3000 tcp:3000");
-    await device.shell("reverse tcp:3001 tcp:3001");
-  } catch (e) {
+    await device.shell("reverse tcp:3002 tcp:3002");
+  } catch {
     // Ignore if already set
   }
 

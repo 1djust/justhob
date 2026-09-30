@@ -39,7 +39,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { securityKey } = request.body;
-      const expectedKey = process.env.ADMIN_SECURITY_KEY;
+      const trimmedKey = (securityKey || "").trim();
+      const expectedKey = (process.env.ADMIN_SECURITY_KEY || "").trim();
 
       if (!expectedKey) {
         return reply
@@ -48,13 +49,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Security: Use timing-safe comparison to prevent timing side-channel attacks
-      const keyBuffer = Buffer.from(securityKey);
+      const keyBuffer = Buffer.from(trimmedKey);
       const expectedBuffer = Buffer.from(expectedKey);
+      const isValid =
+        keyBuffer.length === expectedBuffer.length &&
+        timingSafeEqual(keyBuffer, expectedBuffer);
+
       // Security (H-5): Log failed admin key verification attempts
-      if (
-        keyBuffer.length !== expectedBuffer.length ||
-        !timingSafeEqual(keyBuffer, expectedBuffer)
-      ) {
+      if (!isValid) {
         await SecurityService.logEvent(request.ip, "ADMIN_KEY_FAILURE", {
           userId: request.userId,
           url: request.url,

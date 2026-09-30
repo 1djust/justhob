@@ -2,7 +2,7 @@ import "dotenv/config";
 import dns from "dns/promises";
 
 async function runDataRetentionTest() {
-  // Apply IPv4 DNS fix for WSL 2
+  // Apply IPv4 DNS resolution for Supabase pooler
   const host = "aws-1-eu-north-1.pooler.supabase.com";
   try {
     const ips = await dns.resolve4(host);
