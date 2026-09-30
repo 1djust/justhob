@@ -131,15 +131,6 @@ export default function SuperAdminPage() {
           </div>
 
           <button
-            onClick={() => router.push("/dashboard")}
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white border border-zinc-800 hover:border-zinc-700 transition-all shadow-sm"
-            title="Return to Property Management Application"
-          >
-            <LayoutGrid className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Exit to App</span>
-          </button>
-
-          <button
             onClick={handleLogout}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-medium transition-colors"
           >

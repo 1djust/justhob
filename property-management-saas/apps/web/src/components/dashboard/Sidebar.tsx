@@ -339,40 +339,6 @@ export function Sidebar({
 
         {/* Navigation Items */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 custom-scrollbar">
-          {isSuperAdmin && (
-            <div className="mb-3 pb-3 border-b border-border/70">
-              <Link
-                href="/super-admin"
-                className={cn(
-                  "flex items-center gap-3 p-3 rounded-2xl transition-all duration-200 group relative",
-                  "bg-gradient-to-br from-zinc-900 to-zinc-950 dark:from-zinc-900 dark:to-black text-white",
-                  "border border-zinc-800 hover:border-emerald-500/50 shadow-md hover:shadow-emerald-500/10",
-                  isCollapsed && "justify-center p-2.5",
-                )}
-                title="Launch Super Admin Console"
-              >
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                {!isCollapsed && (
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold tracking-tight text-zinc-100 group-hover:text-emerald-400 transition-colors">
-                        Super Admin
-                      </span>
-                      <span className="px-1.5 py-0.5 text-[8px] font-mono font-extrabold uppercase rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                        GOD MODE
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-zinc-400 truncate flex items-center gap-1 mt-0.5">
-                      Platform Console <ExternalLink className="w-3 h-3 inline opacity-60" />
-                    </p>
-                  </div>
-                )}
-              </Link>
-            </div>
-          )}
-
           {filteredItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;

@@ -106,6 +106,16 @@ export default function DashboardPage() {
           router.push("/login");
           return;
         }
+
+        // Strict Isolation: Super Admins are restricted exclusively to the God Mode console (/super-admin)
+        if (
+          data.user?.globalRole === "SUPER_ADMIN" ||
+          data.user?.role === "SUPER_ADMIN"
+        ) {
+          router.replace("/super-admin");
+          return;
+        }
+
         setUser(data.user);
         if (data.user?.workspaces?.length > 0) {
           const priority: Record<string, number> = {
