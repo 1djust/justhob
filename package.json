@@ -2,6 +2,8 @@
   "name": "justhub-workspace",
   "private": true,
   "scripts": {
+    "build": "pnpm --prefix property-management-saas build",
+    "start": "pnpm --prefix property-management-saas start",
     "dev": "pnpm --prefix property-management-saas dev",
     "mobile": "cd propertystack_mobile && flutter run",
     "test": "cd property-management-saas/apps/web && pnpm test",
