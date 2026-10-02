@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --prefix property-management-saas dev",
+    "mobile": "cd propertystack_mobile && flutter run",
     "test": "cd property-management-saas/apps/web && pnpm test",
     "test:android": "cd property-management-saas/apps/web && pnpm test:android",
     "test:android:live": "cd property-management-saas/apps/web && pnpm test:android:live",

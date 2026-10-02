@@ -469,18 +469,18 @@ export function LandingPage() {
                 <Smartphone className="h-8 w-8" />
               </div>
               <div>
-                <h3 className="text-xl font-bold mb-2">Dedicated Tenant App</h3>
+                <h3 className="text-xl font-bold mb-2">Dedicated Mobile App</h3>
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-                  Our massively updated Android app is now available. Tenants
-                  can securely login, review open balances, and coordinate with
-                  management seamlessly from their phones.
+                  Our high-performance Android mobile app is ready for both landlords
+                  and tenants. Landlords can track portfolios and approve payments
+                  on the go, while tenants can manage rent and maintenance requests seamlessly.
                 </p>
                 <a
                   href="/downloads/propertystack-tenant.apk"
                   download
                   className="text-primary font-semibold text-sm hover:underline flex items-center space-x-1"
                 >
-                  <span>Download v{version} directly</span>
+                  <span>Download Mobile App (v{version}) directly</span>
                   <Download className="h-4 w-4" />
                 </a>
               </div>

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,11 +16,68 @@ class OwnerDetailScreen extends ConsumerStatefulWidget {
 
 class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
   late OwnerModel _owner;
+  bool _isResending = false;
+  int _cooldownSeconds = 0;
+  Timer? _cooldownTimer;
 
   @override
   void initState() {
     super.initState();
     _owner = widget.owner;
+  }
+
+  @override
+  void dispose() {
+    _cooldownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startCooldown() {
+    setState(() => _cooldownSeconds = 60);
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_cooldownSeconds <= 1) {
+        timer.cancel();
+        setState(() => _cooldownSeconds = 0);
+      } else {
+        setState(() => _cooldownSeconds--);
+      }
+    });
+  }
+
+  Future<void> _handleResendInvite() async {
+    if (_isResending || _cooldownSeconds > 0) return;
+
+    setState(() => _isResending = true);
+    try {
+      final res = await ref.read(ownersProvider.notifier).resendInvite(_owner.id);
+      if (mounted) {
+        _startCooldown();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['message']?.toString() ?? 'Invitation email resent successfully to ${_owner.email}!'),
+            backgroundColor: const Color(0xFF16A34A),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to resend invitation: ${e.toString().replaceFirst("Exception: ", "")}'),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isResending = false);
+      }
+    }
   }
 
   void _showEditProfileModal() {
@@ -130,13 +188,13 @@ class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (modalContext, setModalState) => Padding(
           padding: EdgeInsets.only(
             left: 24,
             right: 24,
             top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            bottom: MediaQuery.of(modalContext).viewInsets.bottom + 24,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -153,7 +211,7 @@ class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: selectedStrategy,
+                initialValue: selectedStrategy,
                 decoration: InputDecoration(
                   labelText: 'Payout Protocol Strategy',
                   prefixIcon: const Icon(Icons.swap_horiz_rounded),
@@ -175,7 +233,7 @@ class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: (selectedBankCode != null && nigerianBankMap.containsKey(selectedBankCode)) ? selectedBankCode : null,
+                initialValue: (selectedBankCode != null && nigerianBankMap.containsKey(selectedBankCode)) ? selectedBankCode : null,
                 hint: const Text('Select Settlement Bank'),
                 decoration: InputDecoration(
                   labelText: 'Settlement Bank',
@@ -251,22 +309,21 @@ class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
                               );
                             });
 
-                            if (mounted) Navigator.pop(context);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Settlement strategy updated successfully!'),
-                                  backgroundColor: Color(0xFF16A34A),
-                                ),
-                              );
-                            }
+                            if (!modalContext.mounted) return;
+                            Navigator.pop(modalContext);
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Settlement strategy updated successfully!'),
+                                backgroundColor: Color(0xFF16A34A),
+                              ),
+                            );
                           } catch (e) {
                             setModalState(() => isSubmitting = false);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-                              );
-                            }
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                            );
                           }
                         },
                   style: ElevatedButton.styleFrom(
@@ -581,6 +638,117 @@ class _OwnerDetailScreenState extends ConsumerState<OwnerDetailScreen> {
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF2563EB),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // 1. ACCOUNT INVITATION Section
+              _buildSectionHeader('ACCOUNT INVITATION'),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Invite Status',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF475569),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _owner.isInvitePending ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _owner.isInvitePending ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _owner.isInvitePending ? Icons.schedule_rounded : Icons.check_circle_rounded,
+                                size: 14,
+                                color: _owner.isInvitePending ? const Color(0xFFB45309) : const Color(0xFF16A34A),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _owner.isInvitePending ? 'Invite Pending' : 'Active & Accepted',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: _owner.isInvitePending ? const Color(0xFFB45309) : const Color(0xFF16A34A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _owner.isInvitePending
+                          ? 'This landlord has not signed in with their temporary credentials or changed their password yet.'
+                          : 'This landlord has activated their account on the PropertyStack Mobile App.',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: ElevatedButton.icon(
+                        onPressed: _owner.isInvitePending && !_isResending && _cooldownSeconds == 0
+                            ? _handleResendInvite
+                            : null,
+                        icon: _isResending
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Icon(
+                                _owner.isInvitePending ? Icons.send_rounded : Icons.check_rounded,
+                                size: 18,
+                              ),
+                        label: Text(
+                          _owner.isInvitePending
+                              ? (_cooldownSeconds > 0 ? 'Wait ${_cooldownSeconds}s to resend' : 'Resend Invitation Email')
+                              : 'Invitation Accepted',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _owner.isInvitePending ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                          foregroundColor: _owner.isInvitePending ? Colors.white : const Color(0xFF94A3B8),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),

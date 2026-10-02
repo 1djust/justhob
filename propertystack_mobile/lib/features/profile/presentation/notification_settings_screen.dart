@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:propertystack_mobile/core/theme/app_theme.dart';
+import '../../auth/presentation/auth_notifier.dart';
 
-class NotificationSettingsScreen extends StatefulWidget {
+class NotificationSettingsScreen extends ConsumerStatefulWidget {
   const NotificationSettingsScreen({super.key});
 
   @override
-  State<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
+  ConsumerState<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
 }
 
-class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
-  // Mock state for notification preferences
+class _NotificationSettingsScreenState extends ConsumerState<NotificationSettingsScreen> {
+  // Notification preferences
   bool _pushEnabled = true;
   bool _emailEnabled = true;
   bool _maintenanceUpdates = true;
@@ -19,6 +21,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final user = ref.watch(authStateProvider).valueOrNull;
+    final role = user?.role ?? (user?.workspaces.firstOrNull?.role ?? 'TENANT');
+    final isLandlord = role == 'LANDLORD';
+    final isManager = role == 'PROPERTY_MANAGER' || role == 'SUPER_ADMIN';
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -55,24 +61,42 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             const SizedBox(height: 32),
             _buildSectionHeader('Notification Types'),
             _buildToggleTile(
-              title: 'Maintenance Updates',
-              subtitle: 'Status changes on your repair requests.',
+              title: isLandlord
+                  ? 'Property & Maintenance'
+                  : (isManager ? 'Maintenance Requests' : 'Maintenance Updates'),
+              subtitle: isLandlord
+                  ? 'Notifications on tenant repair requests across your properties.'
+                  : (isManager
+                      ? 'Alerts when tenants submit or update repair requests.'
+                      : 'Status changes on your repair requests.'),
               value: _maintenanceUpdates,
               onChanged: (val) => setState(() => _maintenanceUpdates = val),
               enabled: _pushEnabled || _emailEnabled,
             ),
             const Divider(height: 1, color: AppTheme.borderColor),
             _buildToggleTile(
-              title: 'Payment Reminders',
-              subtitle: 'Alerts for upcoming and overdue invoices.',
+              title: isLandlord
+                  ? 'Rent & Disbursement Alerts'
+                  : (isManager ? 'Rent Collections & Due Dates' : 'Payment Reminders'),
+              subtitle: isLandlord
+                  ? 'Instant notifications when rent is collected or disbursed to your bank.'
+                  : (isManager
+                      ? 'Alerts for tenant rent payments and overdue balances.'
+                      : 'Alerts for upcoming and overdue invoices.'),
               value: _paymentReminders,
               onChanged: (val) => setState(() => _paymentReminders = val),
               enabled: _pushEnabled || _emailEnabled,
             ),
             const Divider(height: 1, color: AppTheme.borderColor),
             _buildToggleTile(
-              title: 'Announcements',
-              subtitle: 'News and updates from your property manager.',
+              title: isLandlord
+                  ? 'Manager & Portfolio Notices'
+                  : (isManager ? 'Team & System Announcements' : 'Announcements'),
+              subtitle: isLandlord
+                  ? 'Important notices and reports from your property manager.'
+                  : (isManager
+                      ? 'Broadcast messages and platform updates.'
+                      : 'News and updates from your property manager.'),
               value: _announcements,
               onChanged: (val) => setState(() => _announcements = val),
               enabled: _pushEnabled || _emailEnabled,
@@ -125,7 +149,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         ),
         value: value,
         onChanged: enabled ? onChanged : null,
-        activeColor: AppTheme.textPrimary,
+        activeThumbColor: AppTheme.textPrimary,
         contentPadding: const EdgeInsets.symmetric(vertical: 8),
       ),
     );

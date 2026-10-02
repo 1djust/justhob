@@ -35,8 +35,18 @@ class RouterNotifier extends ChangeNotifier {
 
   RouterNotifier(this._ref) {
     _ref.listen(authStateProvider, (_, __) => notifyListeners());
-    _ref.listen(paymentsProvider, (_, __) => notifyListeners());
-    _ref.listen(homeStateProvider, (_, __) => notifyListeners());
+    _ref.listen(paymentsProvider, (_, __) {
+      final auth = _ref.read(authStateProvider);
+      if (auth.hasValue && auth.value != null) {
+        notifyListeners();
+      }
+    });
+    _ref.listen(homeStateProvider, (_, __) {
+      final auth = _ref.read(authStateProvider);
+      if (auth.hasValue && auth.value != null) {
+        notifyListeners();
+      }
+    });
   }
 }
 
@@ -54,15 +64,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Access the auth state via ref.read instead of ref.watch in the redirect function
       // This ensures we have the latest state when redirect is triggered by the notifier
       final authState = ref.read(authStateProvider);
-      final authStateValue = authState.value;
-      final isLoggedIn = authState.hasValue && authStateValue != null;
       final isLoggingIn = state.matchedLocation == '/login';
       final isRegistering = state.matchedLocation == '/register';
       final isChangingPassword = state.matchedLocation == '/change-password';
       final isLink = state.matchedLocation == '/link';
 
+      // While auth is still loading (initial checkAuth call),
+      // allow the initial route (/login) to mount cleanly without redirecting.
+      if (authState.isLoading && !authState.hasValue) {
+        return null;
+      }
+
+      final authStateValue = authState.value;
+      final isLoggedIn = authState.hasValue && authStateValue != null;
+
       if (!isLoggedIn) {
-        return (isLoggingIn || isRegistering || isLink) ? null : '/login';
+        if (isLoggingIn || isRegistering || isLink) return null;
+        return '/login';
       }
 
       if (authStateValue.mustChangePassword) {
@@ -94,6 +112,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLandlordPath = state.matchedLocation.startsWith('/landlord');
 
       if (isLandlord) {
+        // Security/UX: Prevent pure Landlords from accessing manager-only routes
+        if (!isManager && state.matchedLocation.startsWith('/landlord/owners')) {
+          return '/landlord';
+        }
+
         final isAllowedSharedPath = state.matchedLocation == '/notifications' ||
             state.matchedLocation == '/profile' ||
             state.matchedLocation == '/change-password';
@@ -190,7 +213,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               (state.extra is String ? state.extra as String : null);
           final step = state.uri.queryParameters['step'];
           return RegisterScreen(
-            key: ValueKey('register_${email}_${step}'),
+            key: ValueKey('register_${email}_$step'),
             initialEmail: email,
             initialStep: step == 'otp' ? 2 : 1,
           );

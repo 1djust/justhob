@@ -6,7 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import 'notification_settings_screen.dart';
 import 'privacy_security_screen.dart';
+import 'help_support_screen.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
+import '../../../core/utils/nigerian_banks.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -136,10 +138,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _showEditPersonalInfoModal(String currentName) {
     final user = ref.read(authStateProvider).valueOrNull;
-    final workspaceName = user?.workspaces.firstOrNull?.workspace.name ?? '';
+    final role = user?.role ?? (user?.workspaces.firstOrNull?.role ?? 'TENANT');
+    final isLandlord = role == 'LANDLORD';
     final nameController = TextEditingController(text: currentName);
-    final phoneController = TextEditingController();
-    final companyController = TextEditingController(text: workspaceName);
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -160,45 +161,84 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Edit Personal & Business Info',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isLandlord ? 'Edit Landlord Profile' : 'Edit Personal Details',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 4),
+              Text(
+                isLandlord
+                    ? 'Your legal name recognized on property records & disbursements.'
+                    : 'Manage your verified personal account information.',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 18),
               TextField(
                 controller: nameController,
+                textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   labelText: 'Full Name',
-                  prefixIcon: const Icon(Icons.person_outline_rounded),
+                  prefixIcon: const Icon(Icons.person_outline_rounded, color: Color(0xFF2563EB)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: 'Phone Number',
-                  hintText: 'e.g. +234 801 234 5678',
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.email_outlined, color: Color(0xFF94A3B8), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Email Address',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                          ),
+                          Text(
+                            user?.email ?? '',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                      ),
+                      child: const Text(
+                        'Verified',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF047857)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: companyController,
-                decoration: InputDecoration(
-                  labelText: 'Company / Brand Name',
-                  hintText: 'e.g. Apex Properties Ltd',
-                  prefixIcon: const Icon(Icons.business_rounded),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -207,7 +247,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ? null
                       : () async {
                           final newName = nameController.text.trim();
-                          if (newName.isEmpty) return;
+                          if (newName.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Full Name cannot be empty.'),
+                                backgroundColor: Color(0xFFEF4444),
+                              ),
+                            );
+                            return;
+                          }
                           final messenger = ScaffoldMessenger.of(context);
                           final navigator = Navigator.of(context);
                           setModalState(() => isSaving = true);
@@ -219,7 +267,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             navigator.pop();
                             messenger.showSnackBar(
                               const SnackBar(
-                                content: Text('Personal info updated successfully!'),
+                                content: Text('Profile updated successfully!'),
                                 backgroundColor: Color(0xFF16A34A),
                               ),
                             );
@@ -249,9 +297,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _showPayoutBankModal() {
-    final bankController = TextEditingController();
-    final accNumController = TextEditingController();
-    final accNameController = TextEditingController();
+    final user = ref.read(authStateProvider).valueOrNull;
+    String? selectedBankCode = user?.bankCode;
+
+    // In case bankCode was stored as name, attempt reverse lookup
+    if (selectedBankCode != null && !NigerianBanks.bankMap.containsKey(selectedBankCode)) {
+      final match = NigerianBanks.bankMap.entries.firstWhere(
+        (e) => e.value.toLowerCase() == selectedBankCode!.toLowerCase(),
+        orElse: () => const MapEntry('', ''),
+      );
+      if (match.key.isNotEmpty) {
+        selectedBankCode = match.key;
+      }
+    }
+
+    final accNumController = TextEditingController(text: user?.accountNumber ?? '');
+    final accNameController = TextEditingController(text: user?.accountName ?? '');
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -272,48 +333,82 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Payout Bank Details',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Payout Bank Details',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               const Text(
-                'Direct bank account for automated tenant rent deposits.',
+                'Direct bank account for automated tenant rent disbursements.',
                 style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: bankController,
+              const SizedBox(height: 18),
+              DropdownButtonFormField<String>(
+                initialValue: NigerianBanks.bankMap.containsKey(selectedBankCode) ? selectedBankCode : null,
+                isExpanded: true,
                 decoration: InputDecoration(
-                  labelText: 'Bank Name / Code',
-                  prefixIcon: const Icon(Icons.account_balance_rounded),
+                  labelText: 'Bank Name',
+                  prefixIcon: const Icon(Icons.account_balance_rounded, color: Color(0xFF2563EB)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 ),
+                hint: const Text('Select your Nigerian bank', style: TextStyle(fontSize: 14)),
+                items: NigerianBanks.bankMap.entries.map((entry) {
+                  return DropdownMenuItem<String>(
+                    value: entry.key,
+                    child: Text(
+                      entry.value,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setModalState(() {
+                    selectedBankCode = val;
+                  });
+                },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               TextField(
                 controller: accNumController,
                 keyboardType: TextInputType.number,
+                maxLength: 10,
                 decoration: InputDecoration(
-                  labelText: 'Account Number',
-                  prefixIcon: const Icon(Icons.pin_rounded),
+                  labelText: 'NUBAN Account Number',
+                  hintText: '10-digit account number',
+                  prefixIcon: const Icon(Icons.pin_rounded, color: Color(0xFF2563EB)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  counterText: '',
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               TextField(
                 controller: accNameController,
+                textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   labelText: 'Account Holder Name',
-                  prefixIcon: const Icon(Icons.badge_outlined),
+                  hintText: 'Full name as on bank record',
+                  prefixIcon: const Icon(Icons.badge_outlined, color: Color(0xFF2563EB)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -321,13 +416,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   onPressed: isSaving
                       ? null
                       : () async {
+                          final accNum = accNumController.text.trim();
+                          final accName = accNameController.text.trim();
+                          final bank = selectedBankCode ?? '';
+
+                          if (bank.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please select your bank.'),
+                                backgroundColor: Color(0xFFEF4444),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (accNum.length != 10) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Account number must be 10 digits.'),
+                                backgroundColor: Color(0xFFEF4444),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (accName.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please enter account holder name.'),
+                                backgroundColor: Color(0xFFEF4444),
+                              ),
+                            );
+                            return;
+                          }
+
                           final messenger = ScaffoldMessenger.of(context);
                           final navigator = Navigator.of(context);
                           setModalState(() => isSaving = true);
                           final success = await ref.read(authStateProvider.notifier).updateProfile(
-                                bankCode: bankController.text,
-                                accountNumber: accNumController.text,
-                                accountName: accNameController.text,
+                                bankCode: bank,
+                                accountNumber: accNum,
+                                accountName: accName,
                               );
                           setModalState(() => isSaving = false);
                           if (mounted && success) {
@@ -484,7 +613,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ? user!.name!
         : (user?.email.isNotEmpty == true ? user!.email.split('@').first : 'User');
     final userEmail = user?.email ?? '';
-    const userPlan = 'Free Plan';
+    final role = user?.role ?? (user?.workspaces.firstOrNull?.role ?? 'TENANT');
+    final isLandlord = role == 'LANDLORD';
+    final isManager = role == 'PROPERTY_MANAGER' || role == 'SUPER_ADMIN';
+
+    final roleLabel = isLandlord
+        ? 'Landlord / Property Owner'
+        : (isManager ? 'Property Manager' : 'Tenant');
+
+    final roleBadgeColor = isLandlord
+        ? const Color(0xFF047857)
+        : (isManager ? const Color(0xFF1D4ED8) : const Color(0xFF475569));
+
+    final roleBadgeBg = isLandlord
+        ? const Color(0xFFECFDF5)
+        : (isManager ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9));
+
+    final roleBadgeBorder = isLandlord
+        ? const Color(0xFFA7F3D0)
+        : (isManager ? const Color(0xFFBFDBFE) : const Color(0xFFE2E8F0));
+
+    final currentBankCode = user?.bankCode;
+    final currentAccNum = user?.accountNumber;
+    final bankName = NigerianBanks.getBankName(currentBankCode);
+    final hasBankConfigured = currentAccNum != null && currentAccNum.isNotEmpty;
+    final bankTrailingText = hasBankConfigured
+        ? '${bankName != "N/A" ? bankName.split(" ").first : "Bank"} ••••${currentAccNum.length >= 4 ? currentAccNum.substring(currentAccNum.length - 4) : currentAccNum}'
+        : 'Configure';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -601,7 +756,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       border: Border.all(color: Colors.white, width: 2),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.12),
+                                          color: Colors.black.withValues(alpha: 0.12),
                                           blurRadius: 4,
                                           offset: const Offset(0, 2),
                                         ),
@@ -648,16 +803,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFEFF6FF),
+                                    color: roleBadgeBg,
                                     borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: roleBadgeBorder),
                                   ),
-                                  child: const Text(
-                                    userPlan,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF2563EB),
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        isLandlord
+                                            ? Icons.real_estate_agent_rounded
+                                            : (isManager ? Icons.business_center_rounded : Icons.home_rounded),
+                                        size: 13,
+                                        color: roleBadgeColor,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        roleLabel,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: roleBadgeColor,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -674,13 +843,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     _buildSettingsCard([
                       _SettingsRow(
                         icon: Icons.person_outline_rounded,
-                        title: 'Edit Personal Details',
+                        title: isLandlord ? 'Edit Landlord Details' : 'Edit Personal Details',
                         onTap: () => _showEditPersonalInfoModal(userName),
                       ),
                       _SettingsRow(
                         icon: Icons.account_balance_outlined,
                         title: 'Payout Bank Account',
-                        trailingText: 'Configure',
+                        trailingText: bankTrailingText,
+                        trailingColor: hasBankConfigured ? const Color(0xFF16A34A) : null,
                         isLast: true,
                         onTap: _showPayoutBankModal,
                       ),
@@ -757,13 +927,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onTap: _exportUserData,
                       ),
                       _SettingsRow(
-                        icon: Icons.delete_outline_rounded,
-                        iconColor: const Color(0xFFEF4444),
-                        title: 'Delete Account',
-                        titleColor: const Color(0xFFEF4444),
-                        trailingColor: const Color(0xFFEF4444),
+                        icon: isLandlord ? Icons.verified_user_outlined : Icons.delete_outline_rounded,
+                        iconColor: isLandlord ? const Color(0xFF475569) : const Color(0xFFEF4444),
+                        title: isLandlord ? 'Account Closure & Offboarding' : 'Delete Account',
+                        titleColor: isLandlord ? const Color(0xFF0F172A) : const Color(0xFFEF4444),
+                        trailingText: isLandlord ? 'Protected' : null,
+                        trailingColor: isLandlord ? const Color(0xFF16A34A) : const Color(0xFFEF4444),
                         isLast: true,
-                        onTap: _confirmDeleteAccount,
+                        onTap: () => _confirmDeleteAccount(isLandlord: isLandlord),
                       ),
                     ]),
                     const SizedBox(height: 20),
@@ -977,31 +1148,204 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _confirmDeleteAccount() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account?', style: TextStyle(fontWeight: FontWeight.w800)),
-        content: const Text(
-          'This action is permanent and cannot be undone. All your properties, tenant records, and payment histories will be permanently deleted.',
+  void _confirmDeleteAccount({required bool isLandlord}) {
+    if (isLandlord) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+        builder: (context) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 28,
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(authStateProvider.notifier).logout();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.shield_outlined,
+                      color: Color(0xFF2563EB),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Account & Portfolio Offboarding',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        Text(
+                          'PropertyStack Data Governance',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    _buildOffboardInfoRow(
+                      Icons.gavel_rounded,
+                      'Active Leases & Legal Contracts',
+                      'Your properties have active tenant leases and tenancy agreements that remain legally binding under management.',
+                    ),
+                    const Divider(height: 20, color: Color(0xFFE2E8F0)),
+                    _buildOffboardInfoRow(
+                      Icons.receipt_long_rounded,
+                      'Financial & Tax Audit Trail',
+                      'Rent payment history, invoices, and disbursement ledgers must be retained for auditing and tax compliance.',
+                    ),
+                    const Divider(height: 20, color: Color(0xFFE2E8F0)),
+                    _buildOffboardInfoRow(
+                      Icons.supervised_user_circle_rounded,
+                      'Agency Offboarding Required',
+                      'To offboard your properties, please contact your managing agent to reconcile accounts and transfer deeds.',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 20),
+                  label: const Text(
+                    'Contact Managing Agent',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    ref.read(authStateProvider.notifier).logout();
+                  },
+                  icon: const Icon(Icons.logout_rounded, color: Color(0xFF64748B), size: 18),
+                  label: const Text(
+                    'Sign Out of Device',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Delete Account?', style: TextStyle(fontWeight: FontWeight.w800)),
+          content: const Text(
+            'This action is permanent and cannot be undone. All active workspaces, tenant records, and payment histories will be permanently deleted.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
-            child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ref.read(authStateProvider.notifier).logout();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildOffboardInfoRow(IconData icon, String title, String description) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: const Color(0xFF2563EB)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

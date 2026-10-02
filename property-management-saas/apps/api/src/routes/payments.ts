@@ -74,6 +74,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
       const skip = (pageNum - 1) * limitNum;
 
       const userId = request.userId!;
+      const userRole = request.userRole!;
       const cacheKey = `${userId}:${workspaceId}:${status || "ALL"}:${pageNum}:${limitNum}`;
       const now = Date.now();
       const cached = paymentsCache.get(cacheKey);
@@ -81,12 +82,20 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
         return reply.send(cached.response);
       }
 
-      const whereClause = {
-        OR: [{ workspaceId }, { lease: { tenant: { workspaceId } } }],
+      const whereClause: Prisma.PaymentWhereInput = {
         ...(status
           ? { status: status as import("@prisma/client").PaymentStatus }
           : {}),
       };
+
+      if (userRole === "LANDLORD") {
+        whereClause.lease = { property: { workspaceId, ownerId: userId } };
+      } else {
+        whereClause.OR = [
+          { workspaceId },
+          { lease: { tenant: { workspaceId } } },
+        ];
+      }
 
       const [payments, total] = await Promise.all([
         prisma.payment.findMany({
@@ -133,7 +142,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   }>(
     "/",
     {
-      preHandler: requireManager,
+      preHandler: requireManagement,
       schema: { params: WorkspaceParams, body: RecordPaymentBody },
     },
     async (request, reply) => {
@@ -152,9 +161,16 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           .send({ error: "Amount must be a positive number" });
       }
 
-      // Verify lease belongs to this workspace
+      // Verify lease belongs to this workspace (and landlord if caller is landlord)
+      const leaseWhere: Prisma.LeaseWhereInput = {
+        id: leaseId,
+        tenant: { workspaceId },
+      };
+      if (request.userRole === "LANDLORD") {
+        leaseWhere.property = { ownerId: request.userId! };
+      }
       const lease = await prisma.lease.findFirst({
-        where: { id: leaseId, tenant: { workspaceId } },
+        where: leaseWhere,
       });
       if (!lease)
         return reply
@@ -235,7 +251,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   }>(
     "/:id/pay",
     {
-      preHandler: requireManager,
+      preHandler: requireManagement,
       schema: { params: PaymentIdParams, body: PayPaymentBody },
     },
     async (request, reply) => {
@@ -243,8 +259,15 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
       const { approvedAmountPaid } = request.body || {};
 
       try {
-        const existingPayment = await prisma.payment.findUnique({
-          where: { payment_workspace_id: { id, workspaceId } },
+        const paymentWhere: Prisma.PaymentWhereInput = {
+          id,
+          workspaceId,
+        };
+        if (request.userRole === "LANDLORD") {
+          paymentWhere.lease = { property: { ownerId: request.userId! } };
+        }
+        const existingPayment = await prisma.payment.findFirst({
+          where: paymentWhere,
         });
 
         if (!existingPayment)
@@ -322,9 +345,18 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { workspaceId, leaseId } = request.params;
+      const userRole = request.userRole!;
+      const userId = request.userId!;
+
+      const leaseWhere: Prisma.LeaseWhereInput = {
+        tenant: { workspaceId },
+      };
+      if (userRole === "LANDLORD") {
+        leaseWhere.property = { ownerId: userId };
+      }
 
       const payments = await prisma.payment.findMany({
-        where: { leaseId, lease: { tenant: { workspaceId } } }, // Security: Prevent cross-workspace IDOR
+        where: { leaseId, lease: leaseWhere }, // Security: Prevent cross-workspace and cross-landlord IDOR
         include: { transactions: { orderBy: { paidDate: "desc" } } },
         orderBy: { dueDate: "desc" },
       });
@@ -401,7 +433,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   }>(
     "/:id/partial-pay",
     {
-      preHandler: requireManager, // Security: Only managers can manually record partial payments
+      preHandler: requireManagement,
       schema: { params: PaymentIdParams, body: PartialPayBody },
     },
     async (request, reply) => {
@@ -414,8 +446,15 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           .send({ error: "Valid partial amount is required" });
       }
 
-      const payment = await prisma.payment.findUnique({
-        where: { payment_workspace_id: { id, workspaceId } },
+      const paymentWhere: Prisma.PaymentWhereInput = {
+        id,
+        workspaceId,
+      };
+      if (request.userRole === "LANDLORD") {
+        paymentWhere.lease = { property: { ownerId: request.userId! } };
+      }
+      const payment = await prisma.payment.findFirst({
+        where: paymentWhere,
         include: { lease: { include: { tenant: true } } },
       });
 
@@ -497,10 +536,23 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
           .send({ error: "Status must be PAID or REJECTED" });
       }
 
-      const payment = await prisma.payment.findUnique({
-        where: { payment_workspace_id: { id, workspaceId } },
+      const paymentWhere: Prisma.PaymentWhereInput = {
+        id,
+        workspaceId,
+      };
+      if (request.userRole === "LANDLORD") {
+        paymentWhere.lease = { property: { ownerId: request.userId! } };
+      }
+
+      const payment = await prisma.payment.findFirst({
+        where: paymentWhere,
         include: {
-          lease: { include: { tenant: { select: { id: true, email: true } } } },
+          lease: {
+            include: {
+              tenant: { select: { id: true, email: true } },
+              property: { select: { ownerId: true } },
+            },
+          },
           workspace: { select: { plan: true } },
         },
       });
@@ -674,8 +726,16 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { workspaceId, id } = request.params;
 
-      const payment = await prisma.payment.findUnique({
-        where: { payment_workspace_id: { id, workspaceId } },
+      const paymentWhere: Prisma.PaymentWhereInput = {
+        id,
+        workspaceId,
+      };
+      if (request.userRole === "LANDLORD") {
+        paymentWhere.lease = { property: { ownerId: request.userId! } };
+      }
+
+      const payment = await prisma.payment.findFirst({
+        where: paymentWhere,
         include: {
           lease: {
             include: {
@@ -720,13 +780,21 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   server.post<{ Params: Static<typeof PaymentIdParams> }>(
     "/:id/remind",
     {
-      preHandler: requireManager,
+      preHandler: requireManagement,
       schema: { params: PaymentIdParams },
     },
     async (request, reply) => {
       const { workspaceId, id } = request.params;
-      const payment = await prisma.payment.findUnique({
-        where: { payment_workspace_id: { id, workspaceId } },
+      const paymentWhere: Prisma.PaymentWhereInput = {
+        id,
+        workspaceId,
+      };
+      if (request.userRole === "LANDLORD") {
+        paymentWhere.lease = { property: { ownerId: request.userId! } };
+      }
+
+      const payment = await prisma.payment.findFirst({
+        where: paymentWhere,
         include: {
           lease: {
             include: {

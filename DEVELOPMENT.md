@@ -34,30 +34,43 @@ The mobile application is located in the `propertystack_mobile/` directory.
 
 ### Running the App on Emulator
 
-1. **Ensure the Android Emulator is Running**:
-   Confirm your emulator (e.g. `emulator-5554`) is visible:
-   ```powershell
-   flutter devices
-   ```
+#### Recommended Emulator Profile
+> [!IMPORTANT]
+> Always use the **`Pixel_6_API33`** profile (Android 13.0, API 33, standard 4KB page size).
+> **Do not use Android API 37 preview images with 16KB page size** as their virtualized GPU drivers fail on Windows host composition, causing persistent black screens across all apps.
 
-2. **Start Flutter Run (Interactive Dev Session with Hot Reload)**:
-   ```powershell
-   cd propertystack_mobile
-   flutter run -d emulator-5554
-   ```
-   **Dev Controls while running**:
-   - `r` : **Hot Reload** (instant sub-second UI updates without losing app state)
-   - `R` : **Hot Restart** (re-initializes app state from scratch)
-   - `h` : Repeat this help message
-   - `d` : Open Flutter DevTools in browser
-   - `q` : Quit dev session
+#### 1. Starting the Emulator
+Choose one of these methods to turn on the virtual phone:
+- **Android Studio (Recommended)**: Open **Device Manager** and click the **`▶` (Play button)** next to `Pixel 6 API33`. The emulator will run inside the **Running Devices** tab or as a floating window.
+- **Terminal**: Run `flutter emulators --launch Pixel_6_API33`.
+  *(Note: If this command returns `exited with code 1`, it means the emulator is already running in the background).*
+- **VS Code 1-Click Launch**: Press **`Ctrl + F5`** (or `F5`) anywhere in VS Code to auto-start the emulator and run the app.
 
-3. **Instant App Launch (Without Rebuilding)**:
-   If the app is already installed on the emulator and you just want to open it:
-   ```powershell
-   adb -s emulator-5554 shell am start -n com.propertystack.mobile/.MainActivity
-   ```
-   *(Or click the **PropertyStack** icon directly from the emulator app drawer).*
+#### 2. Running Flutter (Interactive Session with Hot Reload)
+Once the emulator is running, start your development session:
+```powershell
+cd propertystack_mobile
+flutter run -d emulator-5554
+```
+**Dev Controls while running**:
+- `r` : **Hot Reload** (instant sub-second UI updates without losing app state)
+- `R` : **Hot Restart** (re-initializes app state from scratch)
+- `h` : Repeat this help message
+- `d` : Open Flutter DevTools in browser
+- `q` : Quit dev session
+
+#### 3. Instant App Launch (Without Rebuilding)
+If the app is already installed on the emulator and you just want to open it:
+```powershell
+adb -s emulator-5554 shell am start -n com.propertystack.mobile/.MainActivity
+```
+*(Or click the **PropertyStack** icon directly from the emulator app drawer).*
+
+#### 4. Troubleshooting Stale Locks
+If starting the emulator fails with `Running multiple emulators with the same AVD is an experimental feature` after an unexpected crash or force-close:
+```powershell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.android\avd\Pixel_6_API33.avd\*.lock"
+```
 
 4. **Attach Hot-Reload to an Already-Running App**:
    To attach an interactive debugging session without waiting for a full build:

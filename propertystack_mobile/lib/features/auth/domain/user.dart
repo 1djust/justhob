@@ -16,6 +16,9 @@ class User with _$User {
     String? role,
     String? globalRole,
     String? workspaceId,
+    String? bankCode,
+    String? accountNumber,
+    String? accountName,
   }) = _User;
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

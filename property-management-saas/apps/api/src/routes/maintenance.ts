@@ -4,12 +4,13 @@ import {
   authenticate,
   verifyWorkspaceAccess,
   requireManager,
+  requireManagement,
 } from "../lib/middleware";
 import { sendEmail } from "../lib/mailer";
 import { logAction } from "../lib/audit";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
-import { MaintenanceStatus, MaintenancePriority } from "@prisma/client";
+import { Prisma, MaintenanceStatus, MaintenancePriority } from "@prisma/client";
 import { maintenanceCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
@@ -53,6 +54,7 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
       const skip = (pageNum - 1) * limitNum;
 
       const userId = request.userId!;
+      const userRole = request.userRole!;
       const cacheKey = `${userId}:${workspaceId}:${status || "ALL"}:${pageNum}:${limitNum}`;
       const now = Date.now();
       const cached = maintenanceCache.get(cacheKey);
@@ -60,10 +62,14 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
         return reply.send(cached.response);
       }
 
-      const whereClause = {
+      const whereClause: Prisma.MaintenanceRequestWhereInput = {
         workspaceId,
-        ...(status ? { status: status as any } : {}),
+        ...(status ? { status: status as MaintenanceStatus } : {}),
       };
+
+      if (userRole === "LANDLORD") {
+        whereClause.property = { ownerId: userId };
+      }
 
       const [requests, total] = await Promise.all([
         prisma.maintenanceRequest.findMany({
@@ -107,8 +113,16 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { workspaceId, id } = request.params;
 
+      const ticketWhere: Prisma.MaintenanceRequestWhereInput = {
+        id,
+        workspaceId,
+      };
+      if (request.userRole === "LANDLORD") {
+        ticketWhere.property = { ownerId: request.userId! };
+      }
+
       const ticket = await prisma.maintenanceRequest.findFirst({
-        where: { id, workspaceId },
+        where: ticketWhere,
       });
       if (!ticket) {
         return reply
@@ -144,8 +158,16 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
       const { content } = request.body;
       const userId = request.userId!;
 
+      const ticketWhere: Prisma.MaintenanceRequestWhereInput = {
+        id,
+        workspaceId,
+      };
+      if (request.userRole === "LANDLORD") {
+        ticketWhere.property = { ownerId: userId };
+      }
+
       const ticket = await prisma.maintenanceRequest.findFirst({
-        where: { id, workspaceId },
+        where: ticketWhere,
       });
       if (!ticket) {
         return reply
@@ -194,7 +216,7 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
   }>(
     "/:id",
     {
-      preHandler: requireManager,
+      preHandler: requireManagement,
       schema: { params: MaintenanceParams, body: UpdateStatusBody },
     },
     async (request, reply) => {
@@ -202,13 +224,27 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
       const { status, priority, vendor } = request.body;
 
       try {
-        const oldRequest = await prisma.maintenanceRequest.findUnique({
-          where: { maintenance_workspace_id: { id, workspaceId } },
+        const ticketWhere: Prisma.MaintenanceRequestWhereInput = {
+          id,
+          workspaceId,
+        };
+        if (request.userRole === "LANDLORD") {
+          ticketWhere.property = { ownerId: request.userId! };
+        }
+
+        const oldRequest = await prisma.maintenanceRequest.findFirst({
+          where: ticketWhere,
           include: {
             tenant: { select: { email: true, name: true } },
             workspace: { select: { plan: true } },
           },
         });
+
+        if (!oldRequest) {
+          return reply
+            .status(404)
+            .send({ error: "Maintenance request not found" });
+        }
 
         const maintenanceRequest = await prisma.maintenanceRequest.update({
           where: { maintenance_workspace_id: { id, workspaceId } },
@@ -278,14 +314,22 @@ export default async function maintenanceRoutes(fastify: FastifyInstance) {
   }>(
     "/:id/ai-triage",
     {
-      preHandler: requireManager,
+      preHandler: requireManagement,
       schema: { params: MaintenanceParams },
     },
     async (request, reply) => {
       const { workspaceId, id } = request.params;
 
+      const ticketWhere: Prisma.MaintenanceRequestWhereInput = {
+        id,
+        workspaceId,
+      };
+      if (request.userRole === "LANDLORD") {
+        ticketWhere.property = { ownerId: request.userId! };
+      }
+
       const ticket = await prisma.maintenanceRequest.findFirst({
-        where: { id, workspaceId },
+        where: ticketWhere,
         include: {
           property: { select: { name: true } },
         },

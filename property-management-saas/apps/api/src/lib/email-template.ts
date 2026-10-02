@@ -34,9 +34,6 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
   } = options;
 
   const currentYear = new Date().getFullYear();
-  const logoUrl =
-    "https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png";
-
   const safeTitle = escapeHtml(title);
   const safeBadge = escapeHtml(badge);
   const safeRecipientEmail = recipientEmail ? escapeHtml(recipientEmail) : "";
@@ -50,28 +47,30 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${safeTitle}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #eef2f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #eef2f6; padding: 40px 16px;">
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 32px 16px;">
     <tr>
       <td align="center">
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);">
-          <!-- Consistent Official Brand Header with Logo & Accent Line -->
+          <!-- Consistent Official Brand Header with Logo, Subtitle Badge & Accent Line -->
           <tr>
             <td style="background-color: #0A192F; padding: 26px 28px; text-align: center; border-bottom: 3px solid #0066FF;">
               <table border="0" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
                 <tr>
-                  <td style="vertical-align: middle; padding-right: 12px;">
-                    <img
-                      src="${logoUrl}"
-                      alt="PropertyStack Logo"
-                      width="42"
-                      height="42"
-                      style="display: block; width: 42px; height: 42px; border-radius: 10px; object-fit: contain; background-color: #ffffff; padding: 2px;"
-                    />
+                  <td style="vertical-align: middle; padding-right: 14px;">
+                    <div style="width: 44px; height: 44px; background-color: #ffffff; border-radius: 10px; overflow: hidden; padding: 2px; box-sizing: border-box; text-align: center;">
+                      <img
+                        src="https://propertystack.vercel.app/images/assets/logo.png"
+                        alt="PropertyStack"
+                        width="40"
+                        height="40"
+                        style="display: block; width: 40px; height: 40px; border-radius: 8px; object-fit: contain; margin: 0 auto;"
+                      />
+                    </div>
                   </td>
                   <td style="vertical-align: middle; text-align: left;">
-                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2;">PropertyStack</h1>
-                    <p style="margin: 2px 0 0 0; color: #60A5FA; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;">${safeBadge}</p>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.4px; line-height: 1.2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">PropertyStack</h1>
+                    <p style="margin: 3px 0 0 0; color: #60A5FA; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${safeBadge}</p>
                   </td>
                 </tr>
               </table>

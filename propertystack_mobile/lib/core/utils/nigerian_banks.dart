@@ -41,6 +41,9 @@ class NigerianBanks {
     '51318': 'FairMoney Microfinance Bank',
   };
 
+  /// Map of bank code to bank name
+  static Map<String, String> get bankMap => _bankMap;
+
   /// Returns the bank name for a given code, or the code itself if not found.
   static String getBankName(String? code) {
     if (code == null || code.isEmpty) return 'N/A';

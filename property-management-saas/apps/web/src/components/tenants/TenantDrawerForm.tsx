@@ -48,7 +48,9 @@ export function TenantDrawerForm({
   } | null>(null);
 
   // Reset state when opening/closing
-  React.useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setStep("form");
       setFormData({ name: "", email: "", phone: "" });
@@ -56,7 +58,7 @@ export function TenantDrawerForm({
       setCredentials(null);
       setCreatedTenantId(null);
     }
-  }, [isOpen]);
+  }
 
   const createMutation = useMutation({
     mutationFn: async () => {

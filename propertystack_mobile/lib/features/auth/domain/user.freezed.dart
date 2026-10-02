@@ -29,6 +29,9 @@ mixin _$User {
   String? get role => throw _privateConstructorUsedError;
   String? get globalRole => throw _privateConstructorUsedError;
   String? get workspaceId => throw _privateConstructorUsedError;
+  String? get bankCode => throw _privateConstructorUsedError;
+  String? get accountNumber => throw _privateConstructorUsedError;
+  String? get accountName => throw _privateConstructorUsedError;
 
   /// Serializes this User to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -53,7 +56,10 @@ abstract class $UserCopyWith<$Res> {
       bool isOnboarded,
       String? role,
       String? globalRole,
-      String? workspaceId});
+      String? workspaceId,
+      String? bankCode,
+      String? accountNumber,
+      String? accountName});
 }
 
 /// @nodoc
@@ -80,6 +86,9 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
     Object? role = freezed,
     Object? globalRole = freezed,
     Object? workspaceId = freezed,
+    Object? bankCode = freezed,
+    Object? accountNumber = freezed,
+    Object? accountName = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -118,6 +127,18 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
           ? _value.workspaceId
           : workspaceId // ignore: cast_nullable_to_non_nullable
               as String?,
+      bankCode: freezed == bankCode
+          ? _value.bankCode
+          : bankCode // ignore: cast_nullable_to_non_nullable
+              as String?,
+      accountNumber: freezed == accountNumber
+          ? _value.accountNumber
+          : accountNumber // ignore: cast_nullable_to_non_nullable
+              as String?,
+      accountName: freezed == accountName
+          ? _value.accountName
+          : accountName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -138,7 +159,10 @@ abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
       bool isOnboarded,
       String? role,
       String? globalRole,
-      String? workspaceId});
+      String? workspaceId,
+      String? bankCode,
+      String? accountNumber,
+      String? accountName});
 }
 
 /// @nodoc
@@ -162,6 +186,9 @@ class __$$UserImplCopyWithImpl<$Res>
     Object? role = freezed,
     Object? globalRole = freezed,
     Object? workspaceId = freezed,
+    Object? bankCode = freezed,
+    Object? accountNumber = freezed,
+    Object? accountName = freezed,
   }) {
     return _then(_$UserImpl(
       id: null == id
@@ -200,6 +227,18 @@ class __$$UserImplCopyWithImpl<$Res>
           ? _value.workspaceId
           : workspaceId // ignore: cast_nullable_to_non_nullable
               as String?,
+      bankCode: freezed == bankCode
+          ? _value.bankCode
+          : bankCode // ignore: cast_nullable_to_non_nullable
+              as String?,
+      accountNumber: freezed == accountNumber
+          ? _value.accountNumber
+          : accountNumber // ignore: cast_nullable_to_non_nullable
+              as String?,
+      accountName: freezed == accountName
+          ? _value.accountName
+          : accountName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -216,7 +255,10 @@ class _$UserImpl implements _User {
       this.isOnboarded = true,
       this.role,
       this.globalRole,
-      this.workspaceId})
+      this.workspaceId,
+      this.bankCode,
+      this.accountNumber,
+      this.accountName})
       : _workspaces = workspaces;
 
   factory _$UserImpl.fromJson(Map<String, dynamic> json) =>
@@ -249,10 +291,16 @@ class _$UserImpl implements _User {
   final String? globalRole;
   @override
   final String? workspaceId;
+  @override
+  final String? bankCode;
+  @override
+  final String? accountNumber;
+  @override
+  final String? accountName;
 
   @override
   String toString() {
-    return 'User(id: $id, email: $email, name: $name, workspaces: $workspaces, mustChangePassword: $mustChangePassword, isOnboarded: $isOnboarded, role: $role, globalRole: $globalRole, workspaceId: $workspaceId)';
+    return 'User(id: $id, email: $email, name: $name, workspaces: $workspaces, mustChangePassword: $mustChangePassword, isOnboarded: $isOnboarded, role: $role, globalRole: $globalRole, workspaceId: $workspaceId, bankCode: $bankCode, accountNumber: $accountNumber, accountName: $accountName)';
   }
 
   @override
@@ -273,7 +321,13 @@ class _$UserImpl implements _User {
             (identical(other.globalRole, globalRole) ||
                 other.globalRole == globalRole) &&
             (identical(other.workspaceId, workspaceId) ||
-                other.workspaceId == workspaceId));
+                other.workspaceId == workspaceId) &&
+            (identical(other.bankCode, bankCode) ||
+                other.bankCode == bankCode) &&
+            (identical(other.accountNumber, accountNumber) ||
+                other.accountNumber == accountNumber) &&
+            (identical(other.accountName, accountName) ||
+                other.accountName == accountName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -288,7 +342,10 @@ class _$UserImpl implements _User {
       isOnboarded,
       role,
       globalRole,
-      workspaceId);
+      workspaceId,
+      bankCode,
+      accountNumber,
+      accountName);
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.
@@ -316,7 +373,10 @@ abstract class _User implements User {
       final bool isOnboarded,
       final String? role,
       final String? globalRole,
-      final String? workspaceId}) = _$UserImpl;
+      final String? workspaceId,
+      final String? bankCode,
+      final String? accountNumber,
+      final String? accountName}) = _$UserImpl;
 
   factory _User.fromJson(Map<String, dynamic> json) = _$UserImpl.fromJson;
 
@@ -338,6 +398,12 @@ abstract class _User implements User {
   String? get globalRole;
   @override
   String? get workspaceId;
+  @override
+  String? get bankCode;
+  @override
+  String? get accountNumber;
+  @override
+  String? get accountName;
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.

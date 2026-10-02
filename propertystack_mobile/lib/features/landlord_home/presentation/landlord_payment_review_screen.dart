@@ -1615,14 +1615,13 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
                           filename: 'Receipt-$receiptId.pdf',
                         );
                       } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Failed to export PDF receipt: $e'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to export PDF receipt: $e'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
                       }
                     },
                     icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),

@@ -39,12 +39,17 @@ export default async function leaseRenewalRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { workspaceId } = request.params;
+      const userRole = request.userRole!;
+      const userId = request.userId!;
 
       const offers = await prisma.leaseRenewalOffer.findMany({
         where: {
           status: "PENDING",
           lease: {
             tenant: { workspaceId },
+            ...(userRole === "LANDLORD"
+              ? { property: { ownerId: userId } }
+              : {}),
           },
         },
         include: {

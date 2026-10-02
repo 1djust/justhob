@@ -6,6 +6,7 @@ import '../../../../core/widgets/tenant_filter_bottom_sheet.dart';
 import '../../../../core/widgets/create_lease_bottom_sheet.dart';
 import '../../../../core/widgets/landlord_bottom_nav_bar.dart';
 import '../../../../core/widgets/header_action_icons.dart';
+import '../../auth/presentation/auth_notifier.dart';
 import '../data/tenants_repository.dart';
 import '../domain/tenant_model.dart';
 import 'tenants_notifier.dart';
@@ -36,6 +37,10 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
     final tenantsAsync = ref.watch(tenantsProvider);
     final globalPartialAsync = ref.watch(workspacePartialPaymentsProvider);
     final globalPartialPayments = globalPartialAsync.valueOrNull ?? true;
+    final user = ref.watch(authStateProvider).valueOrNull;
+    final isManager = user?.role == 'PROPERTY_MANAGER' ||
+        user?.globalRole == 'PROPERTY_MANAGER' ||
+        (user?.workspaces.any((m) => m.role == 'PROPERTY_MANAGER') ?? false);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -52,16 +57,18 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 1. Header Bar
-                _buildHeader(context),
+                _buildHeader(context, isManager: isManager),
                 const SizedBox(height: 20),
 
                 // 2. Search & Filter Bar
                 _buildSearchAndFilterBar(context),
                 const SizedBox(height: 16),
 
-                // 3. Global Partial Payments Toggle
-                _buildGlobalPartialPaymentsCard(globalPartialPayments),
-                const SizedBox(height: 20),
+                // 3. Global Partial Payments Toggle (Only for Property Managers)
+                if (isManager) ...[
+                  _buildGlobalPartialPaymentsCard(globalPartialPayments),
+                  const SizedBox(height: 20),
+                ],
 
                 // 4. Tenants List
                 tenantsAsync.when(
@@ -134,7 +141,7 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
   }
 
   /// 1. Header Bar with Title, + Add Tenant Button, & Top Right Icons
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, {required bool isManager}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,10 +149,10 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
-                'Tenants',
-                style: TextStyle(
+                isManager ? 'Tenants' : 'My Tenants',
+                style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF0F172A),
@@ -154,10 +161,12 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
-                'Manage property occupancies',
-                style: TextStyle(
+                isManager
+                    ? 'Manage property occupancies'
+                    : 'Occupants residing in your properties',
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w400,
                   color: Color(0xFF64748B),
@@ -168,41 +177,45 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 8),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // + Add Tenant button
-            Material(
-              color: const Color(0xFF2563EB),
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
+        if (isManager) ...[
+          const SizedBox(width: 8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // + Add Tenant button
+              Material(
+                color: const Color(0xFF2563EB),
                 borderRadius: BorderRadius.circular(12),
-                onTap: () => _showAddTenantSheet(context),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add_rounded, color: Colors.white, size: 18),
-                      SizedBox(width: 4),
-                      Text(
-                        'Add',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _showAddTenantSheet(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                        SizedBox(width: 4),
+                        Text(
+                          'Add',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 4),
-            const HeaderActionIcons(),
-          ],
-        ),
+              const SizedBox(width: 8),
+              const HeaderActionIcons(),
+            ],
+          ),
+        ] else ...[
+          const HeaderActionIcons(),
+        ],
       ],
     );
   }

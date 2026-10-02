@@ -10,6 +10,7 @@ import { SecurityService } from "../services/security";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { timingSafeEqual, createHash } from "crypto";
+import { runAllReminders } from "../cron/registration-reminder";
 
 // Security (C-4): Must match the same hash function used in middleware
 function tokenHash(token: string): string {
@@ -230,7 +231,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
     // Manually trigger cron jobs for testing
     admin.post("/trigger-crons", { schema: {} }, async (request, reply) => {
-      const results: Record<string, unknown[]> = {
+      const results: {
+        leaseExpiry: unknown[];
+        overdueChecker: unknown[];
+        leaseExpirations: unknown[];
+        reminders?: unknown;
+      } = {
         leaseExpiry: [],
         overdueChecker: [],
         leaseExpirations: [],
@@ -620,11 +626,77 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         results.leaseExpirations.push({ leaseId: lease.id });
       }
 
+      // --- REGISTRATION & ONBOARDING REMINDERS ---
+      try {
+        const reminderResults = await runAllReminders({
+          logger: {
+            info: (msg) => fastify.log.info(msg),
+            warn: (msg) => fastify.log.warn(msg),
+            error: (msg, ...args) => {
+              if (args.length > 0) fastify.log.error({ err: args[0] }, msg);
+              else fastify.log.error(msg);
+            },
+          },
+        });
+        results.reminders = reminderResults;
+      } catch (reminderErr) {
+        fastify.log.error(reminderErr, "Failed to run reminders in /trigger-crons");
+        results.reminders = { error: (reminderErr as Error).message };
+      }
+
       return {
         success: true,
         message: "Cron jobs executed successfully.",
         results,
       };
     });
+
+    // Dedicated manual trigger for registration & onboarding reminders
+    admin.post(
+      "/trigger-reminders",
+      {
+        schema: {
+          body: Type.Optional(
+            Type.Object({
+              dryRun: Type.Optional(Type.Boolean()),
+              force: Type.Optional(Type.Boolean()),
+              maxAgeDays: Type.Optional(Type.Number()),
+              minStage1Hours: Type.Optional(Type.Number()),
+            }),
+          ),
+        },
+      },
+      async (request, reply) => {
+        const body =
+          (request.body as {
+            dryRun?: boolean;
+            force?: boolean;
+            maxAgeDays?: number;
+            minStage1Hours?: number;
+          }) || {};
+        const reminderResults = await runAllReminders({
+          dryRun: body.dryRun ?? false,
+          force: body.force ?? false,
+          ...(body.maxAgeDays !== undefined && { maxAgeDays: body.maxAgeDays }),
+          ...(body.minStage1Hours !== undefined && {
+            minStage1Hours: body.minStage1Hours,
+          }),
+          logger: {
+            info: (msg) => fastify.log.info(msg),
+            warn: (msg) => fastify.log.warn(msg),
+            error: (msg, ...args) => {
+              if (args.length > 0) fastify.log.error({ err: args[0] }, msg);
+              else fastify.log.error(msg);
+            },
+          },
+        });
+
+        return {
+          success: true,
+          message: "Registration and onboarding reminders processed successfully.",
+          results: reminderResults,
+        };
+      },
+    );
   });
 }

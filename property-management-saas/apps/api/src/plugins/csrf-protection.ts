@@ -83,6 +83,24 @@ export const csrfProtectionPlugin: FastifyPluginAsync = async (fastify) => {
       return;
     }
 
+    // 2b. Native mobile apps & non-browser Bearer-authenticated clients
+    // CSRF vulnerabilities strictly affect browser sessions where ambient cookies are sent automatically.
+    // Native mobile apps and requests passing explicit Bearer tokens without browser origin/referer are immune.
+    const userAgent = (request.headers["user-agent"] || "").toLowerCase();
+    const isMobileClient =
+      request.headers["x-client-type"] === "mobile" ||
+      userAgent.includes("dart") ||
+      userAgent.includes("flutter") ||
+      userAgent.includes("propertystack");
+
+    const hasAuthBearer = Boolean(
+      request.headers.authorization?.startsWith("Bearer "),
+    );
+
+    if (isMobileClient || (hasAuthBearer && !request.headers.origin && !request.headers.referer)) {
+      return;
+    }
+
     // 3. Origin & Referer Verification (OWASP First Line of Defense)
     const originHeader = request.headers.origin;
     if (originHeader) {

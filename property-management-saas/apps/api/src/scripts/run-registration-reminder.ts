@@ -26,6 +26,7 @@ async function main() {
 
   const args = process.argv.slice(2);
   const isDryRun = args.includes("--dry-run");
+  const isForce = args.includes("--force");
 
   const { processRegistrationReminders, processOnboardingReminders } =
     await import("../cron/registration-reminder");
@@ -33,12 +34,13 @@ async function main() {
 
   const adminEmail = process.env.ADMIN_EMAIL || "propertystackapp@gmail.com";
 
-  console.log(`Mode           : ${isDryRun ? "DRY-RUN (Simulated)" : "LIVE (Emails will be sent)"}`);
+  console.log(`Mode           : ${isDryRun ? "DRY-RUN (Simulated)" : isForce ? "LIVE FORCE (Override sent timestamps)" : "LIVE (Emails will be sent)"}`);
   console.log(`Admin Recipient: ${adminEmail}`);
 
   // 1. Process unconfirmed registration signups
   const regResults = await processRegistrationReminders({
     dryRun: isDryRun,
+    force: isForce,
     logger: console,
   });
 
@@ -46,6 +48,7 @@ async function main() {
   console.log("\n--------------------------------------------------");
   const onboardingResults = await processOnboardingReminders({
     dryRun: isDryRun,
+    force: isForce,
     logger: console,
   });
 

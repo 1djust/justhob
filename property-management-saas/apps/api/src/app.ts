@@ -30,6 +30,7 @@ import leaseRenewalRoutes from "./routes/lease-renewals";
 import adminRoutes from "./routes/admin";
 import superAdminRoutes from "./routes/super-admin";
 import uploadRoutes from "./routes/upload";
+import cronRoutes from "./routes/cron";
 import socketPlugin from "./plugins/socket";
 import { setupOverdueChecker } from "./cron/overdue-checker";
 import { setupLeaseExpiryReminder } from "./cron/lease-expiry-reminder";
@@ -50,6 +51,23 @@ export function buildApp() {
     trustProxy: true,
     bodyLimit: 10 * 1024 * 1024, // 10MB for image uploads
   }).withTypeProvider<TypeBoxTypeProvider>();
+
+  // Gracefully handle empty JSON bodies instead of throwing FST_ERR_CTP_EMPTY_JSON_BODY
+  fastify.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    (req, body: string, done) => {
+      if (!body || body.trim().length === 0) {
+        return done(null, {});
+      }
+      try {
+        return done(null, JSON.parse(body));
+      } catch (err: any) {
+        err.statusCode = 400;
+        return done(err, undefined);
+      }
+    },
+  );
 
   // Security: Restrict CORS to known frontend origins only
   // In development: dynamically allow any localhost, 127.0.0.1, or local emulator origins
@@ -430,6 +448,8 @@ export function buildApp() {
     },
     { prefix: "/api/uploads" },
   );
+
+  fastify.register(cronRoutes, { prefix: "/api/cron" });
 
   return fastify;
 }

@@ -38,44 +38,65 @@ void showMoreOptionsOverlay(BuildContext context, WidgetRef ref) {
             ),
             const SizedBox(height: 16),
 
-            // Grid of overlay items (Owners, Occupancy, Maintenance)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildOverlayItem(
-                  context,
-                  icon: Icons.people_outline_rounded,
-                  label: 'Owners',
-                  color: const Color(0xFF2563EB),
-                  bgColor: const Color(0xFFEFF6FF),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.push('/landlord/owners');
-                  },
-                ),
-                _buildOverlayItem(
-                  context,
-                  icon: Icons.pie_chart_outline_rounded,
-                  label: 'Occupancy',
-                  color: const Color(0xFF16A34A),
-                  bgColor: const Color(0xFFF0FDF4),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.push('/landlord/occupancy');
-                  },
-                ),
-                _buildOverlayItem(
-                  context,
-                  icon: Icons.build_outlined,
-                  label: 'Maintenance',
-                  color: const Color(0xFFD97706),
-                  bgColor: const Color(0xFFFEFCE8),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.push('/landlord/maintenance');
-                  },
-                ),
-              ],
+            Builder(
+              builder: (context) {
+                final user = ref.read(authStateProvider).valueOrNull;
+                final isManager = user?.role == 'PROPERTY_MANAGER' ||
+                    user?.globalRole == 'PROPERTY_MANAGER' ||
+                    (user?.workspaces.any((m) => m.role == 'PROPERTY_MANAGER') ?? false);
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    if (isManager)
+                      _buildOverlayItem(
+                        context,
+                        icon: Icons.people_outline_rounded,
+                        label: 'Owners',
+                        color: const Color(0xFF2563EB),
+                        bgColor: const Color(0xFFEFF6FF),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/landlord/owners');
+                        },
+                      ),
+                    _buildOverlayItem(
+                      context,
+                      icon: Icons.pie_chart_outline_rounded,
+                      label: 'Occupancy',
+                      color: const Color(0xFF16A34A),
+                      bgColor: const Color(0xFFF0FDF4),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/landlord/occupancy');
+                      },
+                    ),
+                    _buildOverlayItem(
+                      context,
+                      icon: Icons.build_outlined,
+                      label: 'Maintenance',
+                      color: const Color(0xFFD97706),
+                      bgColor: const Color(0xFFFEFCE8),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/landlord/maintenance');
+                      },
+                    ),
+                    if (!isManager)
+                      _buildOverlayItem(
+                        context,
+                        icon: Icons.account_balance_outlined,
+                        label: 'Payout Info',
+                        color: const Color(0xFF2563EB),
+                        bgColor: const Color(0xFFEFF6FF),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/profile');
+                        },
+                      ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 20),
 

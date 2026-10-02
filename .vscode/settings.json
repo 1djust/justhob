@@ -25,6 +25,9 @@
   "typescript.tsserver.maxTsServerMemory": 3072,
   "typescript.disableAutomaticTypeAcquisition": true,
   "dart.flutterSdkPath": "C:\\src\\flutter",
+  "dart.projectSearchPaths": [
+    "propertystack_mobile"
+  ],
   "dart.analysisExcludedFolders": [
     "propertystack_mobile/build",
     "propertystack_mobile/android/.gradle"

@@ -3,7 +3,14 @@ import { FastifyInstance } from "fastify";
 import { supabaseAdmin } from "../lib/supabase";
 import { prisma } from "../lib/database";
 import { sendEmail } from "../lib/mailer";
-import { escapeHtml } from "../lib/email-template";
+import { renderEmailLayout, escapeHtml } from "../lib/email-template";
+
+export interface ReminderDetail {
+  email: string;
+  stage?: 1 | 2 | "onboarding";
+  action: "sent" | "skipped" | "error";
+  reason?: string;
+}
 
 export interface ReminderExecutionResult {
   totalUnconfirmedEvaluated: number;
@@ -11,10 +18,12 @@ export interface ReminderExecutionResult {
   stage2Sent: number;
   skippedCount: number;
   errors: string[];
+  details: ReminderDetail[];
 }
 
 export interface ReminderProcessOptions {
   dryRun?: boolean;
+  force?: boolean;
   maxAgeDays?: number;
   minStage1Hours?: number;
   minStage2Hours?: number;
@@ -37,202 +46,69 @@ export function buildRegistrationReminderEmail(params: {
   const { email, name, stage, frontendUrl } = params;
   const displayName = name && name.trim().length > 0 ? name.trim() : "there";
   const actionUrl = `${frontendUrl.replace(/\/$/, "")}/link?action=register&step=otp&email=${encodeURIComponent(email)}`;
-  const currentYear = new Date().getFullYear();
-
-  const logoUrl = "https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png";
 
   if (stage === 1) {
-    const subject = "Verify your PropertyStack account";
-    const text = `Hi ${displayName},\n\nThank you for signing up for PropertyStack.\n\nPlease verify your email to activate your property management workspace:\n- Centralized property and lease management\n- Automated rent invoicing and instant receipts\n- Streamlined tenant maintenance requests\n\nVerify your account now:\n${actionUrl}\n\nIf you have any questions or need help, simply reply to this email.\n\nBest regards,\nThe PropertyStack Team`;
+    const subject = "PropertyStack: Please confirm your email address";
+    const text = `Hi ${displayName},\n\nThank you for signing up for PropertyStack.\n\nPlease confirm your email address to complete your registration and activate your workspace:\n\n${actionUrl}\n\nIf you did not create this account, you can safely ignore this email.\n\nBest regards,\nThe PropertyStack Team`;
 
-    const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #eef2f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #eef2f6; padding: 40px 16px;">
-    <tr>
-      <td align="center">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);">
-          <!-- Header Banner with Logo -->
-          <tr>
-            <td style="background-color: #0A192F; padding: 26px 28px; text-align: center; border-bottom: 3px solid #0066FF;">
-              <table border="0" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
-                <tr>
-                  <td style="vertical-align: middle; padding-right: 12px;">
-                    <img
-                      src="${logoUrl}"
-                      alt="PropertyStack Logo"
-                      width="42"
-                      height="42"
-                      style="display: block; width: 42px; height: 42px; border-radius: 10px; object-fit: contain; background-color: #ffffff; padding: 2px;"
-                    />
-                  </td>
-                  <td style="vertical-align: middle; text-align: left;">
-                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2;">PropertyStack</h1>
-                    <p style="margin: 2px 0 0 0; color: #93C5FD; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Next-Gen Property Management</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          
-          <!-- Content Body -->
-          <tr>
-            <td style="padding: 36px 32px 28px 32px;">
-              <h2 style="margin: 0 0 16px 0; color: #0A192F; font-size: 20px; font-weight: 600;">Complete Your Account Setup</h2>
-              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-                Hi <strong>${escapeHtml(displayName)}</strong>,
-              </p>
-              <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
-                We noticed you recently started registering for <strong>PropertyStack</strong>, but haven't verified your email yet. You are only one step away from simplifying your property operations!
-              </p>
-              
-              <!-- Value Highlights Box -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 0 0 28px 0;">
-                <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #0A192F;">What awaits you inside:</p>
-                <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                  <tr>
-                    <td style="padding: 6px 0; font-size: 14px; color: #334155; vertical-align: top; width: 24px;">✨</td>
-                    <td style="padding: 6px 0 6px 8px; font-size: 14px; color: #334155;"><strong>Effortless Management:</strong> Organize units, tenants, and leases with ease.</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 6px 0; font-size: 14px; color: #334155; vertical-align: top; width: 24px;">💳</td>
-                    <td style="padding: 6px 0 6px 8px; font-size: 14px; color: #334155;"><strong>Automated Rent:</strong> Automated invoicing, reminders, and payment tracking.</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 6px 0; font-size: 14px; color: #334155; vertical-align: top; width: 24px;">🔧</td>
-                    <td style="padding: 6px 0 6px 8px; font-size: 14px; color: #334155;"><strong>Maintenance Hub:</strong> Real-time requests, chat, and resolution tracking.</td>
-                  </tr>
-                </table>
-              </div>
+    const bodyHtml = `
+      <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">Confirm your email address</h2>
+      <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+        Hi ${escapeHtml(displayName)},
+      </p>
+      <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+        Thank you for creating an account on PropertyStack. To complete your setup and access your dashboard, please confirm your email address.
+      </p>
+      <div style="margin: 0 0 28px 0;">
+        <a href="${actionUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 28px; border-radius: 6px;">
+          Confirm Email Address
+        </a>
+      </div>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+        Or use this link directly in your browser:<br/>
+        <a href="${actionUrl}" style="color: #0066FF; word-break: break-all;">${actionUrl}</a>
+      </p>
+    `;
 
-              <!-- CTA Button -->
-              <div style="text-align: center; margin: 0 0 16px 0;">
-                <a href="${actionUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 14px 36px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 102, 255, 0.3);">
-                  Complete Your Registration →
-                </a>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
-              <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b;">
-                You received this email because you signed up for an account on PropertyStack (${email}).
-              </p>
-              <p style="margin: 0 0 6px 0; font-size: 12px; color: #94a3b8;">
-                If you did not initiate this request, you can safely ignore this email.
-              </p>
-              <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                &copy; ${currentYear} PropertyStack Inc. All rights reserved.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-    `.trim();
+    const html = renderEmailLayout({
+      title: subject,
+      badge: "ACCOUNT VERIFICATION",
+      bodyHtml,
+      recipientEmail: email,
+    });
 
     return { subject, text, html };
   }
 
   // Stage 2: Follow-up Reminder (72 hours)
-  const subject = "Finish setting up your PropertyStack account";
-  const text = `Hi ${displayName},\n\nYour PropertyStack account is ready for activation.\n\nVerifying your account takes less than a minute and gives you immediate access to your property management dashboard.\n\nVerify and activate your account now:\n${actionUrl}\n\nNeed assistance? Feel free to reach out to our support team.\n\nBest regards,\nThe PropertyStack Team`;
+  const subject = "Reminder: Complete your PropertyStack account setup";
+  const text = `Hi ${displayName},\n\nA quick reminder to complete your PropertyStack registration.\n\nConfirming your email gives you immediate access to your property management workspace:\n\n${actionUrl}\n\nNeed assistance? Reply to this email anytime and our team will be glad to help.\n\nBest regards,\nThe PropertyStack Team`;
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #eef2f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #eef2f6; padding: 40px 16px;">
-    <tr>
-      <td align="center">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);">
-          <!-- Header Banner with Logo -->
-          <tr>
-            <td style="background-color: #0A192F; padding: 26px 28px; text-align: center; border-bottom: 3px solid #0066FF;">
-              <table border="0" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
-                <tr>
-                  <td style="vertical-align: middle; padding-right: 12px;">
-                    <img
-                      src="${logoUrl}"
-                      alt="PropertyStack Logo"
-                      width="42"
-                      height="42"
-                      style="display: block; width: 42px; height: 42px; border-radius: 10px; object-fit: contain; background-color: #ffffff; padding: 2px;"
-                    />
-                  </td>
-                  <td style="vertical-align: middle; text-align: left;">
-                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2;">PropertyStack</h1>
-                    <p style="margin: 2px 0 0 0; color: #60A5FA; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Account Setup</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          
-          <!-- Content Body -->
-          <tr>
-            <td style="padding: 36px 32px 28px 32px;">
-              <h2 style="margin: 0 0 16px 0; color: #0A192F; font-size: 20px; font-weight: 600;">Your Account is Ready to Activate</h2>
-              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-                Hi <strong>${escapeHtml(displayName)}</strong>,
-              </p>
-              <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
-                Your PropertyStack workspace is configured and waiting for you. Verify your email to begin managing your rental properties.
-              </p>
-              
-              <!-- Callout Box -->
-              <div style="background-color: #EFF6FF; border-left: 4px solid #0066FF; border-radius: 4px; padding: 16px 20px; margin: 0 0 28px 0;">
-                <p style="margin: 0; font-size: 14px; color: #1E40AF; font-weight: 600;">
-                  Quick & Secure Setup
-                </p>
-                <p style="margin: 4px 0 0 0; font-size: 13px; color: #1E3A8A; line-height: 1.5;">
-                  Click the button below to verify your code and enter your property management workspace.
-                </p>
-              </div>
+  const bodyHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">Complete your account setup</h2>
+    <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+      Hi ${escapeHtml(displayName)},
+    </p>
+    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+      Your PropertyStack workspace is waiting for you. Take a minute to finish verifying your email so you can start managing properties and leases.
+    </p>
+    <div style="margin: 0 0 28px 0;">
+      <a href="${actionUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 28px; border-radius: 6px;">
+        Complete Setup
+      </a>
+    </div>
+    <p style="margin: 0 0 16px 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+      Or use this link directly in your browser:<br/>
+      <a href="${actionUrl}" style="color: #0066FF; word-break: break-all;">${actionUrl}</a>
+    </p>
+  `;
 
-              <!-- CTA Button -->
-              <div style="text-align: center; margin: 0 0 16px 0;">
-                <a href="${actionUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 14px 36px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 102, 255, 0.3);">
-                  Verify & Activate Account →
-                </a>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
-              <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b;">
-                You received this email because you signed up for an account on PropertyStack (${email}).
-              </p>
-              <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                &copy; ${currentYear} PropertyStack Inc. All rights reserved.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+  const html = renderEmailLayout({
+    title: subject,
+    badge: "ACCOUNT SETUP",
+    bodyHtml,
+    recipientEmail: email,
+  });
 
   return { subject, text, html };
 }
@@ -245,6 +121,7 @@ export async function processRegistrationReminders(
 ): Promise<ReminderExecutionResult> {
   const {
     dryRun = false,
+    force = false,
     maxAgeDays = 14,
     minStage1Hours = 24,
     minStage2Hours = 72,
@@ -260,13 +137,14 @@ export async function processRegistrationReminders(
     stage2Sent: 0,
     skippedCount: 0,
     errors: [],
+    details: [],
   };
 
   const now = new Date();
   const maxAgeCutoff = new Date(now.getTime() - maxAgeDays * 24 * 60 * 60 * 1000);
 
   logger.info(
-    `[REGISTRATION_REMINDER] Starting scan (dryRun=${dryRun}, maxAgeDays=${maxAgeDays})...`,
+    `[REGISTRATION_REMINDER] Starting scan (dryRun=${dryRun}, force=${force}, maxAgeDays=${maxAgeDays})...`,
   );
 
   let page = 1;
@@ -345,21 +223,30 @@ export async function processRegistrationReminders(
 
     let targetStage: (1 | 2) | null = null;
 
-    // Stage 1: Account age >= 24 hours, 0 reminders sent so far
-    if (reminderCount === 0 && ageHours >= minStage1Hours) {
-      targetStage = 1;
-    }
-    // Stage 2: Account age >= 72 hours, 1 reminder sent so far, at least 24h since previous reminder
-    else if (
-      reminderCount === 1 &&
-      ageHours >= minStage2Hours &&
-      hoursSinceLastReminder >= 24
-    ) {
-      targetStage = 2;
+    if (force) {
+      targetStage = reminderCount >= 1 ? 2 : 1;
+    } else {
+      // Stage 1: Account age >= 24 hours, 0 reminders sent so far
+      if (reminderCount === 0 && ageHours >= minStage1Hours) {
+        targetStage = 1;
+      }
+      // Stage 2: Account age >= 72 hours, 1 reminder sent so far, at least 24h since previous reminder
+      else if (
+        reminderCount === 1 &&
+        ageHours >= minStage2Hours &&
+        hoursSinceLastReminder >= 24
+      ) {
+        targetStage = 2;
+      }
     }
 
     if (!targetStage) {
       result.skippedCount++;
+      result.details.push({
+        email: userEmail,
+        action: "skipped",
+        reason: `Not eligible (age: ${ageHours.toFixed(1)}h, count: ${reminderCount}, hoursSinceLast: ${hoursSinceLastReminder.toFixed(1)}h)`,
+      });
       continue;
     }
 
@@ -376,6 +263,12 @@ export async function processRegistrationReminders(
       );
       if (targetStage === 1) result.stage1Sent++;
       else result.stage2Sent++;
+      result.details.push({
+        email: userEmail,
+        stage: targetStage,
+        action: "sent",
+        reason: "Simulated send (dryRun)",
+      });
       continue;
     }
 
@@ -412,6 +305,13 @@ export async function processRegistrationReminders(
         result.stage2Sent++;
       }
 
+      result.details.push({
+        email: userEmail,
+        stage: targetStage,
+        action: "sent",
+        reason: "Email dispatched successfully",
+      });
+
       logger.info(
         `[REGISTRATION_REMINDER] Successfully sent Stage ${targetStage} reminder to ${userEmail}`,
       );
@@ -419,6 +319,12 @@ export async function processRegistrationReminders(
       const msg = `Failed to process reminder for ${userEmail}: ${(err as Error).message}`;
       logger.error(`[REGISTRATION_REMINDER] ${msg}`);
       result.errors.push(msg);
+      result.details.push({
+        email: userEmail,
+        stage: targetStage,
+        action: "error",
+        reason: msg,
+      });
     }
   }
 
@@ -437,108 +343,38 @@ export function buildOnboardingReminderEmail(params: {
   name?: string;
   frontendUrl: string;
 }): { subject: string; text: string; html: string } {
-  const { name, frontendUrl } = params;
+  const { name, frontendUrl, email } = params;
   const displayName = name && name.trim().length > 0 ? name.trim() : "there";
   const actionUrl = `${frontendUrl.replace(/\/$/, "")}/link?action=dashboard`;
-  const logoUrl = "https://raw.githubusercontent.com/1djust/justhob/main/property-management-saas/apps/web/public/images/assets/logo.png";
-  const currentYear = new Date().getFullYear();
 
-  const subject = "Set up your PropertyStack workspace";
-  const text = `Hi ${displayName},\n\nWelcome to PropertyStack! Your manager account is verified and ready for action.\n\nTo begin automating rent collection, generating lease agreements, and tracking maintenance requests, the next step is adding your first property.\n\nGet started now by adding your property:\n${actionUrl}\n\nNeed assistance? Reply to this email anytime and our team will be glad to assist.\n\nBest regards,\nThe PropertyStack Team`;
+  const subject = "Welcome to PropertyStack: Next steps for your account";
+  const text = `Hi ${displayName},\n\nWelcome to PropertyStack! Your manager account is verified and ready.\n\nTo begin managing your rental portfolio, the next step is adding your first property.\n\nOpen your dashboard to get started:\n${actionUrl}\n\nNeed assistance? Reply to this email anytime and our team will be glad to help.\n\nBest regards,\nThe PropertyStack Team`;
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #eef2f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #eef2f6; padding: 40px 16px;">
-    <tr>
-      <td align="center">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);">
-          <!-- Header Banner with Logo -->
-          <tr>
-            <td style="background-color: #0A192F; padding: 26px 28px; text-align: center; border-bottom: 3px solid #0066FF;">
-              <table border="0" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
-                <tr>
-                  <td style="vertical-align: middle; padding-right: 12px;">
-                    <img
-                      src="${logoUrl}"
-                      alt="PropertyStack Logo"
-                      width="42"
-                      height="42"
-                      style="display: block; width: 42px; height: 42px; border-radius: 10px; object-fit: contain; background-color: #ffffff; padding: 2px;"
-                    />
-                  </td>
-                  <td style="vertical-align: middle; text-align: left;">
-                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2;">PropertyStack</h1>
-                    <p style="margin: 2px 0 0 0; color: #93C5FD; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Manager Onboarding</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          
-          <!-- Content Body -->
-          <tr>
-            <td style="padding: 36px 32px 28px 32px;">
-              <h2 style="margin: 0 0 16px 0; color: #0A192F; font-size: 20px; font-weight: 600;">Welcome! Let's Add Your First Property</h2>
-              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
-                Hi <strong>${escapeHtml(displayName)}</strong>,
-              </p>
-              <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
-                Your PropertyStack account is activated and ready. To start managing units, automating rent collection, and tracking tenant leases, simply add your first property.
-              </p>
-              
-              <!-- 3-Step Guide Box -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 0 0 28px 0;">
-                <p style="margin: 0 0 14px 0; font-size: 14px; font-weight: 600; color: #0A192F;">3 Easy Steps to Get Started:</p>
-                <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                  <tr>
-                    <td style="padding: 6px 0; font-size: 14px; color: #0066FF; font-weight: 700; vertical-align: top; width: 24px;">1.</td>
-                    <td style="padding: 6px 0 6px 8px; font-size: 14px; color: #334155;"><strong>Add Property:</strong> Enter building name, address, and rental units.</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 6px 0; font-size: 14px; color: #0066FF; font-weight: 700; vertical-align: top; width: 24px;">2.</td>
-                    <td style="padding: 6px 0 6px 8px; font-size: 14px; color: #334155;"><strong>Invite Tenants:</strong> Send digital leases or welcome invites.</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 6px 0; font-size: 14px; color: #0066FF; font-weight: 700; vertical-align: top; width: 24px;">3.</td>
-                    <td style="padding: 6px 0 6px 8px; font-size: 14px; color: #334155;"><strong>Collect Rent:</strong> Sit back as payments, receipts, and logs run automatically.</td>
-                  </tr>
-                </table>
-              </div>
+  const bodyHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">Welcome to your new workspace</h2>
+    <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+      Hi ${escapeHtml(displayName)},
+    </p>
+    <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+      Your manager account is verified and ready. To get started with managing leases, tracking tenants, and organizing units, add your first property to the workspace.
+    </p>
+    <div style="margin: 0 0 28px 0;">
+      <a href="${actionUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 28px; border-radius: 6px;">
+        Add Your First Property
+      </a>
+    </div>
+    <p style="margin: 0 0 16px 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+      Or visit your dashboard directly in your browser:<br/>
+      <a href="${actionUrl}" style="color: #0066FF; word-break: break-all;">${actionUrl}</a>
+    </p>
+  `;
 
-              <!-- CTA Button -->
-              <div style="text-align: center; margin: 0 0 16px 0;">
-                <a href="${actionUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 14px 36px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 102, 255, 0.3);">
-                  Add Your First Property →
-                </a>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
-              <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b;">
-                You received this email because you signed up as a Property Manager on PropertyStack (${params.email}).
-              </p>
-              <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                &copy; ${currentYear} PropertyStack Inc. All rights reserved.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+  const html = renderEmailLayout({
+    title: subject,
+    badge: "MANAGER ONBOARDING",
+    bodyHtml,
+    recipientEmail: email,
+  });
 
   return { subject, text, html };
 }
@@ -548,6 +384,7 @@ export interface OnboardingReminderResult {
   sentCount: number;
   skippedCount: number;
   errors: string[];
+  details: ReminderDetail[];
 }
 
 /**
@@ -558,6 +395,7 @@ export async function processOnboardingReminders(
 ): Promise<OnboardingReminderResult> {
   const {
     dryRun = false,
+    force = false,
     maxAgeDays = 14,
     minStage1Hours = 24,
     logger = console,
@@ -574,6 +412,7 @@ export async function processOnboardingReminders(
     sentCount: 0,
     skippedCount: 0,
     errors: [],
+    details: [],
   };
 
   const now = new Date();
@@ -581,7 +420,7 @@ export async function processOnboardingReminders(
   const minAgeCutoff = new Date(now.getTime() - minStage1Hours * 60 * 60 * 1000);
 
   logger.info(
-    `[ONBOARDING_REMINDER] Starting manager onboarding scan (dryRun=${dryRun})...`,
+    `[ONBOARDING_REMINDER] Starting manager onboarding scan (dryRun=${dryRun}, force=${force})...`,
   );
 
   try {
@@ -628,14 +467,34 @@ export async function processOnboardingReminders(
         await supabaseAdmin.auth.admin.getUserById(manager.id);
 
       if (supaUserError || !supaUserData?.user) {
+        const reason = `Supabase user not found or error (${supaUserError?.message || "No user"})`;
+        logger.info(
+          `[ONBOARDING_REMINDER] Skipped ${manager.email}: ${reason}`,
+        );
         result.skippedCount++;
+        result.details.push({
+          email: manager.email,
+          stage: "onboarding",
+          action: "skipped",
+          reason,
+        });
         continue;
       }
 
       const meta = supaUserData.user.user_metadata || {};
-      if (meta.onboarding_reminder_sent_at) {
+      if (meta.onboarding_reminder_sent_at && !force) {
+        const reason = `reminder already sent at ${meta.onboarding_reminder_sent_at}`;
+        logger.info(
+          `[ONBOARDING_REMINDER] Skipped ${manager.email}: ${reason}`,
+        );
         result.skippedCount++;
-        continue; // Already sent
+        result.details.push({
+          email: manager.email,
+          stage: "onboarding",
+          action: "skipped",
+          reason,
+        });
+        continue;
       }
 
       const emailContent = buildOnboardingReminderEmail({
@@ -649,6 +508,12 @@ export async function processOnboardingReminders(
           `[DRY_RUN] Would send Onboarding Setup reminder to ${manager.email} (${manager.name})`,
         );
         result.sentCount++;
+        result.details.push({
+          email: manager.email,
+          stage: "onboarding",
+          action: "sent",
+          reason: "Simulated send (dryRun)",
+        });
         continue;
       }
 
@@ -669,6 +534,12 @@ export async function processOnboardingReminders(
         });
 
         result.sentCount++;
+        result.details.push({
+          email: manager.email,
+          stage: "onboarding",
+          action: "sent",
+          reason: "Email dispatched successfully",
+        });
         logger.info(
           `[ONBOARDING_REMINDER] Successfully sent onboarding reminder to ${manager.email}`,
         );
@@ -676,6 +547,12 @@ export async function processOnboardingReminders(
         const msg = `Failed to send onboarding reminder to ${manager.email}: ${(err as Error).message}`;
         logger.error(`[ONBOARDING_REMINDER] ${msg}`);
         result.errors.push(msg);
+        result.details.push({
+          email: manager.email,
+          stage: "onboarding",
+          action: "error",
+          reason: msg,
+        });
       }
     }
   } catch (err) {
@@ -688,37 +565,69 @@ export async function processOnboardingReminders(
 }
 
 /**
+ * Composite runner executing both unconfirmed registration reminders and onboarding setup reminders.
+ */
+export async function runAllReminders(
+  options: ReminderProcessOptions = {},
+): Promise<{
+  registration: ReminderExecutionResult;
+  onboarding: OnboardingReminderResult;
+  timestamp: string;
+}> {
+  const { logger = console } = options;
+  logger.info("[REMINDER_SERVICE] Running all automated reminders (registration + onboarding)...");
+  const registration = await processRegistrationReminders(options);
+  const onboarding = await processOnboardingReminders(options);
+  return {
+    registration,
+    onboarding,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/**
  * Initializes the background cron schedule inside the Fastify server.
  */
 export function setupRegistrationReminder(fastify: FastifyInstance): void {
-  // Run daily at 03:00 AM (after 02:00 AM retention cleanup)
-  cron.schedule("0 3 * * *", async () => {
+  const logger = {
+    info: (msg: string) => fastify.log.info(msg),
+    warn: (msg: string) => fastify.log.warn(msg),
+    error: (msg: string, ...args: unknown[]) => {
+      if (args.length > 0) {
+        fastify.log.error({ err: args[0] }, msg);
+      } else {
+        fastify.log.error(msg);
+      }
+    },
+  };
+
+  // Run automatically every hour at minute 0
+  cron.schedule("0 * * * *", async () => {
     fastify.log.info(
-      "[CRON/REGISTRATION_REMINDER] Starting scheduled follow-up reminder job...",
+      "[CRON/REGISTRATION_REMINDER] Starting hourly follow-up reminder check...",
     );
     try {
-      const logger = {
-        info: (msg: string) => fastify.log.info(msg),
-        warn: (msg: string) => fastify.log.warn(msg),
-        error: (msg: string, ...args: unknown[]) => {
-          if (args.length > 0) {
-            fastify.log.error({ err: args[0] }, msg);
-          } else {
-            fastify.log.error(msg);
-          }
-        },
-      };
-
-      // 1. Process unconfirmed registration reminders
-      await processRegistrationReminders({ logger });
-
-      // 2. Process onboarding property setup reminders
-      await processOnboardingReminders({ logger });
+      await runAllReminders({ logger });
     } catch (err) {
       fastify.log.error(
         { err },
-        "[CRON/REGISTRATION_REMINDER] Unhandled error during cron run",
+        "[CRON/REGISTRATION_REMINDER] Unhandled error during hourly cron run",
       );
     }
   });
+
+  // Initial startup execution: check for pending reminders shortly after server launch
+  setTimeout(async () => {
+    fastify.log.info(
+      "[CRON/REGISTRATION_REMINDER] Initial startup check for pending reminders...",
+    );
+    try {
+      await runAllReminders({ logger });
+    } catch (err) {
+      fastify.log.error(
+        { err },
+        "[CRON/REGISTRATION_REMINDER] Initial startup reminder execution failed",
+      );
+    }
+  }, 20000);
 }

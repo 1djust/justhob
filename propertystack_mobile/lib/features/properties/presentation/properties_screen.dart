@@ -9,6 +9,7 @@ import '../../../../core/widgets/add_property_bottom_sheet.dart';
 import '../../../../core/widgets/property_filter_bottom_sheet.dart';
 import '../../../../core/widgets/landlord_bottom_nav_bar.dart';
 import '../../../../core/widgets/header_action_icons.dart';
+import '../../auth/presentation/auth_notifier.dart';
 import '../domain/property_model.dart';
 import 'properties_notifier.dart';
 
@@ -46,6 +47,10 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
   @override
   Widget build(BuildContext context) {
     final propertiesAsync = ref.watch(propertiesProvider);
+    final user = ref.watch(authStateProvider).valueOrNull;
+    final isManager = user?.role == 'PROPERTY_MANAGER' ||
+        user?.globalRole == 'PROPERTY_MANAGER' ||
+        (user?.workspaces.any((m) => m.role == 'PROPERTY_MANAGER') ?? false);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -61,7 +66,7 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 1. Header Bar
-                _buildHeader(context),
+                _buildHeader(context, isManager: isManager),
                 const SizedBox(height: 20),
 
                 // 2. Search & Filter Bar
@@ -141,8 +146,9 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
         ),
       ),
 
-      // Floating Action Button (+ Add Property / Units)
-      floatingActionButton: FloatingActionButton(
+      // Floating Action Button (+ Add Property / Units) - Only for Property Managers
+      floatingActionButton: isManager
+          ? FloatingActionButton(
         onPressed: () {
           showModalBottomSheet(
             context: context,
@@ -184,7 +190,7 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
         elevation: 4,
         shape: const CircleBorder(),
         child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
-      ),
+      ) : null,
 
       // Bottom Navigation Bar
       bottomNavigationBar: const LandlordBottomNavBar(currentIndex: 1),
@@ -260,34 +266,43 @@ class _PropertiesScreenState extends ConsumerState<PropertiesScreen> {
   }
 
   /// 1. Header Bar with Title & Action Icons
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, {required bool isManager}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Properties',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0F172A),
-                letterSpacing: -0.5,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isManager ? 'Properties' : 'My Properties',
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Manage your real estate assets',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFF64748B),
+              const SizedBox(height: 4),
+              Text(
+                isManager
+                    ? 'Manage your real estate assets'
+                    : 'Overview of your owned real estate assets',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF64748B),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        const SizedBox(width: 8),
         const HeaderActionIcons(),
       ],
     );

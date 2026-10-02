@@ -64,6 +64,7 @@ class ApiClient {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-Client-Type': 'mobile',
         },
       ),
     );
@@ -83,13 +84,21 @@ class ApiClient {
               options.headers['Authorization'] = 'Bearer $token';
             }
           } catch (e) {
-      debugPrint('Caught error: $e');
+            debugPrint('Caught error: $e');
             // If secure storage read fails, fallback to inMemoryToken
             if (inMemoryToken != null) {
               options.headers['Authorization'] = 'Bearer $inMemoryToken';
             }
             debugPrint('[ApiClient] Secure storage read failed: $e');
           }
+
+          // Fastify / JSON safety: ensure POST/PUT/PATCH with application/json has a non-null body
+          if (['POST', 'PUT', 'PATCH'].contains(options.method.toUpperCase())) {
+            if (options.data == null) {
+              options.data = {};
+            }
+          }
+
           return handler.next(options);
         },
         onError: (DioException e, handler) async {

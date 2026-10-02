@@ -2,30 +2,26 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Flutter: Debug (Emulator)",
+            "name": "PropertyStack Mobile (Debug)",
             "request": "launch",
             "type": "dart",
-            "cwd": "tenant_app",
-            "program": "lib/main.dart",
-            "args": [
-                "--host-vmservice-port",
-                "8181"
-            ]
+            "cwd": "propertystack_mobile",
+            "program": "propertystack_mobile/lib/main.dart"
         },
         {
-            "name": "Flutter: Profile Mode",
+            "name": "PropertyStack Mobile (Profile)",
             "request": "launch",
             "type": "dart",
-            "cwd": "tenant_app",
-            "program": "lib/main.dart",
+            "cwd": "propertystack_mobile",
+            "program": "propertystack_mobile/lib/main.dart",
             "flutterMode": "profile"
         },
         {
-            "name": "Flutter: Release Mode",
+            "name": "PropertyStack Mobile (Release)",
             "request": "launch",
             "type": "dart",
-            "cwd": "tenant_app",
-            "program": "lib/main.dart",
+            "cwd": "propertystack_mobile",
+            "program": "propertystack_mobile/lib/main.dart",
             "flutterMode": "release"
         }
     ]

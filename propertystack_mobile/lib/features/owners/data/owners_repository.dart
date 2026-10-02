@@ -134,4 +134,31 @@ class OwnersRepository {
       throw Exception('Failed to delete owner: ${e.toString()}');
     }
   }
+
+  /// Resend invitation email to an owner
+  Future<Map<String, dynamic>> resendInvite(
+    String workspaceId,
+    String ownerId,
+  ) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/workspaces/$workspaceId/owners/$ownerId/resend-invite',
+        data: {},
+      );
+
+      if (response.statusCode == 200 && response.data is Map) {
+        return response.data as Map<String, dynamic>;
+      }
+      throw Exception('Unexpected response code: ${response.statusCode}');
+    } on DioException catch (e) {
+      debugPrint('[OwnersRepository] resendInvite error: $e');
+      String message = 'Failed to resend invitation.';
+      if (e.response?.data is Map && e.response?.data['error'] != null) {
+        message = e.response!.data['error'].toString();
+      }
+      throw Exception(message);
+    } catch (e) {
+      throw Exception('Failed to resend invitation: ${e.toString()}');
+    }
+  }
 }

@@ -348,33 +348,52 @@ class _OwnersScreenState extends ConsumerState<OwnersScreen> {
             ),
             const SizedBox(width: 8),
 
-            // Payout Status Badge & Sub-label
+            // Invite Status & Settlement Sub-label
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: isConfigured ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                    color: owner.isInvitePending ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    owner.setupStatus,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: isConfigured ? const Color(0xFF16A34A) : const Color(0xFFD97706),
-                      letterSpacing: 0.3,
+                    border: Border.all(
+                      color: owner.isInvitePending ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0),
+                      width: 0.8,
                     ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (owner.isInvitePending)
+                        Container(
+                          width: 5,
+                          height: 5,
+                          margin: const EdgeInsets.only(right: 4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFD97706),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      Text(
+                        owner.isInvitePending ? 'Invite Pending' : 'Active',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: owner.isInvitePending ? const Color(0xFFB45309) : const Color(0xFF16A34A),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  owner.accountStatus,
+                  isConfigured ? 'Bank Configured' : 'Bank Pending',
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: isConfigured ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                    fontWeight: FontWeight.w600,
+                    color: isConfigured ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                   ),
                 ),
               ],

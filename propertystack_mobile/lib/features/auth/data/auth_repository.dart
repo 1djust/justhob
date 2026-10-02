@@ -242,11 +242,9 @@ class AuthRepository {
       return null;
     } on DioException catch (e) {
       debugPrint('Caught onboardManager error: $e');
-      String message = 'Failed to complete onboarding.';
-      if (e.response?.data is Map && e.response?.data['message'] != null) {
-        message = e.response!.data['message'].toString();
-      }
-      throw Exception(message);
+      throw Exception(
+        _extractDioErrorMessage(e, defaultError: 'Failed to complete onboarding.'),
+      );
     } catch (e) {
       throw Exception('Failed to complete onboarding: ${e.toString()}');
     }
@@ -365,11 +363,9 @@ class AuthRepository {
       return null;
     } on DioException catch (e) {
       debugPrint('[AuthRepository] updateProfile error: $e');
-      String message = 'Failed to update profile details.';
-      if (e.response?.data is Map && e.response?.data['message'] != null) {
-        message = e.response!.data['message'].toString();
-      }
-      throw Exception(message);
+      throw Exception(
+        _extractDioErrorMessage(e, defaultError: 'Failed to update profile details.'),
+      );
     } catch (e) {
       throw Exception('Failed to update profile: ${e.toString()}');
     }

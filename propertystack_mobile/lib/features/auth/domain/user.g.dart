@@ -19,6 +19,9 @@ _$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
       role: json['role'] as String?,
       globalRole: json['globalRole'] as String?,
       workspaceId: json['workspaceId'] as String?,
+      bankCode: json['bankCode'] as String?,
+      accountNumber: json['accountNumber'] as String?,
+      accountName: json['accountName'] as String?,
     );
 
 Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
@@ -32,4 +35,7 @@ Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
       'role': instance.role,
       'globalRole': instance.globalRole,
       'workspaceId': instance.workspaceId,
+      'bankCode': instance.bankCode,
+      'accountNumber': instance.accountNumber,
+      'accountName': instance.accountName,
     };

@@ -69,6 +69,10 @@ class OwnerModel {
   final List<OwnerPropertyInfo> assignedProperties;
   final String? memberId;
   final String? joinedAt;
+  final String status; // 'PENDING', 'ACTIVE'
+  final bool inviteAccepted;
+
+  bool get isInvitePending => !inviteAccepted || status == 'PENDING';
 
   const OwnerModel({
     required this.id,
@@ -86,6 +90,8 @@ class OwnerModel {
     required this.assignedProperties,
     this.memberId,
     this.joinedAt,
+    this.status = 'ACTIVE',
+    this.inviteAccepted = true,
   });
 
   OwnerModel copyWith({
@@ -104,6 +110,8 @@ class OwnerModel {
     List<OwnerPropertyInfo>? assignedProperties,
     String? memberId,
     String? joinedAt,
+    String? status,
+    bool? inviteAccepted,
   }) {
     return OwnerModel(
       id: id ?? this.id,
@@ -121,6 +129,8 @@ class OwnerModel {
       assignedProperties: assignedProperties ?? this.assignedProperties,
       memberId: memberId ?? this.memberId,
       joinedAt: joinedAt ?? this.joinedAt,
+      status: status ?? this.status,
+      inviteAccepted: inviteAccepted ?? this.inviteAccepted,
     );
   }
 
@@ -131,6 +141,11 @@ class OwnerModel {
 
     final isConfigured = (accNum != null && accNum.isNotEmpty) || (pStrategy != null && pStrategy.isNotEmpty);
     final derivedBankName = bCode != null ? (nigerianBankMap[bCode] ?? bCode) : null;
+
+    final rawStatus = json['status'] as String?;
+    final rawInviteAccepted = json['inviteAccepted'] as bool?;
+    final inviteStatus = rawStatus ?? (rawInviteAccepted == false ? 'PENDING' : 'ACTIVE');
+    final isInviteAccepted = rawInviteAccepted ?? (inviteStatus != 'PENDING');
 
     return OwnerModel(
       id: json['id'] as String? ?? '',
@@ -151,6 +166,8 @@ class OwnerModel {
           [],
       memberId: json['memberId'] as String?,
       joinedAt: json['joinedAt'] as String?,
+      status: inviteStatus,
+      inviteAccepted: isInviteAccepted,
     );
   }
 
@@ -175,6 +192,8 @@ class OwnerModel {
       'assignedProperties': assignedProperties.map((e) => e.toJson()).toList(),
       'memberId': memberId,
       'joinedAt': joinedAt,
+      'status': status,
+      'inviteAccepted': inviteAccepted,
     };
   }
 }

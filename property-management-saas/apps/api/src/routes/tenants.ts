@@ -99,6 +99,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       const skip = (pageNum - 1) * limitNum;
 
       const userId = request.userId!;
+      const userRole = request.userRole!;
       const cacheKey = `${userId}:${workspaceId}:${pageNum}:${limitNum}`;
       const now = Date.now();
       const cached = tenantsCache.get(cacheKey);
@@ -106,13 +107,24 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         return reply.send(cached.response);
       }
 
-      const whereClause = { workspaceId, deletedAt: null };
+      const whereClause: Prisma.TenantWhereInput = {
+        workspaceId,
+        deletedAt: null,
+      };
+
+      if (userRole === "LANDLORD") {
+        whereClause.leases = { some: { property: { ownerId: userId } } };
+      }
 
       const [tenants, total] = await Promise.all([
         prisma.tenant.findMany({
           where: whereClause,
           include: {
             leases: {
+              where:
+                userRole === "LANDLORD"
+                  ? { property: { ownerId: userId } }
+                  : undefined,
               include: {
                 property: { select: { id: true, name: true } },
                 unit: { select: { id: true, unitNumber: true, type: true } },
@@ -159,10 +171,27 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { workspaceId, id } = request.params;
+      const userRole = request.userRole || "";
+      const userId = request.userId || "";
+
+      const tenantWhere: Prisma.TenantWhereInput = {
+        id,
+        workspaceId,
+        deletedAt: null,
+      };
+
+      if (userRole === "LANDLORD") {
+        tenantWhere.leases = { some: { property: { ownerId: userId } } };
+      }
+
       const tenant = await prisma.tenant.findFirst({
-        where: { id, workspaceId, deletedAt: null },
+        where: tenantWhere,
         include: {
           leases: {
+            where:
+              userRole === "LANDLORD"
+                ? { property: { ownerId: userId } }
+                : undefined,
             include: {
               property: { select: { id: true, name: true, address: true } },
               unit: { select: { id: true, unitNumber: true, type: true } },

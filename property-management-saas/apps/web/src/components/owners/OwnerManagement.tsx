@@ -18,6 +18,7 @@ import {
   Landmark,
   X,
   Edit,
+  Send,
 } from "lucide-react";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
 import { toast } from "sonner";
@@ -63,6 +64,8 @@ interface Owner {
   accountName?: string;
   accountNumber?: string;
   bankCode?: string;
+  status?: "PENDING" | "ACTIVE";
+  inviteAccepted?: boolean;
 }
 
 export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
@@ -107,6 +110,52 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
       console.error(e);
       alert("Failed to remove owner.");
       setOwnerToDelete(null);
+    },
+  });
+
+  const [resendingOwnerId, setResendingOwnerId] = React.useState<string | null>(null);
+  const [cooldowns, setCooldowns] = React.useState<Record<string, number>>({});
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setCooldowns((prev) => {
+        let changed = false;
+        const next: Record<string, number> = {};
+        for (const [id, count] of Object.entries(prev)) {
+          if (count > 1) {
+            next[id] = count - 1;
+            changed = true;
+          } else {
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const resendInviteMutation = useMutation({
+    mutationFn: async (ownerId: string) => {
+      setResendingOwnerId(ownerId);
+      return await apiFetch(
+        `${API_BASE_URL}/api/workspaces/${workspaceId}/owners/${ownerId}/resend-invite`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+    },
+    onSuccess: (data: any, ownerId: string) => {
+      toast.success(data?.message || "Invitation email resent successfully!");
+      setCooldowns((prev) => ({ ...prev, [ownerId]: 60 }));
+      queryClient.invalidateQueries({ queryKey: ["owners", workspaceId] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to resend invitation.");
+    },
+    onSettled: () => {
+      setResendingOwnerId(null);
     },
   });
 
@@ -189,6 +238,9 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
                     Owner Identity
                   </th>
                   <th className="text-left py-6 px-8 font-bold text-[10px] uppercase tracking-widest text-zinc-400">
+                    Status
+                  </th>
+                  <th className="text-left py-6 px-8 font-bold text-[10px] uppercase tracking-widest text-zinc-400">
                     Payout Strategy
                   </th>
                   <th className="text-left py-6 px-8 font-bold text-[10px] uppercase tracking-widest text-zinc-400">
@@ -221,6 +273,19 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
                       </div>
                     </td>
                     <td className="py-6 px-8">
+                      {o.status === "PENDING" || o.inviteAccepted === false ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/50">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Invite Pending
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          Active
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-6 px-8">
                       <span
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
                           o.payoutStrategy === "DIRECT_TO_LANDLORD"
@@ -251,15 +316,34 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
                     </td>
                     <td className="py-6 px-8 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setOwnerToDelete(o)}
-                          className="hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-zinc-400"
-                          title="Remove Owner"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {o.status === "PENDING" || o.inviteAccepted === false ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => resendInviteMutation.mutate(o.id)}
+                            disabled={resendingOwnerId === o.id || (cooldowns[o.id] || 0) > 0}
+                            className="h-8 text-xs font-semibold gap-1.5 border-amber-200 hover:border-amber-400 hover:bg-amber-50/50 text-amber-800 dark:border-amber-900/50 dark:text-amber-300 dark:hover:bg-amber-950/20"
+                            title="Resend invitation email with fresh credentials"
+                          >
+                            {resendingOwnerId === o.id ? (
+                              <span className="w-3 h-3 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Send className="w-3 h-3" />
+                            )}
+                            {(cooldowns[o.id] || 0) > 0 ? `Wait ${cooldowns[o.id]}s` : "Resend Invite"}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled
+                            className="h-8 text-xs font-medium text-zinc-400 dark:text-zinc-600 cursor-not-allowed opacity-60 gap-1.5 hover:bg-transparent"
+                            title="Landlord has already accepted the invitation"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                            Accepted
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -268,6 +352,15 @@ export function OwnerManagement({ workspaceId }: OwnerManagementProps) {
                           title="Edit Landlord Profile"
                         >
                           <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setOwnerToDelete(o)}
+                          className="hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-zinc-400"
+                          title="Remove Owner"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>

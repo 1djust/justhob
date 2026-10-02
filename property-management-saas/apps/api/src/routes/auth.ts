@@ -7,6 +7,7 @@ import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { meCache } from "../lib/cache";
 import { SecurityService } from "../services/security";
+import { WelcomeService } from "../services/welcome-service";
 import { checkNameSimilarity, checkEmailSimilarity } from "../lib/string-similarity";
 import {
   SESSION_COOKIE_NAME,
@@ -28,11 +29,7 @@ const LoginBody = Type.Object({
   client: Type.Optional(Type.String()),
 });
 const ChangePasswordBody = Type.Object({
-  newPassword: Type.String({
-    minLength: 8,
-    pattern:
-      "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{}|;:,.<>?])[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{}|;:,.<>?]{8,}$",
-  }),
+  newPassword: Type.String({ minLength: 8 }),
 });
 const ResetPasswordBody = Type.Object({ email: Type.String() });
 const CheckEmailBody = Type.Object({ email: Type.String() });
@@ -59,9 +56,7 @@ const OnboardManagerBody = Type.Object({
   phone: Type.Optional(Type.String()),
 });
 
-function getPrimaryWorkspace(
-  workspaces?: Array<{ role: string; workspaceId: string }>,
-) {
+function getPrimaryWorkspace(workspaces?: any[]): any {
   if (!workspaces || workspaces.length === 0) return null;
 
   const priority: Record<string, number> = {
@@ -78,6 +73,24 @@ function getPrimaryWorkspace(
   });
 
   return sorted[0];
+}
+
+function extractBankDetails(primaryWS: any) {
+  if (!primaryWS) {
+    return { bankCode: null, accountNumber: null, accountName: null };
+  }
+  if (primaryWS.role === "LANDLORD") {
+    return {
+      bankCode: primaryWS.bankCode || null,
+      accountNumber: primaryWS.accountNumber || null,
+      accountName: primaryWS.accountName || null,
+    };
+  }
+  return {
+    bankCode: primaryWS.workspace?.bankCode || primaryWS.bankCode || null,
+    accountNumber: primaryWS.workspace?.accountNumber || primaryWS.accountNumber || null,
+    accountName: primaryWS.workspace?.accountName || primaryWS.accountName || null,
+  };
 }
 
 export default async function authRoutes(fastify: FastifyInstance) {
@@ -346,6 +359,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const mustChange = supaUser?.user_metadata?.mustChangePassword === true;
       const primaryWS = getPrimaryWorkspace(u.workspaces);
       const isOnboarded = Boolean(u.workspaces && u.workspaces.length > 0);
+      const bankDetails = extractBankDetails(primaryWS);
       const userWithWorkspaces = {
         ...user,
         role: primaryWS?.role || user.role || "PROPERTY_MANAGER",
@@ -353,6 +367,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         workspaceId: primaryWS?.workspaceId || null,
         isOnboarded,
         mustChangePassword: mustChange,
+        ...bankDetails,
       };
 
       const isProd = process.env.NODE_ENV === "production";
@@ -398,6 +413,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
     const workspaceId = primaryWS?.workspaceId || null;
     const isOnboarded = Boolean(user?.workspaces && user.workspaces.length > 0);
+    const bankDetails = extractBankDetails(primaryWS);
 
     const responseBody = {
       user: user
@@ -408,6 +424,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             workspaceId,
             isOnboarded,
             mustChangePassword: mustChange,
+            ...bankDetails,
           }
         : null,
     };
@@ -951,6 +968,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
         getSessionCookieOptions(isProd),
       );
 
+      const bankDetails = extractBankDetails(primaryWS);
+
       return reply.send({
         access_token: data.session.access_token,
         session: {
@@ -967,6 +986,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           workspaceId,
           isOnboarded,
           mustChangePassword: mustChange,
+          ...bankDetails,
         },
       });
     },
@@ -1090,14 +1110,25 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const primaryWS = getPrimaryWorkspace(userWithWorkspaces?.workspaces as any);
 
       if (primaryWS?.workspaceId && (bankCode || accountNumber || accountName)) {
-        await prisma.workspace.update({
-          where: { id: primaryWS.workspaceId },
-          data: {
-            ...(bankCode && { bankCode }),
-            ...(accountNumber && { accountNumber }),
-            ...(accountName && { accountName }),
-          },
-        });
+        if (primaryWS.role === "LANDLORD") {
+          await prisma.workspaceMember.update({
+            where: { id: primaryWS.id },
+            data: {
+              ...(bankCode && { bankCode }),
+              ...(accountNumber && { accountNumber }),
+              ...(accountName && { accountName }),
+            },
+          });
+        } else {
+          await prisma.workspace.update({
+            where: { id: primaryWS.workspaceId },
+            data: {
+              ...(bankCode && { bankCode }),
+              ...(accountNumber && { accountNumber }),
+              ...(accountName && { accountName }),
+            },
+          });
+        }
       }
 
       // Invalidate cache
@@ -1109,7 +1140,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
         include: { workspaces: { include: { workspace: true } } },
       });
 
-      const role = primaryWS?.role || supaData.user.user_metadata?.role || "TENANT";
+      const updatedPrimaryWS = getPrimaryWorkspace(updatedUser?.workspaces as any);
+      const role = updatedPrimaryWS?.role || supaData.user.user_metadata?.role || "TENANT";
+      const bankDetails = extractBankDetails(updatedPrimaryWS);
 
       return reply.send({
         success: true,
@@ -1119,7 +1152,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
               ...updatedUser,
               role,
               globalRole: updatedUser.role,
-              workspaceId: primaryWS?.workspaceId || null,
+              workspaceId: updatedPrimaryWS?.workspaceId || null,
+              ...bankDetails,
             }
           : null,
       });
@@ -1264,6 +1298,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const updatedUser = await prisma.user.findUnique({
         where: { id: user.id },
         include: { workspaces: { include: { workspace: true } } },
+      });
+
+      // Dispatch friendly welcome notification & onboarding email
+      WelcomeService.sendWelcomeOnboarding({
+        userId: user.id,
+        workspaceName: workspace.name,
+        io: (fastify as any).io,
+      }).catch((welcomeErr) => {
+        console.error("[OnboardManager] Failed to dispatch welcome message:", welcomeErr);
       });
 
       return reply.send({

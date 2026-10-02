@@ -10,6 +10,11 @@ final notificationsProvider = StateNotifierProvider<NotificationsNotifier, Async
   return NotificationsNotifier(NotificationRepository(ApiClient()));
 });
 
+final unreadNotificationsCountProvider = Provider<int>((ref) {
+  final notifications = ref.watch(notificationsProvider).valueOrNull ?? [];
+  return notifications.where((n) => !n.isRead).length;
+});
+
 class NotificationsNotifier extends StateNotifier<AsyncValue<List<NotificationItem>>> {
   final NotificationRepository _repository;
   StreamSubscription? _socketSubscription;

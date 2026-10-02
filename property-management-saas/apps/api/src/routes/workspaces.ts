@@ -4,6 +4,7 @@ import { authenticate } from "../lib/middleware";
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { statsCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
+import { WelcomeService } from "../services/welcome-service";
 
 const CreateWorkspaceBody = Type.Object({ name: Type.String() });
 const UpdateWorkspaceParams = Type.Object({ id: Type.String() });
@@ -55,6 +56,15 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
             },
           },
         },
+      });
+
+      // Dispatch friendly welcome notification & onboarding email
+      WelcomeService.sendWelcomeOnboarding({
+        userId,
+        workspaceName: workspace.name,
+        io: (fastify as any).io,
+      }).catch((welcomeErr) => {
+        console.error("[CreateWorkspace] Failed to dispatch welcome message:", welcomeErr);
       });
 
       return reply.status(201).send({ workspace });

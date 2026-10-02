@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/home/presentation/notifications_notifier.dart';
 
-class HeaderActionIcons extends StatelessWidget {
-  final bool hasUnreadNotifications;
+class HeaderActionIcons extends ConsumerWidget {
+  final bool? hasUnreadNotifications;
 
   const HeaderActionIcons({
     super.key,
-    this.hasUnreadNotifications = true,
+    this.hasUnreadNotifications,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref.watch(unreadNotificationsCountProvider);
+    final showBadge = hasUnreadNotifications ?? (unreadCount > 0);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -47,7 +52,7 @@ class HeaderActionIcons extends StatelessWidget {
                   color: Color(0xFF475569),
                   size: 22,
                 ),
-                if (hasUnreadNotifications)
+                if (showBadge)
                   Positioned(
                     top: 1,
                     right: 2,

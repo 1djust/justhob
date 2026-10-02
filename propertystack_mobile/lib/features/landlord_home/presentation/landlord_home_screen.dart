@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../auth/presentation/auth_notifier.dart';
+import '../../auth/domain/user.dart';
+import '../../../../core/utils/nigerian_banks.dart';
 import '../../../../core/widgets/timeframe_bottom_sheet.dart';
 import '../../../../core/widgets/landlord_bottom_nav_bar.dart';
 import '../../../../core/widgets/header_action_icons.dart';
@@ -26,6 +28,9 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
     final statsState = ref.watch(landlordStatsProvider);
 
     final user = authState.valueOrNull;
+    final isManager = user?.role == 'PROPERTY_MANAGER' ||
+        user?.globalRole == 'PROPERTY_MANAGER' ||
+        (user?.workspaces.any((m) => m.role == 'PROPERTY_MANAGER') ?? false);
     final userName = user?.name?.isNotEmpty == true ? user!.name!.split(' ').first : user?.email ?? 'User';
     final stats = statsState.valueOrNull;
 
@@ -44,7 +49,7 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // 1. Top Header Bar
-                      _buildHeader(context, userName: userName),
+                      _buildHeader(context, userName: userName, isManager: isManager),
                       const SizedBox(height: 20),
 
                       // 2. Timeframe Filter Dropdown
@@ -52,15 +57,15 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
                       const SizedBox(height: 24),
 
                       // 3. Metrics Summary Grid (2x2)
-                      _buildMetricsGrid(context, stats: stats),
+                      _buildMetricsGrid(context, stats: stats, isManager: isManager),
                       const SizedBox(height: 24),
 
-                      // 4. Revenue Updates / Advanced Analytics Card
-                      _buildRevenueUpdatesCard(context),
+                      // 4. Next Payout & Cashflow Pipeline Card
+                      _buildPayoutPipelineCard(context, stats: stats, user: user),
                       const SizedBox(height: 28),
 
                       // 5. Action Needed Section
-                      _buildActionNeededSection(context, userName: userName, stats: stats),
+                      _buildActionNeededSection(context, userName: userName, stats: stats, isManager: isManager),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -74,7 +79,7 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
   }
 
   /// Top Header with Welcome Message & Action Icons (Help, Notifications, Profile)
-  Widget _buildHeader(BuildContext context, {required String userName}) {
+  Widget _buildHeader(BuildContext context, {required String userName, required bool isManager}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,9 +98,11 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                "Here's your property summary today.",
-                style: TextStyle(
+              Text(
+                isManager
+                    ? "Here's your operations and portfolio summary today."
+                    : "Here's your investment and earnings summary today.",
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
                   color: Color(0xFF64748B),
@@ -170,7 +177,7 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
   }
 
   /// 2x2 Grid of Metrics (Total Properties, Total Tenants, Rent Collected, Pending Fixes)
-  Widget _buildMetricsGrid(BuildContext context, {LandlordStats? stats}) {
+  Widget _buildMetricsGrid(BuildContext context, {LandlordStats? stats, required bool isManager}) {
     final currencyFormatter = NumberFormat.currency(symbol: '₦', decimalDigits: 2);
     final rentFormatted = currencyFormatter.format(stats?.rentCollected ?? 0.0);
 
@@ -188,17 +195,17 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
       childAspectRatio: 1.35,
       children: [
         _buildMetricCard(
-          title: 'Total Properties',
+          title: isManager ? 'Total Properties' : 'My Properties',
           value: '$totalProperties',
           subtitle: totalProperties > 0 ? '$totalProperties Active' : '0 Active',
         ),
         _buildMetricCard(
-          title: 'Total Tenants',
+          title: isManager ? 'Total Tenants' : 'My Tenants',
           value: '$totalTenants',
           subtitle: totalTenants > 0 ? '$totalTenants Active' : '0 Active',
         ),
         _buildMetricCard(
-          title: 'Rent Collected',
+          title: isManager ? 'Rent Collected' : 'Gross Rent',
           value: rentFormatted,
           subtitle: rentCollected > 0 ? 'This Month' : 'No collections yet',
           isCurrency: true,
@@ -270,8 +277,22 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
     );
   }
 
-  /// Revenue Updates / Advanced Analytics Card
-  Widget _buildRevenueUpdatesCard(BuildContext context) {
+  /// Next Payout & Cashflow Pipeline Card (Concept 1)
+  Widget _buildPayoutPipelineCard(BuildContext context, {LandlordStats? stats, User? user}) {
+    final currencyFormatter = NumberFormat.currency(symbol: '₦', decimalDigits: 2);
+    final grossRent = stats?.rentCollected ?? 0.0;
+    // Typical property management commission is 10%
+    final mgmtFee = grossRent > 0 ? (grossRent * 0.10) : 0.0;
+    final netPayout = (grossRent - mgmtFee).clamp(0.0, double.infinity);
+
+    final bankCode = user?.bankCode;
+    final accNum = user?.accountNumber;
+    final hasBank = accNum != null && accNum.trim().isNotEmpty;
+    final bankName = NigerianBanks.getBankName(bankCode);
+    final bankDisplay = hasBank
+        ? '${bankName != "N/A" ? bankName.split(" ").first : "Bank"} ••••${accNum.length >= 4 ? accNum.substring(accNum.length - 4) : accNum}'
+        : null;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -289,111 +310,232 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
-                'Revenue Updates',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0F172A),
-                ),
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_wallet_rounded,
+                      color: Color(0xFF2563EB),
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Payout Pipeline',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                'Last 6 Months',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF64748B),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: hasBank ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: hasBank ? const Color(0xFFA7F3D0) : const Color(0xFFFDE68A),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      hasBank ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                      size: 12,
+                      color: hasBank ? const Color(0xFF047857) : const Color(0xFFB45309),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      hasBank ? 'Auto-Disbursement' : 'Bank Not Linked',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: hasBank ? const Color(0xFF047857) : const Color(0xFFB45309),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // Inner Graphic & Banner Container
+          // Payout Amount Banner
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF8FAFC), Color(0xFFEFF6FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Shield Badge
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  child: SvgPicture.asset(
-                    'assets/icon/shield.svg',
-                    colorFilter: const ColorFilter.mode(Color(0xFF2563EB), BlendMode.srcIn),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'ESTIMATED NET PAYOUT',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF64748B),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    Text(
+                      grossRent > 0 ? 'Active Cycle' : 'Cleared',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: grossRent > 0 ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 14),
-
-                // Title
-                const Text(
-                  'Advanced Analytics',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
+                const SizedBox(height: 8),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    currencyFormatter.format(netPayout),
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF0F172A),
+                      letterSpacing: -0.8,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 6),
-
-                // Subtitle
-                const Text(
-                  'Upgrade to PRO to unlock detailed\ninteractive financial charts.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF64748B),
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Upgrade Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('PRO Analytics upgrading coming soon!'),
-                          duration: Duration(seconds: 2),
+                Row(
+                  children: [
+                    Icon(
+                      hasBank ? Icons.account_balance_rounded : Icons.add_circle_outline_rounded,
+                      size: 14,
+                      color: hasBank ? const Color(0xFF047857) : const Color(0xFF2563EB),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        hasBank
+                            ? 'Payout to: $bankDisplay (${user?.accountName?.split(" ").first ?? "Landlord"})'
+                            : 'Link your bank account to receive automatic rent payouts',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: hasBank ? const Color(0xFF334155) : const Color(0xFF2563EB),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    child: const Text(
-                      'Upgrade to Pro',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Cashflow Pipeline Breakdown
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+            ),
+            child: Column(
+              children: [
+                _buildPipelineRow(
+                  title: 'Gross Rent Collected',
+                  amount: currencyFormatter.format(grossRent),
+                  amountColor: const Color(0xFF0F172A),
+                  prefixIcon: Icons.add_rounded,
+                  prefixColor: const Color(0xFF16A34A),
+                ),
+                const SizedBox(height: 10),
+                _buildPipelineRow(
+                  title: 'Agency Commission (10%)',
+                  amount: '- ${currencyFormatter.format(mgmtFee)}',
+                  amountColor: const Color(0xFF64748B),
+                  prefixIcon: Icons.remove_rounded,
+                  prefixColor: const Color(0xFF94A3B8),
+                ),
+                const SizedBox(height: 10),
+                _buildPipelineRow(
+                  title: 'Maintenance Deductions',
+                  amount: '- ₦0.00',
+                  amountColor: const Color(0xFF64748B),
+                  prefixIcon: Icons.remove_rounded,
+                  prefixColor: const Color(0xFF94A3B8),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                ),
+                _buildPipelineRow(
+                  title: 'Net Cashflow',
+                  amount: currencyFormatter.format(netPayout),
+                  amountColor: const Color(0xFF047857),
+                  isBold: true,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Action Button
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                if (hasBank) {
+                  context.go('/landlord/payments');
+                } else {
+                  context.push('/profile');
+                }
+              },
+              icon: Icon(
+                hasBank ? Icons.receipt_long_rounded : Icons.account_balance_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+              label: Text(
+                hasBank ? 'View Disbursement Ledger' : 'Configure Payout Bank Account',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ),
         ],
@@ -401,8 +543,47 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
     );
   }
 
+  Widget _buildPipelineRow({
+    required String title,
+    required String amount,
+    required Color amountColor,
+    IconData? prefixIcon,
+    Color? prefixColor,
+    bool isBold = false,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            if (prefixIcon != null) ...[
+              Icon(prefixIcon, size: 14, color: prefixColor ?? const Color(0xFF94A3B8)),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+                color: isBold ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+        Text(
+          amount,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
+            color: amountColor,
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Action Needed Section (Overdue Payments, Expiring Leases, All Caught Up)
-  Widget _buildActionNeededSection(BuildContext context, {required String userName, LandlordStats? stats}) {
+  Widget _buildActionNeededSection(BuildContext context, {required String userName, LandlordStats? stats, required bool isManager}) {
     final overdueCount = stats?.overduePaymentsCount ?? 0;
     final expiringCount = stats?.expiringLeasesCount ?? 0;
     final hasActions = overdueCount > 0 || expiringCount > 0;
@@ -429,13 +610,17 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
             _buildExpiringLeasesCard(context, expiringCount: expiringCount),
           ],
         ] else ...[
-          _buildAllCaughtUpCard(context, hasProperties: (stats?.totalProperties ?? 0) > 0),
+          _buildAllCaughtUpCard(
+            context,
+            hasProperties: (stats?.totalProperties ?? 0) > 0,
+            isManager: isManager,
+          ),
         ],
       ],
     );
   }
 
-  Widget _buildAllCaughtUpCard(BuildContext context, {required bool hasProperties}) {
+  Widget _buildAllCaughtUpCard(BuildContext context, {required bool hasProperties, required bool isManager}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -483,7 +668,9 @@ class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
                 Text(
                   hasProperties
                       ? 'No overdue payments or expiring leases right now.'
-                      : 'No actions needed. Add properties and tenants to start tracking payments.',
+                      : (isManager
+                          ? 'No actions needed. Add properties and tenants to start tracking payments.'
+                          : 'Your portfolio is up to date. You will be notified of new rent deposits or approvals.'),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,

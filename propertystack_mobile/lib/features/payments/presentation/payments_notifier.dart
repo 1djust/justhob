@@ -2,20 +2,29 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../home/data/tenant_repository.dart';
+import '../../home/presentation/home_notifier.dart';
 import '../../../../shared/domain/payment.dart';
 import '../../../../core/network/socket_service.dart';
-import '../../home/presentation/home_notifier.dart';
+import '../../auth/presentation/auth_notifier.dart';
 
 final paymentsProvider = StateNotifierProvider<PaymentsNotifier, AsyncValue<List<Payment>>>((ref) {
-  return PaymentsNotifier(ref.watch(tenantRepositoryProvider));
+  return PaymentsNotifier(ref.watch(tenantRepositoryProvider), ref);
 });
 
 class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
   final TenantRepository _repository;
+  final Ref _ref;
   StreamSubscription? _socketSubscription;
 
-  PaymentsNotifier(this._repository) : super(const AsyncValue.loading()) {
-    fetchPayments();
+  PaymentsNotifier(this._repository, this._ref) : super(const AsyncValue.loading()) {
+    _ref.listen<AsyncValue<dynamic>>(authStateProvider, (prev, next) {
+      final user = next.valueOrNull;
+      if (user != null) {
+        fetchPayments();
+      } else if (next.hasValue && user == null) {
+        state = const AsyncValue.data([]);
+      }
+    }, fireImmediately: true);
     _listenToSocket();
   }
 
@@ -23,8 +32,11 @@ class PaymentsNotifier extends StateNotifier<AsyncValue<List<Payment>>> {
     _socketSubscription?.cancel();
     _socketSubscription = SocketService().eventStream.listen((event) {
       if (event['type'] == 'PAYMENT_UPDATED') {
-        debugPrint('[PaymentsNotifier] Socket update: Refreshing payments...');
-        fetchPayments();
+        final user = _ref.read(authStateProvider).valueOrNull;
+        if (user != null) {
+          debugPrint('[PaymentsNotifier] Socket update: Refreshing payments...');
+          fetchPayments();
+        }
       }
     });
   }

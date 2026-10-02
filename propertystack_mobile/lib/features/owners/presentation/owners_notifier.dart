@@ -155,6 +155,22 @@ class OwnersNotifier extends StateNotifier<OwnersState> {
       rethrow;
     }
   }
+
+  Future<Map<String, dynamic>> resendInvite(String ownerId) async {
+    final wsId = state.workspaceId;
+    if (wsId == null || wsId.isEmpty) {
+      throw Exception('Workspace ID not found');
+    }
+
+    try {
+      final res = await _repository.resendInvite(wsId, ownerId);
+      await loadOwners();
+      return res;
+    } catch (e) {
+      debugPrint('[OwnersNotifier] resendInvite error: $e');
+      rethrow;
+    }
+  }
 }
 
 final ownersProvider = StateNotifierProvider<OwnersNotifier, OwnersState>((ref) {

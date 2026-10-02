@@ -70,7 +70,8 @@ export function LeaseForm({
     tenantName: tenantName || "",
     tenantAddress: "",
     landlordName: managerName || "",
-    landlordAddress: "",
+    landlordAddress:
+      properties.find((p) => p.id === initialData?.propertyId)?.address || "",
   });
   const [proofUrl, setProofUrl] = React.useState("");
   const [uploadingProof, setUploadingProof] = React.useState(false);
@@ -147,14 +148,6 @@ export function LeaseForm({
     },
   });
 
-  React.useEffect(() => {
-    if (selectedProperty) {
-      setLegalDetails((prev) => ({
-        ...prev,
-        landlordAddress: selectedProperty.address || "",
-      }));
-    }
-  }, [formData.propertyId, selectedProperty]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -279,13 +272,21 @@ export function LeaseForm({
             <select
               required
               value={formData.propertyId}
-              onChange={(e) =>
+              onChange={(e) => {
+                const newPropertyId = e.target.value;
+                const prop = properties.find((p) => p.id === newPropertyId);
                 setFormData({
                   ...formData,
-                  propertyId: e.target.value,
+                  propertyId: newPropertyId,
                   unitId: "",
-                })
-              }
+                });
+                if (prop) {
+                  setLegalDetails((prev) => ({
+                    ...prev,
+                    landlordAddress: prop.address || "",
+                  }));
+                }
+              }}
               className="w-full pl-3.5 pr-10 py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 text-xs font-semibold text-foreground placeholder:text-muted-foreground/60 transition-all focus:outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/5 appearance-none cursor-pointer"
             >
               <option value="">Select building...</option>

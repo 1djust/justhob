@@ -8,6 +8,8 @@ import {
 import { Type, Static } from "@sinclair/typebox";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 
+import { Prisma } from "@prisma/client";
+
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 const LeaseIdParams = Type.Object({
   workspaceId: Type.String(),
@@ -34,11 +36,18 @@ export default async function leaseRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { workspaceId } = request.params;
+      const userRole = request.userRole!;
+      const userId = request.userId!;
+
+      const whereClause: Prisma.LeaseWhereInput = {
+        property: {
+          workspaceId,
+          ...(userRole === "LANDLORD" ? { ownerId: userId } : {}),
+        },
+      };
 
       const leases = await prisma.lease.findMany({
-        where: {
-          property: { workspaceId },
-        },
+        where: whereClause,
         include: {
           tenant: { select: { id: true, name: true } },
           property: { select: { id: true, name: true } },

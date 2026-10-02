@@ -1294,16 +1294,19 @@ function ReassignOwnerModal({
   onConfirm: (ownerId: string) => void;
   onClose: () => void;
 }) {
-  const [selectedOwnerId, setSelectedOwnerId] = React.useState(
-    property.owner?.email || "",
-  );
-
-  // Find owner by ID if possible, but the owner object in property might only have email
-  // Let's use the actual owner ID if it exists
-  React.useEffect(() => {
+  const matchedOwnerId = React.useMemo(() => {
     const owner = owners.find((o) => o.email === property.owner?.email);
-    if (owner) setSelectedOwnerId(owner.id);
-  }, [property.owner, owners]);
+    return owner ? owner.id : property.owner?.email || "";
+  }, [property.owner?.email, owners]);
+
+  const [selectedOwnerId, setSelectedOwnerId] = React.useState(matchedOwnerId);
+  const [prevMatchedOwnerId, setPrevMatchedOwnerId] =
+    React.useState(matchedOwnerId);
+
+  if (matchedOwnerId !== prevMatchedOwnerId) {
+    setPrevMatchedOwnerId(matchedOwnerId);
+    setSelectedOwnerId(matchedOwnerId);
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

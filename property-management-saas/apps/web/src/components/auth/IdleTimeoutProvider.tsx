@@ -16,7 +16,7 @@ export function IdleTimeoutProvider({
   const router = useRouter();
   const [showWarning, setShowWarning] = React.useState(false);
   const [timeLeft, setTimeLeft] = React.useState(COUNTDOWN_SECONDS);
-  const lastActivityRef = React.useRef(Date.now());
+  const lastActivityRef = React.useRef(0);
   const warningIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Function to gracefully log the user out
@@ -33,6 +33,9 @@ export function IdleTimeoutProvider({
 
   // Main listener logic
   React.useEffect(() => {
+    if (lastActivityRef.current === 0) {
+      lastActivityRef.current = Date.now();
+    }
     // Determine if we should check activity
     const activityTypes = [
       "mousemove",

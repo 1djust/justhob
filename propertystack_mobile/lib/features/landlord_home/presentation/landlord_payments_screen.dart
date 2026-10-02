@@ -468,28 +468,40 @@ class _LandlordPaymentsScreenState extends ConsumerState<LandlordPaymentsScreen>
           final isSelected = _selectedStatusFilter == f['id'];
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(
-                f['label']!,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? Colors.white : const Color(0xFF475569),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _selectedStatusFilter = f['id']!;
+                });
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isSelected ? const Color(0xFF2563EB).withValues(alpha: 0.25) : Colors.black.withAlpha(4),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  f['label']!,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? Colors.white : const Color(0xFF475569),
+                  ),
                 ),
               ),
-              selected: isSelected,
-              selectedColor: const Color(0xFF2563EB),
-              backgroundColor: Colors.white,
-              side: BorderSide(
-                color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
-              ),
-              onSelected: (selected) {
-                if (selected) {
-                  setState(() {
-                    _selectedStatusFilter = f['id']!;
-                  });
-                }
-              },
             ),
           );
         }).toList(),

@@ -106,7 +106,15 @@ export const sendEmail = async (
 
   // Ensure every email has the exact official PropertyStack Header & Footer
   let finalHtml = html;
-  if (!finalHtml || !finalHtml.includes("PropertyStack Logo")) {
+  if (!finalHtml && content && /<[a-z][\s\S]*>/i.test(content)) {
+    finalHtml = content;
+  }
+
+  const hasOfficialLayout =
+    Boolean(finalHtml) &&
+    (finalHtml!.includes("#0A192F") || finalHtml!.includes("Consistent Official Brand Header"));
+
+  if (!hasOfficialLayout) {
     const badge = deriveHeaderBadge(subject);
     const bodyHtml = finalHtml || formatPlainTextToHtml(content);
     finalHtml = renderEmailLayout({
@@ -117,7 +125,39 @@ export const sendEmail = async (
     });
   }
 
-  // 1. Primary Driver: Brevo REST API (300 free emails/day to any recipient)
+  const isGmailSender = fromAddress.toLowerCase().endsWith("@gmail.com");
+  const hasSmtp = Boolean(
+    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
+  );
+
+  // Helper for sending via Nodemailer SMTP (authenticated directly via Google/SMTP with native SPF & DKIM)
+  const sendViaSmtp = async () => {
+    const info = await transporter.sendMail({
+      from: `"PropertyStack" <${fromAddress}>`,
+      to,
+      replyTo: `"PropertyStack Support" <${fromAddress}>`,
+      subject,
+      text: content,
+      html: finalHtml,
+    });
+    console.log(
+      `[Mailer:SMTP] Delivered to ${to} | ID: ${info.messageId} | Accepted: ${JSON.stringify(info.accepted)}`,
+    );
+    return { messageId: info.messageId, provider: "smtp" };
+  };
+
+  // 1. If sending from a @gmail.com address and Gmail SMTP credentials exist:
+  // MUST use native Google SMTP so the message is signed with authentic Google DKIM (d=gmail.com)
+  // and originates from Google's SPF network. Sending @gmail.com via Brevo/Resend fails DMARC alignment and triggers Spam filters.
+  if (hasSmtp && isGmailSender) {
+    try {
+      return await sendViaSmtp();
+    } catch (smtpErr) {
+      console.error("[Mailer:SMTPError] Native SMTP send failed, falling back to Brevo/Resend:", smtpErr);
+    }
+  }
+
+  // 2. Primary Driver for custom verified domains (or fallback): Brevo REST API
   if (brevoApiKey) {
     try {
       const response = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -141,8 +181,7 @@ export const sendEmail = async (
             email: fromAddress,
           },
           headers: {
-            "X-Mailer": "PropertyStack Brevo Engine v1.0",
-            "Feedback-ID": "transactional:propertystack:notification",
+            "X-Mailer": "PropertyStack Engine v1.0",
           },
         }),
       });
@@ -156,7 +195,7 @@ export const sendEmail = async (
         return { messageId: data.messageId, provider: "brevo" };
       } else {
         console.warn(
-          `[Mailer:Brevo] Warning: ${data.message || JSON.stringify(data)}. Attempting Resend/SMTP...`,
+          `[Mailer:Brevo] Warning: ${data.message || JSON.stringify(data)}. Attempting fallback...`,
         );
       }
     } catch (brevoError) {
@@ -165,7 +204,7 @@ export const sendEmail = async (
     }
   }
 
-  // 2. Secondary Driver: Resend REST API
+  // 3. Secondary Driver: Resend REST API
   if (resendApiKey) {
     try {
       const response = await fetch("https://api.resend.com/emails", {
@@ -182,8 +221,7 @@ export const sendEmail = async (
           html: finalHtml,
           reply_to: `PropertyStack Support <${fromAddress}>`,
           headers: {
-            "X-Mailer": "PropertyStack Resend Engine v1.0",
-            "Feedback-ID": "transactional:propertystack:notification",
+            "X-Mailer": "PropertyStack Engine v1.0",
           },
         }),
       });
@@ -206,31 +244,8 @@ export const sendEmail = async (
     }
   }
 
-  // 3. Fallback Driver: Nodemailer SMTP Transporter
-  try {
-    const info = await transporter.sendMail({
-      from: `"PropertyStack" <${fromAddress}>`,
-      to,
-      replyTo: `"PropertyStack Support" <${fromAddress}>`,
-      subject,
-      text: content,
-      html: finalHtml,
-      headers: {
-        "X-Mailer": "PropertyStack Engine v1.0",
-        "X-Auto-Response-Suppress": "OOF, AutoReply",
-        "List-Unsubscribe": `<mailto:${fromAddress}?subject=Unsubscribe>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        "Feedback-ID": "transactional:propertystack:notification",
-      },
-    });
-    console.log(
-      `[Mailer:SMTP] Delivered to ${to} | ID: ${info.messageId} | Accepted: ${JSON.stringify(info.accepted)}`,
-    );
-    return { messageId: info.messageId, provider: "smtp" };
-  } catch (error) {
-    console.error("[MailerError]", error);
-    throw error;
-  }
+  // 4. Fallback Driver: Nodemailer SMTP Transporter
+  return await sendViaSmtp();
 };
 
 

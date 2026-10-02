@@ -148,6 +148,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                             errorText = null;
                           });
 
+                          final messenger = ScaffoldMessenger.of(context);
+
                           try {
                             // Verify password against API
                             final authRepo = ref.read(authRepositoryProvider);
@@ -161,15 +163,17 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                               await bio.enableBiometric(email, password);
                               if (mounted) {
                                 setState(() => _biometricEnabled = true);
-                                Navigator.pop(ctx);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Biometric authentication enabled successfully!'),
-                                    backgroundColor: Color(0xFF16A34A),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
                               }
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx);
+                              }
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Biometric authentication enabled successfully!'),
+                                  backgroundColor: Color(0xFF16A34A),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
                             } else {
                               setSheetState(() {
                                 isVerifying = false;

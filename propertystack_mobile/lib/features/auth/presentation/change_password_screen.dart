@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'auth_notifier.dart';
 
@@ -24,8 +25,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   }
 
   Future<void> _submit() async {
-    if (_passwordController.text.length < 6) {
-      setState(() => _error = 'Password must be at least 6 characters');
+    if (_passwordController.text.length < 8) {
+      setState(() => _error = 'Password must be at least 8 characters');
       return;
     }
     if (_passwordController.text != _confirmPasswordController.text) {
@@ -38,16 +39,47 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       _error = null;
     });
 
-    final success = await ref.read(authStateProvider.notifier).changePassword(
-      _passwordController.text,
-    );
+    try {
+      final success = await ref.read(authStateProvider.notifier).changePassword(
+        _passwordController.text,
+      );
 
-    if (!success && mounted) {
-      final notifier = ref.read(authStateProvider.notifier);
-      setState(() {
-        _error = notifier.lastError ?? 'Failed to update password. Please try again.';
-        _isLoading = false;
-      });
+      if (!mounted) return;
+
+      if (!success) {
+        final notifier = ref.read(authStateProvider.notifier);
+        setState(() {
+          _error = notifier.lastError ?? 'Failed to update password. Please try again.';
+        });
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password updated successfully!'),
+          backgroundColor: Colors.black,
+        ),
+      );
+
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        final user = ref.read(authStateProvider).valueOrNull;
+        final isLandlord = user?.workspaces.any(
+          (m) => m.role == 'LANDLORD' || m.role == 'PROPERTY_MANAGER',
+        ) ?? (user?.role == 'LANDLORD' || user?.role == 'PROPERTY_MANAGER');
+        context.go(isLandlord ? '/landlord' : '/');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -118,6 +150,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'New Password',
+                  helperText: 'Minimum 8 characters',
                   prefixIcon: const Icon(Icons.lock_outline),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
