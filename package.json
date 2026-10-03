@@ -1,6 +1,9 @@
 {
   "name": "justhub-workspace",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "build": "pnpm --prefix property-management-saas build",
     "start": "pnpm --prefix property-management-saas start",
