@@ -34,6 +34,41 @@ export interface ReminderProcessOptions {
   };
 }
 
+const TEST_DOMAINS = [
+  "@example.com",
+  "@test.com",
+  "@security.com",
+  "@limits.com",
+  "@audittest.com",
+  "@test-gatekeeper.com",
+  "@justhob.com",
+  "@ehwit.com",
+  "@legaltest.com",
+  "@logstest.com",
+  ".test",
+  ".invalid",
+  ".localhost",
+];
+
+export function isTestEmail(email?: string | null): boolean {
+  if (!email) return true;
+  const lower = email.toLowerCase().trim();
+  if (TEST_DOMAINS.some((domain) => lower.endsWith(domain))) return true;
+  if (
+    lower.startsWith("test_") ||
+    lower.startsWith("e2e-") ||
+    lower.startsWith("super-admin-shield-") ||
+    lower.startsWith("realtime-test-") ||
+    lower.startsWith("unit_mgr_") ||
+    lower.startsWith("ent_mgr_") ||
+    lower.startsWith("pro_mgr_") ||
+    lower.startsWith("free_mgr_")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * Builds the HTML and plain-text email templates for registration follow-up.
  */
@@ -204,6 +239,15 @@ export async function processRegistrationReminders(
 
   for (const user of unconfirmedUsers) {
     const userEmail = user.email!.toLowerCase().trim();
+    if (isTestEmail(userEmail)) {
+      result.skippedCount++;
+      result.details.push({
+        email: userEmail,
+        action: "skipped",
+        reason: "Test or internal development email ignored",
+      });
+      continue;
+    }
     const createdAt = new Date(user.created_at);
     const ageHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
 
@@ -462,6 +506,20 @@ export async function processOnboardingReminders(
     );
 
     for (const manager of incompleteManagers) {
+      if (isTestEmail(manager.email)) {
+        logger.info(
+          `[ONBOARDING_REMINDER] Skipped test email: ${manager.email}`,
+        );
+        result.skippedCount++;
+        result.details.push({
+          email: manager.email,
+          stage: "onboarding",
+          action: "skipped",
+          reason: "Test or internal development email ignored",
+        });
+        continue;
+      }
+
       // Check Supabase Auth metadata to verify if reminder was already sent
       const { data: supaUserData, error: supaUserError } =
         await supabaseAdmin.auth.admin.getUserById(manager.id);
