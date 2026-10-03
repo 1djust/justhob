@@ -28,3 +28,7 @@ property-management-saas/check-pending-payments.ts
 property-management-saas/apps/api/test-*
 property-management-saas/apps/api/src/test-*
 property-management-saas/apps/api/src/debug-*
+
+# Local-only: broken Windows symlinks / python venv break Linux checkouts (Render)
+/.agents
+propertystack_mobile/venv/
