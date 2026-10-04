@@ -19,6 +19,7 @@ import {
   ExternalLink,
   Lock,
   LayoutGrid,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -35,6 +36,7 @@ const TABS: Array<{ id: AdminTab; label: string; icon: React.ComponentType<{ cla
   { id: "overview", label: "Overview", icon: Activity },
   { id: "workspaces", label: "Workspaces", icon: Building2 },
   { id: "users", label: "Users Management", icon: Users },
+  { id: "mobile-releases", label: "Mobile Releases", icon: Smartphone },
   { id: "upgrades", label: "Upgrade Requests", icon: TrendingUp },
   { id: "errors", label: "System Logs", icon: AlertOctagon },
   { id: "payments", label: "Payments", icon: DollarSign },

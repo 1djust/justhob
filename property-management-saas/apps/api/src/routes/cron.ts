@@ -123,9 +123,16 @@ export default async function cronRoutes(fastify: FastifyInstance) {
       const dryRun = body.dryRun === true || query.dryRun === "true";
       const version = (body.version as string) || (query.version as string) || "0.3.5";
       const buildNumber = Number(body.buildNumber ?? query.buildNumber) || 23;
+      const title = (body.title as string) || (query.title as string);
+      const customMessage = (body.customMessage as string) || (query.customMessage as string);
+      const targetEmail = (body.targetEmail as string) || (query.targetEmail as string);
+      const apkUrl = (body.apkUrl as string) || (query.apkUrl as string);
+      const highlights = Array.isArray(body.highlights)
+        ? (body.highlights as string[])
+        : undefined;
 
       fastify.log.info(
-        `[CRON/BROADCAST] Triggered broadcast mobile update (dryRun=${dryRun}, v${version}+${buildNumber})`,
+        `[CRON/BROADCAST] Triggered broadcast mobile update (dryRun=${dryRun}, v${version}+${buildNumber}, target=${targetEmail || "all"})`,
       );
 
       try {
@@ -133,6 +140,11 @@ export default async function cronRoutes(fastify: FastifyInstance) {
           dryRun,
           version,
           buildNumber,
+          title,
+          highlights,
+          customMessage,
+          targetEmail,
+          apkUrl,
           logger: {
             info: (msg) => fastify.log.info(msg),
             warn: (msg) => fastify.log.warn(msg),

@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { SecurityLogs } from "./SecurityLogs";
 import { AuditTrail } from "./AuditTrail";
+import { MobileReleasesTab } from "./MobileReleasesTab";
 import { useRealtime } from "@/components/providers/RealtimeProvider";
 import { supabase } from "@/lib/supabase";
 import { sanitizeUrl } from "@/lib/sanitize-url";
@@ -58,7 +59,8 @@ export type AdminTab =
   | "security"
   | "users"
   | "legal-leases"
-  | "audit-trail";
+  | "audit-trail"
+  | "mobile-releases";
 
 interface AdminStats {
   totalUsers: number;
@@ -308,6 +310,12 @@ export function AdminDashboard({
         "Complete trace of all operational activities performed by property managers.",
       label: "Audit Trail",
     },
+    "mobile-releases": {
+      title: "Mobile App Releases",
+      description:
+        "Manage app versions, monitor in-app updates, and broadcast launch announcements to active users.",
+      label: "Mobile Releases",
+    },
   };
 
   const currentHeader = headerDetails[activeTab];
@@ -385,6 +393,7 @@ export function AdminDashboard({
         {activeTab === "users" && <UsersTab />}
         {activeTab === "legal-leases" && <LegalLeaseRequestsTab />}
         {activeTab === "audit-trail" && <AuditTrail />}
+        {activeTab === "mobile-releases" && <MobileReleasesTab />}
       </div>
     </div>
   );

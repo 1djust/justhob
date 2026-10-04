@@ -3,6 +3,7 @@ import { prisma } from "../lib/database";
 import { Prisma, Role } from "@prisma/client";
 import { authenticate, requireSuperAdmin } from "../lib/middleware";
 import { supabaseAdmin } from "../lib/supabase";
+import { broadcastMobileUpdate, DEFAULT_HIGHLIGHTS } from "../cron/broadcast-mobile-update";
 import {
   AppError,
   ForbiddenError,
@@ -1581,6 +1582,109 @@ export default async function superAdminRoutes(
           limit,
         },
       });
+    },
+  );
+
+  // --- Mobile App Release Broadcast Center ---
+  fastify.get(
+    "/mobile-releases/info",
+    {
+      preHandler: [authenticate, requireSuperAdmin],
+    },
+    async (request, reply) => {
+      const activeUsersCount = await prisma.user.count({
+        where: { isActive: true },
+      });
+
+      return reply.send({
+        success: true,
+        activeUsersCount,
+        defaultHighlights: DEFAULT_HIGHLIGHTS,
+        currentVersion: "0.3.5",
+        currentBuildNumber: 23,
+        downloadUrl:
+          "https://propertystack.vercel.app/downloads/propertystack-tenant.apk",
+        versionJsonUrl:
+          "https://propertystack.vercel.app/downloads/version.json",
+      });
+    },
+  );
+
+  fastify.post(
+    "/mobile-releases/broadcast",
+    {
+      preHandler: [authenticate, requireSuperAdmin],
+    },
+    async (request, reply) => {
+      const body = (request.body as Record<string, unknown>) || {};
+      const dryRun = body.dryRun === true;
+      const version = (body.version as string) || "0.3.5";
+      const buildNumber = Number(body.buildNumber) || 23;
+      const title = body.title as string | undefined;
+      const customMessage = body.customMessage as string | undefined;
+      const targetEmail = body.targetEmail as string | undefined;
+      const apkUrl = body.apkUrl as string | undefined;
+      const highlights = Array.isArray(body.highlights)
+        ? (body.highlights as string[])
+        : undefined;
+
+      fastify.log.info(
+        `[SUPER_ADMIN/BROADCAST] Super Admin triggered mobile release broadcast (v${version}+${buildNumber}, target=${targetEmail || "all"}, dryRun=${dryRun})`,
+      );
+
+      try {
+        const results = await broadcastMobileUpdate({
+          dryRun,
+          version,
+          buildNumber,
+          title,
+          highlights,
+          customMessage,
+          targetEmail,
+          apkUrl,
+          logger: {
+            info: (msg) => fastify.log.info(msg),
+            warn: (msg) => fastify.log.warn(msg),
+            error: (msg, ...args) => {
+              if (args.length > 0) fastify.log.error({ err: args[0] }, msg);
+              else fastify.log.error(msg);
+            },
+          },
+        });
+
+        const reqUser = (request as unknown as { user?: { id: string; email: string; name?: string } }).user;
+        if (reqUser) {
+          await prisma.auditLog
+            .create({
+              data: {
+                action: "BROADCAST_MOBILE_RELEASE",
+                entityType: "MOBILE_RELEASE",
+                actorId: reqUser.id,
+                actorEmail: reqUser.email,
+                actorName: reqUser.name || "Super Admin",
+                details: `Dispatched Mobile Release v${version}+${buildNumber} announcement to ${results.sent} active users (dryRun=${dryRun}, target=${targetEmail || "all"})`,
+              },
+            })
+            .catch((err) =>
+              fastify.log.warn({ err }, "Failed to write audit log"),
+            );
+        }
+
+        return reply.send({
+          success: true,
+          message: `Broadcast completed for v${version}+${buildNumber}`,
+          results,
+        });
+      } catch (err) {
+        fastify.log.error(
+          { err },
+          "[SUPER_ADMIN/BROADCAST] Failed to broadcast update",
+        );
+        return reply.status(500).send({
+          success: false,
+          error: (err as Error).message,
+        });
+      }
     },
   );
 }

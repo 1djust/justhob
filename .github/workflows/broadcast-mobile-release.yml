@@ -1,0 +1,93 @@
+name: Broadcast Mobile Release Update
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'property-management-saas/apps/web/public/downloads/version.json'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (simulate delivery without emailing)'
+        required: false
+        type: boolean
+        default: false
+      custom_version:
+        description: 'Override Version (optional, e.g. 0.3.5)'
+        required: false
+        type: string
+        default: ''
+      custom_build:
+        description: 'Override Build Number (optional, e.g. 23)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  broadcast-update:
+    name: Notify Active Users of Mobile Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Parse Version Information
+        id: parse_version
+        run: |
+          VERSION_FILE="property-management-saas/apps/web/public/downloads/version.json"
+          if [ ! -f "$VERSION_FILE" ]; then
+            echo "Error: $VERSION_FILE not found!"
+            exit 1
+          fi
+
+          FILE_VERSION=$(jq -r '.version' "$VERSION_FILE")
+          FILE_BUILD=$(jq -r '.latestBuildNumber' "$VERSION_FILE")
+          FILE_URL=$(jq -r '.downloadUrl' "$VERSION_FILE")
+
+          INPUT_VERSION="${{ inputs.custom_version }}"
+          INPUT_BUILD="${{ inputs.custom_build }}"
+          DRY_RUN="${{ inputs.dry_run || 'false' }}"
+
+          FINAL_VERSION="${INPUT_VERSION:-$FILE_VERSION}"
+          FINAL_BUILD="${INPUT_BUILD:-$FILE_BUILD}"
+
+          echo "version=$FINAL_VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$FINAL_BUILD" >> "$GITHUB_OUTPUT"
+          echo "apk_url=$FILE_URL" >> "$GITHUB_OUTPUT"
+          echo "dry_run=$DRY_RUN" >> "$GITHUB_OUTPUT"
+
+          echo "🚀 Preparing release announcement for v${FINAL_VERSION}+${FINAL_BUILD} (dry_run: $DRY_RUN)"
+
+      - name: Dispatch Release Announcement via Cloud API
+        run: |
+          API_URL="https://propertystack.onrender.com/api/cron/broadcast-mobile-update"
+          API_KEY="${{ secrets.ADMIN_SECURITY_KEY || '8d5e1b2f7a9c3d4e0f8b7a6c5d4e2f1a' }}"
+
+          PAYLOAD=$(jq -n \
+            --arg version "${{ steps.parse_version.outputs.version }}" \
+            --argjson buildNumber "${{ steps.parse_version.outputs.build }}" \
+            --arg apkUrl "${{ steps.parse_version.outputs.apk_url }}" \
+            --argjson dryRun "${{ steps.parse_version.outputs.dry_run }}" \
+            '{version: $version, buildNumber: $buildNumber, apkUrl: $apkUrl, dryRun: $dryRun}')
+
+          echo "Sending dispatch request to $API_URL..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $API_KEY" \
+            -d "$PAYLOAD")
+
+          HTTP_BODY=$(echo "$RESPONSE" | sed '$d')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+
+          echo "HTTP Response Code: $HTTP_CODE"
+          echo "Response Body: $HTTP_BODY"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✔ Successfully broadcasted release announcement to all active users!"
+          else
+            echo "✖ Failed to dispatch announcement (HTTP $HTTP_CODE)"
+            exit 1
+          fi

@@ -60,7 +60,8 @@ type DashboardView =
   | "admin-payments"
   | "admin-security"
   | "admin-legal-leases"
-  | "admin-audit-trail";
+  | "admin-audit-trail"
+  | "admin-mobile-releases";
 
 export default function DashboardPage() {
   const [user, setUser] = React.useState<User | null>(null);
