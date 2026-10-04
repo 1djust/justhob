@@ -243,6 +243,55 @@ interface AdminDashboardProps {
   setActiveTab?: (tab: AdminTab) => void;
 }
 
+function MfaRequiredBanner({
+  onOpenSecurity,
+}: {
+  onOpenSecurity: () => void;
+}) {
+  const { data } = useQuery({
+    queryKey: ["admin-mfa-aal"],
+    queryFn: async () => {
+      const { data: aal } =
+        await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      return {
+        currentLevel: aal?.currentLevel ?? null,
+        hasVerifiedTotp:
+          (factors?.totp?.length ?? 0) > 0,
+      };
+    },
+  });
+
+  if (!data || data.currentLevel === "aal2") return null;
+
+  return (
+    <div className="rounded-2xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/40 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
+        <ShieldCheck className="w-5 h-5" />
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+          Two-Factor Authentication required to load live data
+        </p>
+        <p className="text-xs text-amber-700/90 dark:text-amber-400/90 mt-1 leading-relaxed">
+          {data.hasVerifiedTotp
+            ? "Your session is not 2FA-verified. Sign out and sign in again, then enter your 6-digit authenticator code."
+            : "Production protects Super Admin data with 2FA. Enable an authenticator app once and the dashboard will show your real users, workspaces and payments."}
+        </p>
+      </div>
+      {!data.hasVerifiedTotp && (
+        <button
+          type="button"
+          onClick={onOpenSecurity}
+          className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors"
+        >
+          Enable 2FA now
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function AdminDashboard({
   activeTab: propActiveTab,
   setActiveTab: propSetActiveTab,
@@ -372,6 +421,10 @@ export function AdminDashboard({
           </kbd>
         </div>
       </div>
+
+      {activeTab !== "security" && (
+        <MfaRequiredBanner onOpenSecurity={() => setActiveTab("security")} />
+      )}
 
       {/* Tab Content */}
       <div className="pt-2">
@@ -1893,6 +1946,7 @@ function LoadingSpinner() {
 // Security & 2FA Tab
 // ===========================
 function SecurityTab() {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = React.useState(false);
   const [factorId, setFactorId] = React.useState<string | null>(null);
   const [qrCode, setQrCode] = React.useState<string | null>(null);
@@ -1970,6 +2024,8 @@ function SecurityTab() {
       setFactorId(null);
       setQrCode(null);
       refetch();
+      await supabase.auth.refreshSession();
+      await queryClient.invalidateQueries();
     } catch (err: unknown) {
       const errorObj = err as Error;
       setError(errorObj.message || "Invalid verification code");

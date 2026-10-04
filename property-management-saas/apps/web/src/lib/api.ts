@@ -140,6 +140,9 @@ export async function apiFetch(url: string, options: ApiOptions = {}) {
       // Handle legacy format: { error: "message" }
       else if (typeof errorData.error === "string") {
         errorMessage = errorData.error;
+        if (typeof errorData.code === "string") {
+          errorCode = errorData.code;
+        }
       }
       // Fallback or some other shape
       else if (errorData.message) {
