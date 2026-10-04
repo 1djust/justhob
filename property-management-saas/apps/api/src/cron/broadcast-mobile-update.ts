@@ -69,6 +69,7 @@ export async function broadcastMobileUpdate(options: BroadcastUpdateOptions = {}
     email: string;
     status: string;
     id?: string;
+    provider?: string;
     error?: string;
   }> = [];
 
@@ -182,15 +183,28 @@ The PropertyStack Team
         textContent,
         finalHtml,
       );
-      logger.info(
-        `[BroadcastUpdate] ✔ Delivered to ${user.email} (Provider: ${result.provider}, ID: ${result.messageId})`,
-      );
-      sentCount++;
-      deliveryResults.push({
-        email: user.email,
-        status: "sent",
-        id: result.messageId,
-      });
+      if (result.messageId === "mock-id") {
+        logger.warn(
+          `[BroadcastUpdate] ⚠ Mock mailer active - email not delivered to network: ${user.email}`,
+        );
+        failedCount++;
+        deliveryResults.push({
+          email: user.email,
+          status: "failed",
+          error: "Mock mailer active: Live SMTP credentials not configured",
+        });
+      } else {
+        logger.info(
+          `[BroadcastUpdate] ✔ Delivered to ${user.email} (Provider: ${result.provider}, ID: ${result.messageId})`,
+        );
+        sentCount++;
+        deliveryResults.push({
+          email: user.email,
+          status: "sent",
+          id: result.messageId,
+          provider: result.provider,
+        });
+      }
     } catch (err) {
       logger.error(`[BroadcastUpdate] ✖ Error sending to ${user.email}:`, err);
       failedCount++;

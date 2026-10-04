@@ -1,12 +1,17 @@
 import nodemailer from "nodemailer";
 import { renderEmailLayout, escapeHtml } from "./email-template";
 
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || "465");
+const SMTP_USER = process.env.SMTP_USER || "propertystackapp@gmail.com";
+const SMTP_PASS = process.env.SMTP_PASS || "rkugylrldzpdhtas";
+
 // Configure transporter fallback - uses SMTP environment variables if available, otherwise logs to console
 const createTransporter = () => {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || "587");
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const host = SMTP_HOST;
+  const port = SMTP_PORT;
+  const user = SMTP_USER;
+  const pass = SMTP_PASS;
 
   if (host && user && pass) {
     if (host === "smtp.gmail.com" || host.includes("gmail")) {
@@ -99,8 +104,7 @@ export const sendEmail = async (
 
   const brevoApiKey = process.env.BREVO_API_KEY;
   const resendApiKey = process.env.RESEND_API_KEY;
-  const fromAddress =
-    process.env.SMTP_USER || "propertystackapp@gmail.com";
+  const fromAddress = SMTP_USER;
   const resendFrom =
     process.env.RESEND_FROM || "PropertyStack <onboarding@resend.dev>";
 
@@ -126,9 +130,7 @@ export const sendEmail = async (
   }
 
   const isGmailSender = fromAddress.toLowerCase().endsWith("@gmail.com");
-  const hasSmtp = Boolean(
-    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
-  );
+  const hasSmtp = Boolean(SMTP_HOST && SMTP_USER && SMTP_PASS);
 
   // Helper for sending via Nodemailer SMTP (authenticated directly via Google/SMTP with native SPF & DKIM)
   const sendViaSmtp = async () => {
@@ -140,6 +142,9 @@ export const sendEmail = async (
       text: content,
       html: finalHtml,
     });
+    if (info.messageId === "mock-id") {
+      throw new Error("SMTP transporter is in mock mode; live delivery failed");
+    }
     console.log(
       `[Mailer:SMTP] Delivered to ${to} | ID: ${info.messageId} | Accepted: ${JSON.stringify(info.accepted)}`,
     );

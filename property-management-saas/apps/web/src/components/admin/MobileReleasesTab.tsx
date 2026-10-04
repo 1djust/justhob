@@ -93,11 +93,19 @@ export function MobileReleasesTab() {
     onSuccess: (res) => {
       setShowConfirmModal(false);
       const sentCount = res?.results?.sent ?? 0;
-      toast.success(
-        broadcastMode === "all"
-          ? `Broadcast dispatched successfully! Delivered to ${sentCount} active user(s).`
-          : `Test announcement sent successfully to ${testEmail}!`,
-      );
+      const failedCount = res?.results?.failed ?? 0;
+      if (sentCount === 0 && failedCount > 0) {
+        const firstError = res?.results?.results?.find((r: { error?: string }) => r.error)?.error || "SMTP delivery failed";
+        toast.error(`Dispatch failed: ${firstError}`);
+      } else if (failedCount > 0) {
+        toast.warning(`Delivered to ${sentCount} user(s), but ${failedCount} failed.`);
+      } else {
+        toast.success(
+          broadcastMode === "all"
+            ? `Broadcast dispatched successfully! Delivered to ${sentCount} active user(s).`
+            : `Test announcement sent successfully to ${testEmail}!`,
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["admin-mobile-release-info"] });
       queryClient.invalidateQueries({ queryKey: ["admin-audit-logs"] });
     },
