@@ -52,7 +52,7 @@ export function setupIntegrityChecker(fastify: FastifyInstance) {
       // 3. Send email notification if anomalies are found
       if (anomalies.length > 0) {
         const adminEmail =
-          process.env.ADMIN_EMAIL || "support@propertystack.com";
+          process.env.ADMIN_EMAIL || "propertystackapp@gmail.com";
         const subject = `[CRON/CRITICAL] Database Integrity Issues Detected`;
 
         let content = `The automated database integrity cron job has detected the following anomalies that require immediate attention:\n\n`;

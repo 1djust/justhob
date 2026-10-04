@@ -35,7 +35,7 @@ async function runDataRetentionTest() {
   console.log("RUNNING DATA RETENTION & PURGE TEST DIRECTLY");
   console.log("==================================================");
 
-  const adminEmail = process.env.ADMIN_EMAIL || "support@propertystack.com";
+  const adminEmail = process.env.ADMIN_EMAIL || "propertystackapp@gmail.com";
   console.log(`Target Admin Email: ${adminEmail}\n`);
 
   // 1. Check existing counts in database

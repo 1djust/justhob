@@ -2,7 +2,7 @@ import "dotenv/config";
 import nodemailer from "nodemailer";
 
 async function main() {
-  const user = process.env.SMTP_USER || "ogunduyijustus@gmail.com";
+  const user = process.env.SMTP_USER || "propertystackapp@gmail.com";
   const pass = process.env.SMTP_PASS;
   const adminEmail = process.env.ADMIN_EMAIL || "propertystackapp@gmail.com";
 

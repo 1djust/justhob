@@ -359,7 +359,7 @@ export class SecurityService {
       });
 
       const emailsSet = new Set(admins.map((a) => a.email.toLowerCase()));
-      const adminEmailEnv = process.env.ADMIN_EMAIL || "admin@propertystack.com";
+      const adminEmailEnv = process.env.ADMIN_EMAIL || "propertystackapp@gmail.com";
 
       if (!emailsSet.has(adminEmailEnv.toLowerCase())) {
         admins.push({ id: "system-admin-env", email: adminEmailEnv });
@@ -367,7 +367,7 @@ export class SecurityService {
 
       return admins;
     } catch {
-      const fallback = process.env.ADMIN_EMAIL || "admin@propertystack.com";
+      const fallback = process.env.ADMIN_EMAIL || "propertystackapp@gmail.com";
       return [{ id: "system-admin-env", email: fallback }];
     }
   }
