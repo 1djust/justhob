@@ -13,13 +13,15 @@ const isProduction =
       window.location.hostname !== "BitachonAttorneys" &&
       window.location.hostname.includes(".")));
 
+const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (isProduction
-    ? "https://propertystack.onrender.com"
-    : typeof window !== "undefined"
-      ? `http://${window.location.hostname}:3002`
-      : "http://localhost:3002");
+  envApiUrl && !envApiUrl.includes("justhob.onrender.com")
+    ? envApiUrl
+    : (isProduction
+      ? "https://propertystack.onrender.com"
+      : typeof window !== "undefined"
+        ? `http://${window.location.hostname}:3002`
+        : "http://localhost:3002");
 
 export interface ApiOptions extends RequestInit {
   silent?: boolean;
