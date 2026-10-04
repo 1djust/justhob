@@ -13,6 +13,7 @@ export function AdminLoginForm() {
   const [mfaCode, setMfaCode] = React.useState("");
   const [factorId, setFactorId] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
+  const [showSecurityKey, setShowSecurityKey] = React.useState(false);
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [loadingMessage, setLoadingMessage] = React.useState("");
@@ -305,21 +306,40 @@ export function AdminLoginForm() {
         {step === 3 && (
           <>
             <div className="space-y-2 animate-in fade-in duration-300">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500 ml-1">
-                Security Key
-              </label>
+              <div className="flex items-center justify-between ml-1">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">
+                  Admin Security Key
+                </label>
+                <span className="text-[10px] text-zinc-400">
+                  Elevated Clearance Required
+                </span>
+              </div>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showSecurityKey ? "text" : "password"}
                   value={securityKey}
                   onChange={(e) => setSecurityKey(e.target.value)}
-                  className="flex h-12 w-full rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-white/50 dark:bg-zinc-900/50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 transition-all font-mono"
+                  className="flex h-12 w-full rounded-2xl border border-rose-200 dark:border-rose-900/30 bg-white/50 dark:bg-zinc-900/50 px-4 pr-12 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 transition-all font-mono"
                   required
                   disabled={loading}
-                  placeholder="JH-SAFE-XXXX-X"
+                  placeholder="8d5e1b2f... or JH-SAFE-2026-X"
                   autoFocus
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowSecurityKey(!showSecurityKey)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-rose-500 transition-colors"
+                >
+                  {showSecurityKey ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                Enter your 32-character master key or mnemonic key (<code className="text-rose-500 font-mono">JH-SAFE-2026-X</code>).
+              </p>
             </div>
 
             <button
