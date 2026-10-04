@@ -9,6 +9,8 @@ import '../../../../core/utils/nigerian_banks.dart';
 import '../../../../core/widgets/timeframe_bottom_sheet.dart';
 import '../../../../core/widgets/landlord_bottom_nav_bar.dart';
 import '../../../../core/widgets/header_action_icons.dart';
+import '../../../../core/services/update_service.dart';
+import '../../../../core/widgets/app_update_dialog.dart';
 import '../data/landlord_stats.dart';
 import 'landlord_home_notifier.dart';
 
@@ -21,6 +23,20 @@ class LandlordHomeScreen extends ConsumerStatefulWidget {
 
 class _LandlordHomeScreenState extends ConsumerState<LandlordHomeScreen> {
   String _selectedTimeframe = 'This Month';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkForUpdates();
+  }
+
+  Future<void> _checkForUpdates() async {
+    final updateService = UpdateService();
+    final updateInfo = await updateService.checkForUpdate();
+    if (updateInfo != null && mounted) {
+      AppUpdateDialog.show(context, updateInfo);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

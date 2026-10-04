@@ -41,9 +41,10 @@ class UpdateService {
   ));
 
   Future<UpdateInfo?> checkForUpdate() async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
     final urls = [
-      'https://propertystack.vercel.app/downloads/version.json',
-      'https://justhob.vercel.app/downloads/version.json',
+      'https://propertystack.vercel.app/downloads/version.json?t=$timestamp',
+      'https://justhob.vercel.app/downloads/version.json?t=$timestamp',
     ];
 
     for (final url in urls) {
@@ -53,6 +54,10 @@ class UpdateService {
           options: Options(
             responseType: ResponseType.plain,
             followRedirects: true,
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+            },
             validateStatus: (status) => status != null && status < 400,
           ),
         );
