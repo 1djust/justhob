@@ -1,5 +1,11 @@
 import "dotenv/config";
+import dnsSync from "node:dns";
 import dns from "dns/promises";
+
+// Ensure all network operations (SMTP, database, external APIs) use IPv4 first to avoid IPv6 hanging in cloud environments
+if (typeof dnsSync.setDefaultResultOrder === "function") {
+  dnsSync.setDefaultResultOrder("ipv4first");
+}
 
 const start = async () => {
   try {

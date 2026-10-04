@@ -14,19 +14,16 @@ const createTransporter = () => {
   const pass = SMTP_PASS;
 
   if (host && user && pass) {
-    if (host === "smtp.gmail.com" || host.includes("gmail")) {
-      return nodemailer.createTransport({
-        service: "gmail",
-        auth: { user, pass },
-      });
-    }
-
     return nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
+      host: host.includes("gmail") ? "smtp.gmail.com" : host,
+      port: 465,
+      secure: true,
       auth: { user, pass },
-    });
+      family: 4, // Critical for cloud/Render: force IPv4 to avoid IPv6 gateway drop timeouts
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    } as any);
   }
 
   // Fallback for development: log to console
