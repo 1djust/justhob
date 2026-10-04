@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { ThemeToggle } from "../ThemeToggle";
 
 export function AuthLayout({
@@ -56,16 +57,20 @@ export function AuthLayout({
         <div className="absolute -top-[20%] -right-[10%] w-[70%] h-[70%] rounded-full bg-primary/20 blur-3xl mix-blend-screen pointer-events-none"></div>
 
         <div className="relative z-10 flex flex-col space-y-6 max-w-2xl animate-in fade-in slide-in-from-left-8 duration-1000">
-          <div className="inline-flex items-center gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-3 hover:opacity-85 transition-opacity group cursor-pointer w-fit"
+            title="Return to Home"
+          >
             <img
               src="/images/assets/logo.png"
               alt="PropertyStack Logo"
-              className="h-8 w-auto"
+              className="h-8 w-auto transition-transform group-hover:scale-105"
             />
-            <span className="text-primary font-bold tracking-widest uppercase text-sm">
+            <span className="text-primary font-bold tracking-widest uppercase text-sm group-hover:underline">
               PropertyStack
             </span>
-          </div>
+          </Link>
 
           <div className="flex gap-6 mt-8">
             {/* Vertical Carousel Indicators */}
@@ -190,6 +195,23 @@ export function AuthLayout({
         LEFT SIDE: The Form Panel (Brutalist, Sharp, High Contrast)
       */}
       <div className="relative w-full md:w-[450px] lg:w-[500px] flex-shrink-0 flex flex-col justify-center px-8 py-12 lg:px-16 bg-background border-r-0 md:border-l-2 border-border z-10 shadow-2xl min-h-screen">
+        <div className="absolute top-6 left-6 md:hidden">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 hover:opacity-85 transition-opacity group cursor-pointer"
+            title="Return to Home"
+          >
+            <img
+              src="/images/assets/logo.png"
+              alt="PropertyStack Logo"
+              className="h-7 w-auto transition-transform group-hover:scale-105"
+            />
+            <span className="text-primary font-bold tracking-wider uppercase text-xs">
+              PropertyStack
+            </span>
+          </Link>
+        </div>
+
         <div className="absolute top-6 right-6">
           <ThemeToggle />
         </div>

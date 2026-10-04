@@ -795,18 +795,23 @@ export function LandingPage() {
       {/* Footer */}
       <footer className="bg-white dark:bg-[#060B19] border-t border-slate-200 dark:border-slate-800 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center space-x-2 mb-4 md:mb-0">
+          <Link
+            href="/"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="flex items-center space-x-2 mb-4 md:mb-0 hover:opacity-80 transition-opacity group cursor-pointer"
+            title="Return to Home"
+          >
             <Image
               src="/images/assets/logo.png"
               alt="PropertyStack Logo"
               width={128}
               height={32}
-              className="h-8 w-auto"
+              className="h-8 w-auto transition-transform group-hover:scale-105"
             />
             <span className="font-bold text-xl tracking-tight">
               PropertyStack
             </span>
-          </div>
+          </Link>
           <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
             &copy; {new Date().getFullYear()} PropertyStack. All rights
             reserved.
