@@ -15,10 +15,17 @@ export function sanitizeUrl(url: string | null | undefined): string {
   if (
     sanitizedScheme.startsWith("javascript:") ||
     sanitizedScheme.startsWith("vbscript:") ||
-    sanitizedScheme.startsWith("data:text/html") ||
-    sanitizedScheme.startsWith("data:image/svg+xml")
+    sanitizedScheme.startsWith("data:text/html")
   ) {
     return "";
+  }
+
+  // Allow safe SVG data URIs (e.g. Supabase MFA QR codes) that contain no script tags or event handlers
+  if (sanitizedScheme.startsWith("data:image/svg+xml")) {
+    if (/<script|javascript:|on\w+\s*=/i.test(trimmed)) {
+      return "";
+    }
+    return trimmed;
   }
 
   // Allow safe absolute URLs (http, https)

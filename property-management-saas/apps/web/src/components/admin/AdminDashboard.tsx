@@ -2148,7 +2148,11 @@ function SecurityTab() {
             <div className="flex flex-col items-center justify-center p-6 bg-muted/20 rounded-xl border border-border/60">
               <div className="bg-white p-3 rounded-2xl mb-4 border border-border/80 shadow-sm">
                 <img
-                  src={sanitizeUrl(qrCode)}
+                  src={sanitizeUrl(
+                    qrCode.startsWith("<svg")
+                      ? `data:image/svg+xml;utf-8,${encodeURIComponent(qrCode)}`
+                      : qrCode,
+                  )}
                   alt="MFA QR Sync Code"
                   width={170}
                   height={170}
