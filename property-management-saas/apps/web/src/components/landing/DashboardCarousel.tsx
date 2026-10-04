@@ -52,6 +52,15 @@ export function DashboardCarousel(): React.ReactElement {
     return () => clearInterval(timer);
   }, [isPaused, goToNext]);
 
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   // Calculate positions for the stacked card layout
   const getCardStyle = (
     index: number,
@@ -64,6 +73,7 @@ export function DashboardCarousel(): React.ReactElement {
     rotateY: number;
   } => {
     const diff = (index - activeIndex + slides.length) % slides.length;
+    const xOffset = isMobile ? 24 : 80;
 
     if (diff === 0) {
       // Active card — front and center
@@ -72,8 +82,8 @@ export function DashboardCarousel(): React.ReactElement {
       // Next card — offset right and behind
       return {
         zIndex: 20,
-        x: 80,
-        y: 16,
+        x: xOffset,
+        y: isMobile ? 10 : 16,
         scale: 0.92,
         opacity: 0.7,
         rotateY: -5,
@@ -82,8 +92,8 @@ export function DashboardCarousel(): React.ReactElement {
       // Previous card — offset left and behind
       return {
         zIndex: 10,
-        x: -80,
-        y: 16,
+        x: -xOffset,
+        y: isMobile ? 10 : 16,
         scale: 0.92,
         opacity: 0.7,
         rotateY: 5,
