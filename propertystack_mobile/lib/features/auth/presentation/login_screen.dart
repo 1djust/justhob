@@ -26,6 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
   bool _biometricEnabled = false;
   bool _isPromptingBiometric = false;
   bool _hasCancelledBiometric = false;
+  bool _wasPaused = false;
 
   @override
   void initState() {
@@ -61,39 +62,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
   }
 
   Future<void> _handleBiometricLogin({bool manualTrigger = false}) async {
-    if (_isPromptingBiometric) return;
-    if (!manualTrigger && _hasCancelledBiometric) return;
+    if (_isPromptingBiometric || _isSubmitting) return;
+    if (manualTrigger) {
+      _hasCancelledBiometric = false;
+    } else if (_hasCancelledBiometric) {
+      return;
+    }
 
     _isPromptingBiometric = true;
-    final bio = BiometricService();
-    final success = await bio.authenticate();
-    _isPromptingBiometric = false;
+    try {
+      final bio = BiometricService();
+      final success = await bio.authenticate();
 
-    if (success && mounted) {
-      // Biometric passed — retrieve stored credentials and login
-      final credentials = await bio.getStoredCredentials();
-      if (credentials != null) {
+      if (!mounted) return;
+
+      if (success) {
         setState(() => _isSubmitting = true);
-        await ref.read(authStateProvider.notifier).login(
-              credentials['email']!,
-              credentials['password']!,
-            );
-        final authState = ref.read(authStateProvider);
-        if (authState.hasValue && authState.value != null && mounted) {
-          context.go('/');
+        final credentials = await bio.getStoredCredentials();
+        if (credentials != null && mounted) {
+          await ref.read(authStateProvider.notifier).login(
+                credentials['email']!,
+                credentials['password']!,
+              );
+          final authState = ref.read(authStateProvider);
+          if (authState.hasValue && authState.value != null && mounted) {
+            context.go('/');
+            return;
+          } else if (mounted) {
+            setState(() {
+              _isSubmitting = false;
+              _errorMessage = 'Biometric login failed. Please sign in manually.';
+            });
+          }
         } else if (mounted) {
           setState(() {
             _isSubmitting = false;
-            _errorMessage = 'Biometric login failed. Please sign in manually.';
+            _errorMessage = 'No saved credentials. Please sign in manually.';
           });
         }
-      } else if (mounted) {
+      } else {
+        _hasCancelledBiometric = true;
+      }
+    } catch (e) {
+      debugPrint('[LoginScreen] Biometric login error: $e');
+      if (mounted) {
         setState(() {
-          _errorMessage = 'No saved credentials. Please sign in manually.';
+          _isSubmitting = false;
         });
       }
-    } else if (!success && mounted) {
-      _hasCancelledBiometric = true;
+    } finally {
+      if (mounted) {
+        _isPromptingBiometric = false;
+      }
     }
   }
 
@@ -107,8 +127,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _biometricEnabled && !_isSubmitting) {
-      _handleBiometricLogin();
+    if (state == AppLifecycleState.paused) {
+      _wasPaused = true;
+    } else if (state == AppLifecycleState.resumed) {
+      // Only auto-prompt if the user actually backgrounded the app (_wasPaused)
+      // and is not already in the middle of authenticating or submitting.
+      final shouldPrompt = _wasPaused &&
+          _biometricEnabled &&
+          !_isSubmitting &&
+          !_isPromptingBiometric;
+      _wasPaused = false;
+
+      if (shouldPrompt) {
+        _handleBiometricLogin();
+      }
     }
   }
 

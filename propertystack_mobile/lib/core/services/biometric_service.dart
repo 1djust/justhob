@@ -86,7 +86,7 @@ class BiometricService {
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,
-          sensitiveTransaction: true,
+          sensitiveTransaction: false, // Prevents Android requiring a secondary confirmation tap
           useErrorDialogs: true,
         ),
       );
