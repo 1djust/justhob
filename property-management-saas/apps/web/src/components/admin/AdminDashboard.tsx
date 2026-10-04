@@ -43,6 +43,7 @@ import { MobileReleasesTab } from "./MobileReleasesTab";
 import { useRealtime } from "@/components/providers/RealtimeProvider";
 import { supabase } from "@/lib/supabase";
 import { sanitizeUrl } from "@/lib/sanitize-url";
+import { QRCodeSVG } from "qrcode.react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -1950,6 +1951,7 @@ function SecurityTab() {
   const [loading, setLoading] = React.useState(false);
   const [factorId, setFactorId] = React.useState<string | null>(null);
   const [qrCode, setQrCode] = React.useState<string | null>(null);
+  const [totpUri, setTotpUri] = React.useState<string | null>(null);
   const [secret, setSecret] = React.useState<string | null>(null);
   const [verifyCode, setVerifyCode] = React.useState("");
   const [error, setError] = React.useState("");
@@ -1994,6 +1996,9 @@ function SecurityTab() {
       setFactorId(data.id);
       setQrCode(data.totp.qr_code);
       setSecret(data.totp.secret);
+      const uri = (data.totp as { uri?: string }).uri ||
+        `otpauth://totp/PropertyStack%20Super%20Admin?secret=${data.totp.secret}&issuer=PropertyStack`;
+      setTotpUri(uri);
     } catch (err: unknown) {
       const errorObj = err as Error;
       setError(errorObj.message || "Failed to start enrollment");
@@ -2023,6 +2028,7 @@ function SecurityTab() {
       toast.success("Two-Factor Authentication enabled successfully!");
       setFactorId(null);
       setQrCode(null);
+      setTotpUri(null);
       refetch();
       await supabase.auth.refreshSession();
       await queryClient.invalidateQueries();
@@ -2146,16 +2152,17 @@ function SecurityTab() {
             </div>
 
             <div className="flex flex-col items-center justify-center p-6 bg-muted/20 rounded-xl border border-border/60">
-              <div className="bg-white p-3 rounded-2xl mb-4 border border-border/80 shadow-sm">
-                <img
-                  src={sanitizeUrl(
-                    qrCode.startsWith("<svg")
-                      ? `data:image/svg+xml;utf-8,${encodeURIComponent(qrCode)}`
-                      : qrCode,
-                  )}
-                  alt="MFA QR Sync Code"
-                  width={170}
-                  height={170}
+              <div className="bg-white p-4 rounded-2xl mb-4 border border-border/80 shadow-sm flex items-center justify-center">
+                <QRCodeSVG
+                  value={
+                    totpUri ||
+                    (secret
+                      ? `otpauth://totp/PropertyStack%20Super%20Admin?secret=${secret}&issuer=PropertyStack`
+                      : "")
+                  }
+                  size={180}
+                  level="M"
+                  includeMargin={false}
                 />
               </div>
 
@@ -2212,6 +2219,7 @@ function SecurityTab() {
               onClick={() => {
                 setFactorId(null);
                 setQrCode(null);
+                setTotpUri(null);
               }}
               className="w-full py-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer border border-border rounded-xl bg-card shadow-sm"
             >
