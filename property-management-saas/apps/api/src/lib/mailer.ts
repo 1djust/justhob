@@ -148,14 +148,71 @@ export const sendEmail = async (
     return { messageId: info.messageId, provider: "smtp" };
   };
 
-  // 1. If sending from a @gmail.com address and Gmail SMTP credentials exist:
-  // MUST use native Google SMTP so the message is signed with authentic Google DKIM (d=gmail.com)
-  // and originates from Google's SPF network. Sending @gmail.com via Brevo/Resend fails DMARC alignment and triggers Spam filters.
+  // Helper for sending via Vercel HTTPS Relay (overcomes Render SMTP port 465 blocking)
+  const sendViaVercelRelay = async () => {
+    const relaySecret =
+      process.env.ADMIN_SECURITY_KEY || "8d5e1b2f7a9c3d4e0f8b7a6c5d4e2f1a";
+    const relayUrl =
+      process.env.MAIL_RELAY_URL ||
+      "https://propertystack.vercel.app/api/mail/relay";
+
+    const res = await fetch(relayUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${relaySecret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to,
+        subject,
+        html: finalHtml,
+        text: content,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const data = (await res.json()) as {
+      success?: boolean;
+      messageId?: string;
+      error?: string;
+    };
+    if (!res.ok || !data.success || !data.messageId) {
+      throw new Error(data.error || `Vercel relay returned status ${res.status}`);
+    }
+
+    console.log(
+      `[Mailer:VercelRelay] Delivered to ${to} | ID: ${data.messageId} | via Vercel HTTPS`,
+    );
+    return { messageId: data.messageId, provider: "relay-smtp" };
+  };
+
+  const isRender =
+    process.env.RENDER === "true" ||
+    Boolean(process.env.RENDER) ||
+    process.env.NODE_ENV === "production";
+
+  // 1. If running on Render/cloud production: prioritize Vercel HTTPS Relay
+  // because Render host firewall blocks outbound SMTP ports (25/465/587)
+  if (isRender) {
+    try {
+      return await sendViaVercelRelay();
+    } catch (relayErr) {
+      console.error(
+        "[Mailer:VercelRelayError] Vercel relay send failed, falling back:",
+        relayErr,
+      );
+    }
+  }
+
+  // 2. Direct Nodemailer SMTP (for local development or environments with open port 465)
   if (hasSmtp && isGmailSender) {
     try {
       return await sendViaSmtp();
     } catch (smtpErr) {
-      console.error("[Mailer:SMTPError] Native SMTP send failed, falling back to Brevo/Resend:", smtpErr);
+      console.error(
+        "[Mailer:SMTPError] Native SMTP send failed, falling back to Brevo/Resend:",
+        smtpErr,
+      );
     }
   }
 
