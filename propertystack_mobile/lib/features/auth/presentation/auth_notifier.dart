@@ -4,6 +4,8 @@ import '../data/auth_repository.dart';
 import '../domain/user.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/socket_service.dart';
+import '../../../../core/services/biometric_service.dart';
+import 'login_screen.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ApiClient());
@@ -60,6 +62,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     } finally {
       // Transitions to null state regardless of server response
       state = const AsyncValue.data(null);
+      BiometricService.resetSession();
+      LoginScreen.resetAutoPrompt();
     }
   }
 

@@ -15,6 +15,18 @@ class BiometricService {
   factory BiometricService() => _instance;
   BiometricService._internal();
 
+  static bool _isAuthenticating = false;
+  static bool _isAuthenticated = false;
+
+  /// Returns whether biometric authentication has already succeeded in this session.
+  static bool get isAuthenticated => _isAuthenticated;
+
+  /// Resets the session flags (e.g. upon user logout).
+  static void resetSession() {
+    _isAuthenticating = false;
+    _isAuthenticated = false;
+  }
+
   final LocalAuthentication _auth = LocalAuthentication();
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -62,6 +74,7 @@ class BiometricService {
 
   /// Disable biometric login.
   Future<void> disableBiometric() async {
+    resetSession();
     await _storage.delete(key: _biometricEnabledKey);
     await _storage.delete(key: _biometricEmailKey);
     await _storage.delete(key: _biometricPasswordKey);
@@ -78,21 +91,33 @@ class BiometricService {
   }
 
   /// Prompt the user for biometric authentication.
-  /// Returns true if authentication succeeded, false otherwise.
+  /// Strictly guarantees a single active biometric prompt at any time.
   Future<bool> authenticate() async {
+    if (_isAuthenticating || _isAuthenticated) {
+      debugPrint('[BiometricService] Skipping authenticate — already in progress or already authenticated.');
+      return false;
+    }
+
+    _isAuthenticating = true;
     try {
-      return await _auth.authenticate(
+      final success = await _auth.authenticate(
         localizedReason: 'Scan your fingerprint to access PropertyStack',
         options: const AuthenticationOptions(
-          stickyAuth: true,
+          stickyAuth: false, // Prevents Android OS from re-opening prompt when activity pauses/resumes
           biometricOnly: true,
           sensitiveTransaction: false, // Prevents Android requiring a secondary confirmation tap
           useErrorDialogs: true,
         ),
       );
+      if (success) {
+        _isAuthenticated = true;
+      }
+      return success;
     } catch (e) {
       debugPrint('[Biometric] Authentication error: $e');
       return false;
+    } finally {
+      _isAuthenticating = false;
     }
   }
 }

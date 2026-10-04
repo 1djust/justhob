@@ -1600,8 +1600,8 @@ export default async function superAdminRoutes(
         success: true,
         activeUsersCount,
         defaultHighlights: DEFAULT_HIGHLIGHTS,
-        currentVersion: "0.3.5",
-        currentBuildNumber: 23,
+        currentVersion: "0.3.6",
+        currentBuildNumber: 24,
         downloadUrl:
           "https://propertystack.vercel.app/downloads/propertystack-tenant.apk",
         versionJsonUrl:
@@ -1618,8 +1618,8 @@ export default async function superAdminRoutes(
     async (request, reply) => {
       const body = (request.body as Record<string, unknown>) || {};
       const dryRun = body.dryRun === true;
-      const version = (body.version as string) || "0.3.5";
-      const buildNumber = Number(body.buildNumber) || 23;
+      const version = (body.version as string) || "0.3.6";
+      const buildNumber = Number(body.buildNumber) || 24;
       const title = body.title as string | undefined;
       const customMessage = body.customMessage as string | undefined;
       const targetEmail = body.targetEmail as string | undefined;

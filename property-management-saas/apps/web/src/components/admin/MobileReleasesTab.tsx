@@ -44,9 +44,9 @@ export function MobileReleasesTab() {
     },
   });
 
-  const [version, setVersion] = React.useState("0.3.5");
-  const [buildNumber, setBuildNumber] = React.useState(23);
-  const [title, setTitle] = React.useState("PropertyStack Mobile App v0.3.5 is Now Available! 📱");
+  const [version, setVersion] = React.useState("0.3.6");
+  const [buildNumber, setBuildNumber] = React.useState(24);
+  const [title, setTitle] = React.useState("PropertyStack Mobile App v0.3.6 is Now Available! 📱");
   const [highlights, setHighlights] = React.useState<string[]>([
     "⚡ Single-Touch Fingerprint Unlock: Instant biometric access with zero duplicate prompts.",
     "🚀 Seamless In-App Updates: Automatic in-app notification prompt whenever a new version drops.",

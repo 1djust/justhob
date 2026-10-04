@@ -204,7 +204,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        builder: (context, state) => const LoginScreen(key: ValueKey('login_screen')),
       ),
       GoRoute(
         path: '/register',

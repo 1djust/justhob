@@ -10,11 +10,16 @@ import '../../../core/widgets/app_update_dialog.dart';
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
+  /// Resets the auto-prompt flag (e.g. upon user logout).
+  static void resetAutoPrompt() {
+    _LoginScreenState.resetAutoPrompt();
+  }
+
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingObserver {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -26,12 +31,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
   bool _biometricEnabled = false;
   bool _isPromptingBiometric = false;
   bool _hasCancelledBiometric = false;
-  bool _wasPaused = false;
+
+  /// Global flag to ensure biometric auto-prompt executes strictly ONCE per app launch.
+  static bool _hasAutoPrompted = false;
+
+  static void resetAutoPrompt() {
+    _hasAutoPrompted = false;
+  }
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _checkForUpdates();
     _checkBiometric();
   }
@@ -54,8 +64,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
         _biometricEnabled = enabled;
       });
 
-      // Auto-trigger biometric prompt if enabled for seamless re-entry
-      if (enabled) {
+      // Auto-trigger biometric prompt strictly ONCE if enabled for seamless re-entry
+      if (enabled && !_hasAutoPrompted && !BiometricService.isAuthenticated) {
+        _hasAutoPrompted = true;
         _handleBiometricLogin();
       }
     }
@@ -65,6 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
     if (_isPromptingBiometric || _isSubmitting) return;
     if (manualTrigger) {
       _hasCancelledBiometric = false;
+      BiometricService.resetSession();
     } else if (_hasCancelledBiometric) {
       return;
     }
@@ -93,15 +105,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
               _isSubmitting = false;
               _errorMessage = 'Biometric login failed. Please sign in manually.';
             });
+            BiometricService.resetSession();
           }
         } else if (mounted) {
           setState(() {
             _isSubmitting = false;
             _errorMessage = 'No saved credentials. Please sign in manually.';
           });
+          BiometricService.resetSession();
         }
       } else {
         _hasCancelledBiometric = true;
+        BiometricService.resetSession();
       }
     } catch (e) {
       debugPrint('[LoginScreen] Biometric login error: $e');
@@ -110,6 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
           _isSubmitting = false;
         });
       }
+      BiometricService.resetSession();
     } finally {
       if (mounted) {
         _isPromptingBiometric = false;
@@ -119,29 +135,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingOb
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      _wasPaused = true;
-    } else if (state == AppLifecycleState.resumed) {
-      // Only auto-prompt if the user actually backgrounded the app (_wasPaused)
-      // and is not already in the middle of authenticating or submitting.
-      final shouldPrompt = _wasPaused &&
-          _biometricEnabled &&
-          !_isSubmitting &&
-          !_isPromptingBiometric;
-      _wasPaused = false;
-
-      if (shouldPrompt) {
-        _handleBiometricLogin();
-      }
-    }
   }
 
   void _handleLogin() async {
