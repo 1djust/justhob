@@ -1,0 +1,32 @@
+name: Render Backend Keep-Alive
+
+on:
+  schedule:
+    # Run every 10 minutes to prevent Render free instance from hibernating
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-backend:
+    name: Ping Render Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Ping Backend Health Endpoint
+        run: |
+          echo "Pinging https://propertystack.onrender.com/health at $(date -u)"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 https://propertystack.onrender.com/health)
+          echo "HTTP Status Code: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then
+            echo "::warning ::Backend returned HTTP $STATUS. Retrying in 10s..."
+            sleep 10
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 https://propertystack.onrender.com/health)
+            echo "Retry HTTP Status Code: $STATUS"
+          fi
+          if [ "$STATUS" -eq 200 ]; then
+            echo "Backend is alive and healthy!"
+          else
+            echo "Failed to wake backend, status: $STATUS"
+            exit 1
+          fi
