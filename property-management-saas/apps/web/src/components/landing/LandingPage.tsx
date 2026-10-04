@@ -26,7 +26,7 @@ import { DashboardCarousel } from "./DashboardCarousel";
 import { PricingSection } from "./PricingSection";
 
 export function LandingPage() {
-  const [version, setVersion] = useState("0.3.2");
+  const [version, setVersion] = useState("0.3.4");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
