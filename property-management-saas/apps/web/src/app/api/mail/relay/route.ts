@@ -53,6 +53,9 @@ export async function POST(req: Request) {
       subject,
       text: text || "",
       html: html || undefined,
+      headers: {
+        "X-Auto-Response-Suppress": "All",
+      },
     });
 
     console.log(`[VercelRelay] Successfully dispatched email to ${to}: ${info.messageId}`);

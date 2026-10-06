@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../../../../core/services/receipt_service.dart';
+import '../../../../core/services/lifecycle_service.dart';
 import '../../../../shared/domain/tenant.dart';
 import '../../../../shared/domain/property.dart';
 import 'landlord_payments_notifier.dart';
@@ -1610,9 +1611,11 @@ class _LandlordPaymentReviewScreenState extends ConsumerState<LandlordPaymentRev
                           ),
                         );
 
-                        await Printing.sharePdf(
-                          bytes: pdfBytes,
-                          filename: 'Receipt-$receiptId.pdf',
+                        await LifecycleService.wrapSystemPicker(
+                          () => Printing.sharePdf(
+                            bytes: pdfBytes,
+                            filename: 'Receipt-$receiptId.pdf',
+                          ),
                         );
                       } catch (e) {
                         if (!mounted) return;

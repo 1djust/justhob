@@ -435,7 +435,7 @@ export class SecurityService {
       `;
 
       for (const admin of admins) {
-        sendEmail(admin.email, `🚨 [Security Alert] Failed Login Attempt: ${safeEmail}`, htmlContent).catch(() => {});
+        sendEmail(admin.email, `[Security Alert] Failed Login Attempt: ${safeEmail}`, htmlContent).catch(() => {});
       }
     } catch (err) {
       console.error("[SecurityService] Failed to send failed login alert email:", err);
@@ -450,7 +450,7 @@ export class SecurityService {
 
       const htmlContent = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; max-width: 600px; color: #1e293b; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0;">
-          <h2 style="color: #dc2626; margin: 0 0 16px 0; font-size: 20px; font-weight: 700;">🛑 Critical Security Alert: Account & IP Lockout Activated</h2>
+          <h2 style="color: #dc2626; margin: 0 0 16px 0; font-size: 20px; font-weight: 700;">Critical Security Alert: Account & IP Lockout Activated</h2>
           <p style="font-size: 14px; line-height: 1.5; color: #475569;">The PropertyStack Security Shield has locked out an account/IP after exceeding the maximum failed login threshold.</p>
           <div style="background-color: #fef2f2; border: 1px solid #fee2e2; border-left: 4px solid #dc2626; border-radius: 6px; padding: 16px; margin: 20px 0;">
             <p style="margin: 6px 0; font-size: 14px;"><strong>Target Account:</strong> <span style="font-family: monospace; background: #fee2e2; padding: 2px 6px; border-radius: 4px;">${safeEmail}</span></p>
@@ -463,7 +463,7 @@ export class SecurityService {
       `;
 
       for (const admin of admins) {
-        sendEmail(admin.email, `🛑 [Critical Alert] Account Locked Out: ${safeEmail}`, htmlContent).catch(() => {});
+        sendEmail(admin.email, `[Critical Alert] Account Locked Out: ${safeEmail}`, htmlContent).catch(() => {});
       }
     } catch (err) {
       console.error("[SecurityService] Failed to send lockout alert email:", err);
@@ -477,7 +477,7 @@ export class SecurityService {
 
       const htmlContent = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; max-width: 600px; color: #1e293b; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0;">
-          <h2 style="color: #991b1b; margin: 0 0 16px 0; font-size: 20px; font-weight: 700;">🛑 Critical Security Alert: IP Address Blacklisted</h2>
+          <h2 style="color: #991b1b; margin: 0 0 16px 0; font-size: 20px; font-weight: 700;">Critical Security Alert: IP Address Blacklisted</h2>
           <p style="font-size: 14px; line-height: 1.5; color: #475569;">An IP address has been automatically blacklisted for 1 hour after triggering multiple malicious exploit signatures.</p>
           <div style="background-color: #fef2f2; border: 1px solid #fee2e2; border-left: 4px solid #991b1b; border-radius: 6px; padding: 16px; margin: 20px 0;">
             <p style="margin: 6px 0; font-size: 14px;"><strong>Blacklisted IP:</strong> <span style="font-family: monospace; background: #fee2e2; padding: 2px 6px; border-radius: 4px;">${safeIp}</span></p>
@@ -489,7 +489,7 @@ export class SecurityService {
       `;
 
       for (const admin of admins) {
-        await sendEmail(admin.email, `🛑 [Critical Alert] Malicious IP Blacklisted: ${safeIp}`, htmlContent);
+        await sendEmail(admin.email, `[Critical Alert] Malicious IP Blacklisted: ${safeIp}`, htmlContent);
       }
     } catch (err) {
       console.error("[SecurityService] Failed to send blacklist alert email:", err);

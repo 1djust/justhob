@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/services/lifecycle_service.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import 'notification_settings_screen.dart';
 import 'privacy_security_screen.dart';
@@ -26,11 +27,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _pickProfileImage(ImageSource source) async {
     try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: source,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 85,
+      final XFile? pickedFile = await LifecycleService.wrapSystemPicker(
+        () => _picker.pickImage(
+          source: source,
+          maxWidth: 800,
+          maxHeight: 800,
+          imageQuality: 85,
+        ),
       );
       if (pickedFile != null) {
         setState(() {

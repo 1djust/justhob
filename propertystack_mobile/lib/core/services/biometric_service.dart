@@ -1,6 +1,7 @@
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'lifecycle_service.dart';
 
 /// Service to handle biometric (fingerprint/face) authentication.
 /// 
@@ -99,6 +100,7 @@ class BiometricService {
     }
 
     _isAuthenticating = true;
+    LifecycleService.setSystemPickerActive(true);
     try {
       final success = await _auth.authenticate(
         localizedReason: 'Scan your fingerprint to access PropertyStack',
@@ -117,6 +119,8 @@ class BiometricService {
       debugPrint('[Biometric] Authentication error: $e');
       return false;
     } finally {
+      await Future.delayed(const Duration(milliseconds: 500));
+      LifecycleService.setSystemPickerActive(false);
       _isAuthenticating = false;
     }
   }

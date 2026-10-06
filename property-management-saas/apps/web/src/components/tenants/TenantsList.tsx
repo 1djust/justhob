@@ -131,10 +131,14 @@ export function TenantsList({
     if (!socket || !isConnected) return;
     const handleUpdate = () =>
       queryClient.invalidateQueries({ queryKey: ["tenants", workspaceId] });
+    socket.on("TENANT_CREATED", handleUpdate);
+    socket.on("TENANT_DELETED", handleUpdate);
     socket.on("LEASE_UPDATED", handleUpdate);
     socket.on("LEASE_RENEWED", handleUpdate);
     socket.on("LEASE_RENEWAL_REJECTED", handleUpdate);
     return () => {
+      socket.off("TENANT_CREATED", handleUpdate);
+      socket.off("TENANT_DELETED", handleUpdate);
       socket.off("LEASE_UPDATED", handleUpdate);
       socket.off("LEASE_RENEWED", handleUpdate);
       socket.off("LEASE_RENEWAL_REJECTED", handleUpdate);

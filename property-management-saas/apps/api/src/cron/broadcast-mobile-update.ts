@@ -30,8 +30,8 @@ export async function broadcastMobileUpdate(options: BroadcastUpdateOptions = {}
     dryRun = false,
     version = "0.3.5",
     buildNumber = 23,
-    apkUrl = "https://propertystack.vercel.app/downloads/propertystack-tenant.apk",
-    title = `PropertyStack Mobile App v${version} is Now Available! 📱`,
+    apkUrl = "https://propertystack.vercel.app/download",
+    title = `PropertyStack Mobile App Update: v${version} Available`,
     highlights = DEFAULT_HIGHLIGHTS,
     customMessage,
     targetEmail,
@@ -124,7 +124,7 @@ export async function broadcastMobileUpdate(options: BroadcastUpdateOptions = {}
         <div style="text-align: center; margin: 28px 0 20px 0;">
           <a href="${escapeHtml(apkUrl)}"
              style="background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 12px rgba(0, 102, 255, 0.25);">
-            📥 Download Mobile App Update (v${escapeHtml(version)} APK)
+            Download Mobile App Update (v${escapeHtml(version)})
           </a>
         </div>
 
@@ -179,7 +179,7 @@ The PropertyStack Team
       logger.info(`[BroadcastUpdate] Sending to ${user.email}...`);
       const result = await sendEmail(
         user.email,
-        `📱 PropertyStack Mobile App Update v${version} is Now Available!`,
+        `PropertyStack Mobile App Update: v${version} Available`,
         textContent,
         finalHtml,
       );

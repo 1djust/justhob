@@ -105,7 +105,7 @@ export function buildApp() {
         return cb(null, true);
       }
 
-      return cb(new Error("Not allowed by CORS"), false);
+      return cb(null, false);
     },
     credentials: true,
   });

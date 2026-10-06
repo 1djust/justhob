@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import '../services/lifecycle_service.dart';
 import '../../features/properties/data/properties_repository.dart';
 import '../../features/properties/presentation/properties_notifier.dart';
 import '../../features/owners/presentation/owners_notifier.dart';
@@ -55,11 +56,13 @@ class _AddPropertyBottomSheetState extends ConsumerState<AddPropertyBottomSheet>
 
   Future<void> _pickPropertyImage(ImageSource source) async {
     try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 80,
+      final XFile? pickedFile = await LifecycleService.wrapSystemPicker(
+        () => _picker.pickImage(
+          source: source,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 80,
+        ),
       );
       if (pickedFile != null) {
         setState(() {

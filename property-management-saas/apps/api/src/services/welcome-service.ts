@@ -67,11 +67,16 @@ export class WelcomeService {
       // 2. Friendly Welcome Email Delivery
       const rawName = user.name?.trim() || "";
       const firstName = rawName ? rawName.split(" ")[0] : "there";
-      const subject = `Welcome to PropertyStack, ${firstName}! 🚀`;
-      const dashboardUrl = process.env.FRONTEND_URL || "https://propertystack.vercel.app";
+      const subject = `Welcome to PropertyStack, ${firstName}!`;
+      const dashboardUrl =
+        process.env.FRONTEND_URL &&
+        !process.env.FRONTEND_URL.includes("localhost") &&
+        !process.env.FRONTEND_URL.includes("127.0.0.1")
+          ? process.env.FRONTEND_URL.replace(/\/$/, "")
+          : "https://propertystack.vercel.app";
 
       const bodyHtml = `
-        <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #0f172a;">Welcome to PropertyStack, ${escapeHtml(firstName)}! 👋</h2>
+        <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #0f172a;">Welcome to PropertyStack, ${escapeHtml(firstName)}!</h2>
         <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
           We're thrilled to have you! Your workspace <strong>${escapeHtml(workspaceName)}</strong> has been successfully created and configured.
         </p>

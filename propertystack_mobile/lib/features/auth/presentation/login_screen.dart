@@ -19,7 +19,7 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> with WidgetsBindingObserver {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -42,8 +42,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkForUpdates();
     _checkBiometric();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _checkBiometricOnResume();
+    }
+  }
+
+  Future<void> _checkBiometricOnResume() async {
+    if (_isPromptingBiometric || _isSubmitting) return;
+    final bio = BiometricService();
+    final enabled = await bio.isBiometricEnabled();
+    if (!mounted) return;
+
+    if (enabled && !_hasAutoPrompted && !BiometricService.isAuthenticated) {
+      _hasAutoPrompted = true;
+      _handleBiometricLogin();
+    }
   }
 
   Future<void> _checkForUpdates() async {
@@ -64,8 +84,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _biometricEnabled = enabled;
       });
 
-      // Auto-trigger biometric prompt strictly ONCE if enabled for seamless re-entry
-      if (enabled && !_hasAutoPrompted && !BiometricService.isAuthenticated) {
+      // Auto-trigger biometric prompt strictly ONCE if enabled for seamless re-entry,
+      // provided the app is in the foreground (resumed).
+      final isForeground = WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+      if (enabled && !_hasAutoPrompted && !BiometricService.isAuthenticated && isForeground) {
         _hasAutoPrompted = true;
         _handleBiometricLogin();
       }
@@ -135,6 +157,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();

@@ -8,6 +8,8 @@ export default defineConfig({
     environment: "node",
     /* Test file patterns */
     include: ["tests/**/*.test.ts", "tests/**/*.spec.ts"],
+    /* Sequential execution to prevent Supabase connection pool exhaustion (max pool size 15) */
+    fileParallelism: false,
     /* Timeout for each test (ms) */
     testTimeout: 30_000,
     /* Timeout for each hook (ms) */

@@ -72,133 +72,76 @@ export async function sendLandlordInviteEmail(params: {
     frontendUrl,
   } = params;
 
-  const displayName = landlordName && landlordName.trim().length > 0 ? landlordName.trim() : "there";
+  // Ensure public links in emails never contain localhost or unencrypted http
+  const publicBaseUrl =
+    frontendUrl &&
+    !frontendUrl.includes("localhost") &&
+    !frontendUrl.includes("127.0.0.1")
+      ? frontendUrl.replace(/\/$/, "")
+      : "https://propertystack.vercel.app";
 
-  const loginUrl =
-    inviteLink ||
-    `${frontendUrl.replace(/\/$/, "")}/login?email=${encodeURIComponent(landlordEmail)}`;
-  const apkDownloadUrl = `${frontendUrl.replace(/\/$/, "")}/downloads/propertystack-tenant.apk`;
-  const subject = `Welcome to PropertyStack: Landlord Account Created by ${managerName}`;
+  const displayName =
+    landlordName && landlordName.trim().length > 0 ? landlordName.trim() : "there";
+  // Always use the official branded web portal URL for the primary action button.
+  const actionUrl = `${publicBaseUrl}/login?email=${encodeURIComponent(landlordEmail)}`;
+  const appDownloadUrl = `${publicBaseUrl}/download`;
+  const subject = `Welcome to ${workspaceName} on PropertyStack`;
 
   const bodyHtml = `
     <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">
-      Welcome to PropertyStack
+      Welcome to your landlord portal
     </h2>
     <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
       Hi <strong>${escapeHtml(displayName)}</strong>,
     </p>
-    <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
-      <strong>${escapeHtml(managerName)}</strong> has created a landlord profile for you in the workspace <strong>"${escapeHtml(workspaceName)}"</strong> on PropertyStack.
+    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+      <strong>${escapeHtml(managerName)}</strong> has created a landlord profile for you in <strong>${escapeHtml(workspaceName)}</strong> on PropertyStack. You can now monitor occupancy, review rent payments, and approve tenant receipts online or on mobile.
     </p>
 
-    <!-- CREDENTIALS BOX -->
-    ${
-      tempPassword
-        ? `
-    <div style="background-color: #f1f5f9; border-left: 4px solid #0066FF; border-radius: 8px; padding: 16px 20px; margin: 0 0 24px 0;">
-      <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px;">
-        🔑 Your Login Credentials
+    <!-- SINGLE PRIMARY CALL TO ACTION -->
+    <div style="margin: 0 0 28px 0; text-align: center;">
+      <a href="${actionUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 13px 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 102, 255, 0.25);">
+        Access Your Landlord Workspace
+      </a>
+    </div>
+
+    <!-- CLEAN ACCOUNT DETAILS BOX -->
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin: 0 0 24px 0;">
+      <p style="margin: 0 0 12px 0; font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">
+        Account Sign-In Details
       </p>
-      <p style="margin: 0 0 6px 0; font-size: 14px; color: #334155;">
-        <strong>Login Email:</strong> <span style="font-family: monospace; background-color: #ffffff; padding: 3px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600;">${escapeHtml(landlordEmail)}</span>
+      <p style="margin: 0 0 6px 0; font-size: 14px; color: #1e293b;">
+        <strong>Email:</strong> ${escapeHtml(landlordEmail)}
       </p>
-      <p style="margin: 0 0 8px 0; font-size: 14px; color: #334155;">
-        <strong>Temporary Password:</strong> <span style="font-family: monospace; background-color: #ffffff; padding: 3px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600; color: #0066FF;">${escapeHtml(tempPassword)}</span>
+      ${
+        tempPassword
+          ? `
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #1e293b;">
+        <strong>Temporary Password:</strong> <code style="font-family: monospace; background-color: #ffffff; padding: 3px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600; color: #0066FF;">${escapeHtml(tempPassword)}</code>
       </p>
       <p style="margin: 0; font-size: 12px; color: #64748b;">
-        You will use these credentials to sign in on mobile or web.
+        Sign in with this temporary password. You can change your password at any time in your profile settings.
       </p>
-    </div>
-    `
-        : ""
-    }
-
-    <!-- MOBILE APP GUIDE (RECOMMENDED) -->
-    <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-top: 4px solid #10b981; border-radius: 8px; padding: 22px 20px; margin: 0 0 26px 0;">
-      <div style="display: flex; align-items: center; margin-bottom: 12px;">
-        <span style="font-size: 18px; margin-right: 8px;">📱</span>
-        <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a;">
-          How to Get & Use the Mobile App (Recommended)
-        </h3>
-      </div>
-      <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5; color: #475569;">
-        PropertyStack is built mobile-first so you can track your properties, review rent payments, and approve tenant receipts directly from your phone.
-      </p>
-
-      <!-- STEP 1 -->
-      <div style="margin-bottom: 14px;">
-        <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 600; color: #1e293b;">
-          1. Download & Install the Mobile App
-        </p>
-        <p style="margin: 0 0 10px 0; font-size: 13px; line-height: 1.5; color: #64748b;">
-          Download the official PropertyStack Android app directly to your phone:
-        </p>
-        <a href="${apkDownloadUrl}" download style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 6px; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);">
-          📥 Download PropertyStack Mobile App (.apk)
-        </a>
-        <p style="margin: 6px 0 0 0; font-size: 11px; color: #94a3b8;">
-          Note: If your phone displays an install prompt, tap "Settings" and enable "Allow from this source".
-        </p>
-      </div>
-
-      <!-- STEP 2 -->
-      <div style="margin-bottom: 14px; border-top: 1px dashed #e2e8f0; padding-top: 12px;">
-        <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #1e293b;">
-          2. Sign In with Your Credentials
-        </p>
-        <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #64748b;">
-          Open the app on your phone and enter your <strong>Login Email</strong> and <strong>Temporary Password</strong> shown above.
-        </p>
-      </div>
-
-      <!-- STEP 3 -->
-      <div style="margin-bottom: 14px; border-top: 1px dashed #e2e8f0; padding-top: 12px;">
-        <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #1e293b;">
-          3. Set Your Personal Password
-        </p>
-        <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #64748b;">
-          The app will immediately guide you to create your secure, personal password on your first sign-in.
-        </p>
-      </div>
-
-      <!-- STEP 4 -->
-      <div style="border-top: 1px dashed #e2e8f0; padding-top: 12px;">
-        <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #1e293b;">
-          4. Enjoy Easy On-the-Go Management
-        </p>
-        <ul style="margin: 4px 0 0 0; padding-left: 20px; font-size: 13px; line-height: 1.6; color: #475569;">
-          <li><strong>Real-time Dashboard:</strong> Track active units and occupancy rates at a glance.</li>
-          <li><strong>1-Tap Approvals:</strong> View tenant payment proofs and verify rent directly on your screen.</li>
-          <li><strong>Always Signed In:</strong> Stay logged in on your phone for quick daily access.</li>
-        </ul>
-      </div>
+      `
+          : ""
+      }
     </div>
 
-    <!-- WEB PORTAL ACCESS -->
-    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin: 0 0 24px 0;">
-      <h3 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #1e293b;">
-        💻 Prefer Using a Computer?
-      </h3>
-      <p style="margin: 0 0 14px 0; font-size: 13px; line-height: 1.5; color: #64748b;">
-        You can also access your landlord workspace using any web browser on your laptop or desktop:
-      </p>
-      <a href="${loginUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 10px 22px; border-radius: 6px;">
-        Open Web Dashboard →
-      </a>
-      <p style="margin: 10px 0 0 0; font-size: 12px; color: #94a3b8;">
-        Web Link: <a href="${loginUrl}" style="color: #0066FF; word-break: break-all;">${loginUrl}</a>
-      </p>
-    </div>
+    <!-- MOBILE APP ACCESS NOTE -->
+    <p style="margin: 0 0 16px 0; font-size: 13px; line-height: 1.6; color: #64748b;">
+      Prefer mobile? You can also <a href="${appDownloadUrl}" style="color: #0066FF; font-weight: 600; text-decoration: underline;">download the PropertyStack app</a> to track your properties on the go.
+    </p>
   `;
 
   const html = renderEmailLayout({
     title: subject,
-    badge: "LANDLORD INVITATION",
+    badge: "LANDLORD ONBOARDING",
     bodyHtml,
     recipientEmail: landlordEmail,
+    preheader: `Welcome to your landlord portal for ${workspaceName} on PropertyStack. View your portfolio and sign in.`,
   });
 
-  const plainText = `Hi ${displayName},\n\n${managerName} has created a landlord profile for you in the workspace "${workspaceName}" on PropertyStack.\n\n=== YOUR LOGIN CREDENTIALS ===\nLogin Email: ${landlordEmail}\n${tempPassword ? `Temporary Password: ${tempPassword}\n` : ""}\n=== HOW TO GET & USE THE MOBILE APP ===\n1. Download Mobile App (Android APK):\n${apkDownloadUrl}\n(Tap the link on your phone to download and install)\n\n2. Open PropertyStack and log in using your email and temporary password.\n3. Create your secure personal password when prompted.\n4. Access your Landlord Hub to track occupancy and approve rent payments on the go.\n\n=== WEB ACCESS ===\nIf you prefer using a desktop browser:\n${loginUrl}\n\nBest regards,\nThe PropertyStack Team`;
+  const plainText = `Hi ${displayName},\n\n${managerName} has created a landlord profile for you in ${workspaceName} on PropertyStack.\n\nAccess your workspace:\n${actionUrl}\n\nAccount Sign-In Details:\n- Email: ${landlordEmail}\n${tempPassword ? `- Temporary Password: ${tempPassword}\n` : ""}\nPrefer mobile? Download the PropertyStack app:\n${appDownloadUrl}\n\nBest regards,\nThe PropertyStack Team`;
 
   await sendEmail(landlordEmail, subject, plainText, html);
 }

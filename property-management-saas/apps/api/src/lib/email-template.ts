@@ -22,6 +22,7 @@ export interface EmailLayoutOptions {
   bodyHtml: string;
   recipientEmail?: string;
   footerNote?: string;
+  preheader?: string;
 }
 
 export function renderEmailLayout(options: EmailLayoutOptions): string {
@@ -31,6 +32,7 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
     bodyHtml,
     recipientEmail,
     footerNote,
+    preheader,
   } = options;
 
   const currentYear = new Date().getFullYear();
@@ -38,6 +40,7 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
   const safeBadge = escapeHtml(badge);
   const safeRecipientEmail = recipientEmail ? escapeHtml(recipientEmail) : "";
   const safeFooterNote = footerNote ? escapeHtml(footerNote) : undefined;
+  const safePreheader = preheader ? escapeHtml(preheader) : undefined;
 
   return `
 <!DOCTYPE html>
@@ -48,6 +51,16 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
   <title>${safeTitle}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  ${
+    safePreheader
+      ? `
+  <!-- Hidden preheader text to control inbox email preview snippet -->
+  <div style="display: none; max-height: 0px; overflow: hidden; font-size: 1px; line-height: 1px; color: #ffffff; opacity: 0; mso-hide: all;">
+    ${safePreheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+  </div>
+  `
+      : ""
+  }
   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 32px 16px;">
     <tr>
       <td align="center">
@@ -60,7 +73,7 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
                   <td style="vertical-align: middle; padding-right: 14px;">
                     <div style="width: 44px; height: 44px; background-color: #ffffff; border-radius: 10px; overflow: hidden; padding: 2px; box-sizing: border-box; text-align: center;">
                       <img
-                        src="https://propertystack.vercel.app/images/assets/logo.png"
+                        src="https://propertystack.vercel.app/icon.png"
                         alt="PropertyStack"
                         width="40"
                         height="40"
@@ -92,11 +105,17 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
                   safeFooterNote ||
                   (safeRecipientEmail
                     ? `You received this email because an account is registered with ${safeRecipientEmail} on PropertyStack.`
-                    : "This is an automated notification from PropertyStack.")
+                    : "This is an automated transactional notification from PropertyStack.")
                 }
+              </p>
+              <p style="margin: 0 0 8px 0; font-size: 11px; color: #94a3b8;">
+                To manage your email preferences, visit <a href="https://propertystack.vercel.app/settings/notifications" style="color: #0066FF; text-decoration: underline;">Notification Preferences</a>.
               </p>
               <p style="margin: 0; font-size: 12px; color: #94a3b8;">
                 &copy; ${currentYear} PropertyStack Inc. All rights reserved.
+              </p>
+              <p style="margin: 4px 0 0 0; font-size: 11px; color: #94a3b8;">
+                PropertyStack &bull; Cloud Property Management &bull; <a href="https://propertystack.vercel.app" style="color: #0066FF; text-decoration: underline;">propertystack.vercel.app</a>
               </p>
             </td>
           </tr>

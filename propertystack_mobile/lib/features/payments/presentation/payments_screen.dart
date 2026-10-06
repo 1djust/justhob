@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
+import '../../../core/services/lifecycle_service.dart';
 import '../../home/presentation/home_notifier.dart';
 import '../../../shared/domain/payment.dart';
 import '../../../shared/domain/property.dart';
@@ -217,7 +218,9 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final image = await LifecycleService.wrapSystemPicker(
+      () => picker.pickImage(source: ImageSource.gallery, imageQuality: 70),
+    );
     if (image != null && mounted) {
       setState(() => _pickedImage = image);
     }
@@ -225,7 +228,9 @@ class _SubmitProofSheetState extends State<_SubmitProofSheet> {
 
   Future<void> _takePhoto() async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    final image = await LifecycleService.wrapSystemPicker(
+      () => picker.pickImage(source: ImageSource.camera, imageQuality: 70),
+    );
     if (image != null && mounted) {
       setState(() => _pickedImage = image);
     }
@@ -1242,9 +1247,11 @@ class _PaymentCardState extends ConsumerState<_PaymentCard> {
                               property: property,
                             );
 
-                            await Printing.sharePdf(
-                              bytes: pdfBytes,
-                              filename: 'Receipt-${payment.receiptId ?? payment.id}.pdf',
+                            await LifecycleService.wrapSystemPicker(
+                              () => Printing.sharePdf(
+                                bytes: pdfBytes,
+                                filename: 'Receipt-${payment.receiptId ?? payment.id}.pdf',
+                              ),
                             );
                           } catch (e) {
       debugPrint('Caught error: $e');
@@ -1302,13 +1309,17 @@ class _SubmitExistingProofSheetState extends State<_SubmitExistingProofSheet> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final image = await LifecycleService.wrapSystemPicker(
+      () => picker.pickImage(source: ImageSource.gallery, imageQuality: 70),
+    );
     if (image != null && mounted) setState(() => _pickedImage = image);
   }
 
   Future<void> _takePhoto() async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    final image = await LifecycleService.wrapSystemPicker(
+      () => picker.pickImage(source: ImageSource.camera, imageQuality: 70),
+    );
     if (image != null && mounted) setState(() => _pickedImage = image);
   }
 

@@ -5,22 +5,25 @@ import dns from "dns/promises";
 const DB_HOST = "aws-1-eu-north-1.pooler.supabase.com";
 try {
   const ips = await dns.resolve4(DB_HOST);
-  if (ips && ips.length > 0) {
-    let ip = ips[0];
-    if (ips.includes("51.21.189.77")) {
-      ip = "51.21.189.77";
-    } else if (ip === "51.21.18.29" && ips.length > 1) {
-      ip = ips[1];
-    }
-    if (process.env.DATABASE_URL) {
-      process.env.DATABASE_URL = process.env.DATABASE_URL.replace(DB_HOST, ip);
-    }
-    if (process.env.DIRECT_URL) {
-      process.env.DIRECT_URL = process.env.DIRECT_URL.replace(DB_HOST, ip);
+  const isPoolerPort = process.env.DATABASE_URL?.includes(":6543");
+  const dbIp = isPoolerPort
+    ? (ips?.includes("51.21.18.29") ? "51.21.18.29" : ips?.[0] || "51.21.18.29")
+    : (ips?.includes("51.21.189.77") ? "51.21.189.77" : (ips && ips.length > 1 ? ips[1] : "51.21.189.77"));
+  const directIp = ips?.includes("51.21.189.77") ? "51.21.189.77" : ips?.[0] || "51.21.189.77";
+
+  if (process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = process.env.DATABASE_URL.replace(DB_HOST, dbIp);
+    if (!isPoolerPort && process.env.DATABASE_URL.includes("51.21.18.29")) {
+      process.env.DATABASE_URL = process.env.DATABASE_URL.replace("51.21.18.29", "51.21.189.77");
     }
   }
+  if (process.env.DIRECT_URL) {
+    process.env.DIRECT_URL = process.env.DIRECT_URL.replace(DB_HOST, directIp);
+  }
 } catch {
-  // Fall through to default env URL
+  if (process.env.DATABASE_URL?.includes(":5432") && process.env.DATABASE_URL.includes("51.21.18.29")) {
+    process.env.DATABASE_URL = process.env.DATABASE_URL.replace("51.21.18.29", "51.21.189.77");
+  }
 }
 
 const { app } = await import("../src/app");

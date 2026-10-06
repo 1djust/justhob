@@ -279,6 +279,13 @@ export function TenantDrawerForm({
                         </h3>
                       </div>
 
+                      <div className="flex items-start gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl text-xs text-emerald-800 dark:text-emerald-300">
+                        <Mail className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                        <span>
+                          An official onboarding email has been sent to the tenant. Landlords in this workspace have also been notified via email &amp; in-app notification.
+                        </span>
+                      </div>
+
                       <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-4">
                         <div>
                           <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest mb-1">

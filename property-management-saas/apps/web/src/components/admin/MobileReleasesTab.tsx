@@ -507,7 +507,7 @@ export function MobileReleasesTab() {
 
                   {/* Highlights Card */}
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                    <p className="text-[11px] font-bold text-zinc-900">✨ What's New & Improved:</p>
+                    <p className="text-[11px] font-bold text-zinc-900">✨ What&apos;s New &amp; Improved:</p>
                     <ul className="space-y-1.5 pl-3 list-disc text-[11px] text-zinc-700">
                       {highlights.map((h, i) => (
                         <li key={i}>{h}</li>
@@ -526,7 +526,7 @@ export function MobileReleasesTab() {
                   </div>
 
                   <p className="text-[10px] text-zinc-500 text-center">
-                    Already have the app? Open PropertyStack on your phone and tap <strong>"Update Now"</strong>.
+                    Already have the app? Open PropertyStack on your phone and tap <strong>&quot;Update Now&quot;</strong>.
                   </p>
 
                   <div className="pt-3 border-t border-zinc-100 text-[11px] text-zinc-500">

@@ -273,14 +273,23 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    // Clear locally first so that the user's session is invalidated immediately
+    _apiClient.inMemoryToken = null;
     try {
-      await _apiClient.dio.post('/auth/logout');
+      await _apiClient.storage.delete(key: 'access_token');
+      await _apiClient.cookieJar.deleteAll();
+    } catch (e) {
+      debugPrint('[AuthRepository] Local cleanup error: $e');
+    }
+
+    // Invalidate session on server
+    try {
+      await _apiClient.dio.post(
+        '/auth/logout',
+        options: Options(receiveTimeout: const Duration(seconds: 3), sendTimeout: const Duration(seconds: 3)),
+      );
     } catch (e) {
       debugPrint('[AuthRepository] logout API error: $e');
-    } finally {
-      _apiClient.inMemoryToken = null;
-      await _apiClient.cookieJar.deleteAll();
-      await _apiClient.storage.delete(key: 'access_token');
     }
   }
 

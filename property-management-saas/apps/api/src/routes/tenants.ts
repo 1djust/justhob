@@ -13,6 +13,8 @@ import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { tenantsCache, clearWorkspaceCache, CACHE_TTL } from "../lib/cache";
 import { logAction } from "../lib/audit";
 import { sanitizePromptInput } from "../lib/ai-guardrails";
+import { sendEmail } from "../lib/mailer";
+import { renderEmailLayout, escapeHtml } from "../lib/email-template";
 
 const WorkspaceParams = Type.Object({ workspaceId: Type.String() });
 const WorkspaceQuery = Type.Object({
@@ -75,6 +77,484 @@ const UploadLegalDocParams = Type.Object({
 const UploadLegalDocBody = Type.Object({
   legalDocUrl: Type.String(),
 });
+
+/**
+ * Dispatches an official branded welcome and onboarding email to a newly created tenant.
+ */
+export async function sendTenantWelcomeEmail(params: {
+  tenantEmail: string;
+  tenantName?: string | null;
+  managerName?: string;
+  workspaceName?: string;
+  tempPassword?: string;
+  inviteLink?: string | null;
+  frontendUrl: string;
+}) {
+  const {
+    tenantEmail,
+    tenantName = "there",
+    managerName = "Your Property Manager",
+    workspaceName = "PropertyStack Workspace",
+    tempPassword,
+    inviteLink,
+    frontendUrl,
+  } = params;
+
+  // Ensure public links in emails never contain localhost or unencrypted http
+  const publicBaseUrl =
+    frontendUrl &&
+    !frontendUrl.includes("localhost") &&
+    !frontendUrl.includes("127.0.0.1")
+      ? frontendUrl.replace(/\/$/, "")
+      : "https://propertystack.vercel.app";
+
+  const displayName =
+    tenantName && tenantName.trim().length > 0 ? tenantName.trim() : "there";
+  // Always use the official branded web portal URL for the primary action button.
+  // Never pass external third-party backend links (*.supabase.co) into email CTA buttons,
+  // as email security scanners (Gmail, Outlook) immediately classify mismatched authentication links as phishing.
+  const actionUrl = `${publicBaseUrl}/login?email=${encodeURIComponent(tenantEmail)}`;
+  const appDownloadUrl = `${publicBaseUrl}/download`;
+  const subject = `Welcome to ${workspaceName} on PropertyStack`;
+
+  const bodyHtml = `
+    <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">
+      Welcome to your resident portal
+    </h2>
+    <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+      Hi <strong>${escapeHtml(displayName)}</strong>,
+    </p>
+    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+      <strong>${escapeHtml(managerName)}</strong> has created your resident profile for <strong>${escapeHtml(workspaceName)}</strong> on PropertyStack. You can now access your tenancy details, review lease agreements, and manage rent payments directly online or on mobile.
+    </p>
+
+    <!-- SINGLE PRIMARY CALL TO ACTION -->
+    <div style="margin: 0 0 28px 0; text-align: center;">
+      <a href="${actionUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 13px 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 102, 255, 0.25);">
+        Sign In to Your Account
+      </a>
+    </div>
+
+    <!-- CLEAN ACCOUNT DETAILS BOX -->
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin: 0 0 24px 0;">
+      <p style="margin: 0 0 12px 0; font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">
+        Account Sign-In Details
+      </p>
+      <p style="margin: 0 0 6px 0; font-size: 14px; color: #1e293b;">
+        <strong>Email:</strong> ${escapeHtml(tenantEmail)}
+      </p>
+      ${
+        tempPassword
+          ? `
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #1e293b;">
+        <strong>Temporary Password:</strong> <code style="font-family: monospace; background-color: #ffffff; padding: 3px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600; color: #0066FF;">${escapeHtml(tempPassword)}</code>
+      </p>
+      <p style="margin: 0; font-size: 12px; color: #64748b;">
+        Sign in with this temporary password. You can change your password at any time in your profile settings.
+      </p>
+      `
+          : ""
+      }
+    </div>
+
+    <!-- MOBILE APP ACCESS NOTE -->
+    <p style="margin: 0 0 16px 0; font-size: 13px; line-height: 1.6; color: #64748b;">
+      Prefer mobile? You can also <a href="${appDownloadUrl}" style="color: #0066FF; font-weight: 600; text-decoration: underline;">download the PropertyStack app</a> to manage your tenancy on the go.
+    </p>
+  `;
+
+  const html = renderEmailLayout({
+    title: subject,
+    badge: "TENANT ONBOARDING",
+    bodyHtml,
+    recipientEmail: tenantEmail,
+    preheader: `Welcome to your resident portal for ${workspaceName} on PropertyStack. View your tenancy details and sign in.`,
+  });
+
+  const plainText = `Hi ${displayName},\n\n${managerName} has created your resident profile for ${workspaceName} on PropertyStack.\n\nSign in to your account:\n${actionUrl}\n\nAccount Sign-In Details:\n- Email: ${tenantEmail}\n${tempPassword ? `- Temporary Password: ${tempPassword}\n` : ""}\nPrefer mobile? Download the PropertyStack app:\n${appDownloadUrl}\n\nBest regards,\nThe PropertyStack Team`;
+
+  await sendEmail(tenantEmail, subject, plainText, html);
+}
+
+/**
+ * Notifies all landlords associated with a workspace (via WorkspaceMember or Property ownership)
+ * about the creation of a new tenant profile via both in-app notification and email.
+ */
+export async function notifyLandlordsOfNewTenant(params: {
+  fastify: FastifyInstance;
+  workspaceId: string;
+  tenantName: string;
+  tenantEmail?: string | null;
+  tenantPhone?: string | null;
+  managerName?: string;
+  workspaceName?: string;
+  frontendUrl: string;
+}) {
+  const {
+    fastify,
+    workspaceId,
+    tenantName,
+    tenantEmail,
+    tenantPhone,
+    managerName = "Your Property Manager",
+    workspaceName = "PropertyStack Workspace",
+    frontendUrl,
+  } = params;
+
+  // 1. Find all landlords in this workspace:
+  // - Workspace members with role "LANDLORD"
+  // - Property owners who have properties in this workspace
+  const [landlordMembers, propertyOwners] = await Promise.all([
+    prisma.workspaceMember.findMany({
+      where: { workspaceId, role: "LANDLORD" },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    }),
+    prisma.property.findMany({
+      where: { workspaceId, ownerId: { not: null }, deletedAt: null },
+      include: {
+        owner: { select: { id: true, name: true, email: true } },
+      },
+    }),
+  ]);
+
+  const landlordMap = new Map<
+    string,
+    { id: string; name: string | null; email: string }
+  >();
+
+  for (const m of landlordMembers) {
+    if (m.user && m.user.email) {
+      landlordMap.set(m.user.id, {
+        id: m.user.id,
+        name: m.user.name,
+        email: m.user.email,
+      });
+    }
+  }
+
+  for (const p of propertyOwners) {
+    if (p.owner && p.owner.email) {
+      landlordMap.set(p.owner.id, {
+        id: p.owner.id,
+        name: p.owner.name,
+        email: p.owner.email,
+      });
+    }
+  }
+
+  const landlords = Array.from(landlordMap.values());
+  if (landlords.length === 0) return;
+
+  const publicBaseUrl =
+    frontendUrl &&
+    !frontendUrl.includes("localhost") &&
+    !frontendUrl.includes("127.0.0.1")
+      ? frontendUrl.replace(/\/$/, "")
+      : "https://propertystack.vercel.app";
+
+  const subject = `New Tenant Profile Created: ${tenantName} - ${workspaceName}`;
+  const landlordHubUrl = `${publicBaseUrl}/landlord/tenants`;
+
+  await Promise.all(
+    landlords.map(async (landlord) => {
+      // 1. In-App Notification record in DB
+      try {
+        const notification = await prisma.notification.create({
+          data: {
+            userId: landlord.id,
+            title: "New Tenant Created",
+            message: `Manager ${managerName} created a profile for tenant "${tenantName}" in "${workspaceName}".`,
+            type: "TENANT_CREATED",
+          },
+        });
+
+        // Real-time socket event to the landlord
+        fastify.io.to(`user:${landlord.id}`).emit("NOTIFICATION_CREATED", {
+          id: notification.id,
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+          createdAt: notification.createdAt,
+        });
+      } catch (notifErr) {
+        fastify.log.error(
+          notifErr,
+          `Failed to create in-app notification for landlord ${landlord.id}`,
+        );
+      }
+
+      // 2. Official email notification to landlord
+      try {
+        const displayName =
+          landlord.name && landlord.name.trim().length > 0
+            ? landlord.name.trim()
+            : "Landlord";
+        const bodyHtml = `
+          <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">
+            New Tenant Profile Created
+          </h2>
+          <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+            Hi <strong>${escapeHtml(displayName)}</strong>,
+          </p>
+          <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+            Your property manager, <strong>${escapeHtml(managerName)}</strong>, has registered a new tenant profile in <strong>"${escapeHtml(workspaceName)}"</strong>.
+          </p>
+
+          <!-- TENANT DETAILS BOX -->
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0066FF; border-radius: 8px; padding: 18px 20px; margin: 0 0 24px 0;">
+            <p style="margin: 0 0 12px 0; font-size: 13px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px;">
+              Tenant Information
+            </p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
+              <tr>
+                <td style="padding: 6px 0; font-weight: 600; width: 140px; color: #64748b;">Full Name:</td>
+                <td style="padding: 6px 0; font-weight: 700; color: #0f172a;">${escapeHtml(tenantName)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Email Address:</td>
+                <td style="padding: 6px 0;">${tenantEmail ? escapeHtml(tenantEmail) : "<em>Not provided</em>"}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Phone Number:</td>
+                <td style="padding: 6px 0;">${tenantPhone ? escapeHtml(tenantPhone) : "<em>Not provided</em>"}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Date Registered:</td>
+                <td style="padding: 6px 0;">${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- ACTION BUTTON -->
+          <div style="margin: 0 0 24px 0;">
+            <a href="${landlordHubUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 26px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 102, 255, 0.25);">
+              View Landlord Tenants Hub &rarr;
+            </a>
+          </div>
+          <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #64748b;">
+            You can also monitor this tenant and view occupancy status in real-time from your PropertyStack Landlord Mobile App.
+          </p>
+        `;
+
+        const html = renderEmailLayout({
+          title: subject,
+          badge: "TENANT NOTIFICATION",
+          bodyHtml,
+          recipientEmail: landlord.email,
+          preheader: `New tenant profile created for ${tenantName} in ${workspaceName}.`,
+        });
+
+        const plainText = `Hi ${displayName},\n\nYour property manager, ${managerName}, has created a new tenant profile in ${workspaceName}.\n\nTenant Details:\n- Name: ${tenantName}\n- Email: ${tenantEmail || "Not provided"}\n- Phone: ${tenantPhone || "Not provided"}\n- Date: ${new Date().toLocaleDateString()}\n\nView details in your Landlord Tenants Hub:\n${landlordHubUrl}\n\nBest regards,\nThe PropertyStack Team`;
+
+        await sendEmail(landlord.email, subject, plainText, html);
+      } catch (emailErr) {
+        fastify.log.error(
+          emailErr,
+          `Failed to send tenant creation email to landlord ${landlord.email}`,
+        );
+      }
+    }),
+  );
+}
+
+/**
+ * Notifies a tenant when a lease agreement has been prepared and assigned to them,
+ * triggering an in-app notification, WebSocket update, and branded email to review and sign.
+ */
+export async function notifyTenantOfLeaseReadyToSign(params: {
+  fastify: FastifyInstance;
+  workspaceId: string;
+  tenantId: string;
+  leaseId: string;
+  propertyName: string;
+  unitNumber?: string | null;
+  startDate: string | Date;
+  endDate?: string | Date | null;
+  yearlyRent?: number;
+  managerName?: string;
+  workspaceName?: string;
+  frontendUrl: string;
+}) {
+  const {
+    fastify,
+    workspaceId,
+    tenantId,
+    leaseId,
+    propertyName,
+    unitNumber,
+    startDate,
+    endDate,
+    yearlyRent,
+    managerName = "Your Property Manager",
+    workspaceName = "PropertyStack Workspace",
+    frontendUrl,
+  } = params;
+
+  // 1. Fetch Tenant details
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, name: true, email: true },
+  });
+
+  if (!tenant) return;
+
+  const displayName =
+    tenant.name && tenant.name.trim().length > 0 ? tenant.name.trim() : "there";
+  const unitLabel = unitNumber ? `Unit ${unitNumber}` : "Main Unit";
+  const startFormatted = new Date(startDate).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const endFormatted = endDate
+    ? new Date(endDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "Ongoing";
+  const rentFormatted = yearlyRent ? `₦${yearlyRent.toLocaleString()}` : null;
+
+  // 2. In-App Notification record in DB
+  try {
+    let targetUserId: string | null = null;
+    const directUser = await prisma.user.findUnique({
+      where: { id: tenant.id },
+      select: { id: true },
+    });
+    if (directUser) {
+      targetUserId = directUser.id;
+    } else if (tenant.email) {
+      const emailUser = await prisma.user.findUnique({
+        where: { email: tenant.email },
+        select: { id: true },
+      });
+      if (emailUser) {
+        targetUserId = emailUser.id;
+      }
+    }
+
+    if (targetUserId) {
+      const notification = await prisma.notification.create({
+        data: {
+          userId: targetUserId,
+          title: "Lease Agreement Ready for Signature",
+          message: `Manager "${managerName}" prepared your lease agreement for ${unitLabel}, "${propertyName}" in "${workspaceName}". Please review and sign the agreement to activate your tenancy.`,
+          type: "LEASE_READY_TO_SIGN",
+        },
+      });
+
+      // Real-time socket event to the tenant
+      fastify.io.to(`user:${targetUserId}`).emit("NOTIFICATION_CREATED", {
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type,
+        createdAt: notification.createdAt,
+      });
+    }
+  } catch (notifErr) {
+    fastify.log.error(
+      notifErr,
+      `[Lease] Failed to create in-app notification for tenant ${tenant.id}`,
+    );
+  }
+
+  // 3. Branded Transactional Email
+  if (!tenant.email) return;
+
+  try {
+    const publicBaseUrl =
+      frontendUrl &&
+      !frontendUrl.includes("localhost") &&
+      !frontendUrl.includes("127.0.0.1")
+        ? frontendUrl.replace(/\/$/, "")
+        : "https://propertystack.vercel.app";
+
+    const subject = `Lease Agreement Ready for Signature: ${propertyName} - ${workspaceName}`;
+    const appDownloadUrl = `${publicBaseUrl}/download`;
+
+    const bodyHtml = `
+      <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">
+        Your Lease Agreement is Ready for Signature
+      </h2>
+      <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+        Hi <strong>${escapeHtml(displayName)}</strong>,
+      </p>
+      <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+        <strong>${escapeHtml(managerName)}</strong> has prepared your official lease agreement for <strong>${escapeHtml(propertyName)}</strong> in <strong>${escapeHtml(workspaceName)}</strong>.
+      </p>
+
+      <!-- TENANCY TERMS SUMMARY BOX -->
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0066FF; border-radius: 8px; padding: 18px 20px; margin: 0 0 24px 0;">
+        <p style="margin: 0 0 12px 0; font-size: 13px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px;">
+          Tenancy Agreement Details
+        </p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
+          <tr>
+            <td style="padding: 6px 0; font-weight: 600; width: 140px; color: #64748b;">Property:</td>
+            <td style="padding: 6px 0; font-weight: 700; color: #0f172a;">${escapeHtml(propertyName)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Assigned Unit:</td>
+            <td style="padding: 6px 0; font-weight: 600; color: #0066FF;">${escapeHtml(unitLabel)}</td>
+          </tr>
+          ${
+            rentFormatted
+              ? `
+          <tr>
+            <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Yearly Rent:</td>
+            <td style="padding: 6px 0; font-weight: 700; color: #0f172a;">${escapeHtml(rentFormatted)}</td>
+          </tr>
+          `
+              : ""
+          }
+          <tr>
+            <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Lease Period:</td>
+            <td style="padding: 6px 0;">${startFormatted} &ndash; ${endFormatted}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Managed By:</td>
+            <td style="padding: 6px 0;">${escapeHtml(managerName)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- CALL TO ACTION: MOBILE APP / DOWNLOAD -->
+      <div style="margin: 0 0 24px 0; text-align: center;">
+        <a href="${appDownloadUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 13px 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 102, 255, 0.25);">
+          Open App & Sign Agreement &rarr;
+        </a>
+      </div>
+
+      <p style="margin: 0 0 16px 0; font-size: 13px; line-height: 1.6; color: #64748b; text-align: center;">
+        Open the <strong>PropertyStack Mobile App</strong> on your Android device to review the terms, verify the manager's signature, and apply your digital signature.
+      </p>
+      <p style="margin: 0; font-size: 12px; color: #94a3b8; text-align: center;">
+        Need to log in or download the app first? Visit the <a href="${appDownloadUrl}" style="color: #0066FF; text-decoration: underline;">PropertyStack Mobile Download Center</a>.
+      </p>
+    `;
+
+    const html = renderEmailLayout({
+      title: subject,
+      badge: "LEASE AGREEMENT",
+      bodyHtml,
+      recipientEmail: tenant.email,
+      preheader: `Your lease agreement for ${unitLabel}, ${propertyName} in ${workspaceName} is ready for digital signature.`,
+    });
+
+    const plainText = `Hi ${displayName},\n\nYour property manager, ${managerName}, has prepared your lease agreement for ${unitLabel}, ${propertyName} in ${workspaceName}.\n\nTenancy Details:\n- Property: ${propertyName}\n- Unit: ${unitLabel}\n${rentFormatted ? `- Yearly Rent: ${rentFormatted}\n` : ""}- Period: ${startFormatted} to ${endFormatted}\n\nPlease open the PropertyStack mobile app on your phone to review the terms and apply your signature:\n${appDownloadUrl}\n\nBest regards,\nThe PropertyStack Team`;
+
+    await sendEmail(tenant.email, subject, plainText, html);
+  } catch (emailErr) {
+    fastify.log.error(
+      emailErr,
+      `[Lease] Failed to send lease agreement email to tenant ${tenant.email}`,
+    );
+  }
+}
 
 export default async function tenantRoutes(fastify: FastifyInstance) {
   const server = fastify.withTypeProvider<TypeBoxTypeProvider>();
@@ -254,7 +734,11 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
             // If email is provided, create a Supabase Auth account for the mobile app
             if (email) {
               const frontendUrl =
-                process.env.FRONTEND_URL || "https://justhob.vercel.app";
+                process.env.FRONTEND_URL &&
+                !process.env.FRONTEND_URL.includes("localhost") &&
+                !process.env.FRONTEND_URL.includes("127.0.0.1")
+                  ? process.env.FRONTEND_URL
+                  : "https://propertystack.vercel.app";
               const { data: linkData, error: linkError } =
                 await supabaseAdmin.auth.admin.generateLink({
                   type: "invite",
@@ -391,6 +875,80 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       });
 
       clearWorkspaceCache(workspaceId);
+
+      const frontendUrl =
+        process.env.FRONTEND_URL &&
+        !process.env.FRONTEND_URL.includes("localhost") &&
+        !process.env.FRONTEND_URL.includes("127.0.0.1")
+          ? process.env.FRONTEND_URL
+          : "https://propertystack.vercel.app";
+
+      // Fetch manager and workspace details for notifications & emails
+      const [manager, workspace] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: request.userId },
+          select: { name: true, email: true },
+        }),
+        prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { name: true },
+        }),
+      ]);
+
+      const managerName = manager?.name || "Your Property Manager";
+      const workspaceName = workspace?.name || "PropertyStack Workspace";
+      const tempPassword = (result as { tempPassword?: string }).tempPassword;
+      const inviteLink = (result as { inviteLink?: string }).inviteLink;
+
+      // 1. Send welcome email and in-app welcome notification to the new tenant
+      if (email) {
+        sendTenantWelcomeEmail({
+          tenantEmail: email,
+          tenantName: name,
+          managerName,
+          workspaceName,
+          tempPassword,
+          inviteLink,
+          frontendUrl,
+        }).catch((emailErr) => {
+          request.log.error(
+            { err: emailErr },
+            `[Create Tenant] Failed to send welcome email to tenant ${email}`,
+          );
+        });
+
+        // In-app welcome notification for tenant
+        const tenantUserId = (result as { tenant: { id: string } }).tenant.id;
+        if (tenantUserId) {
+          prisma.notification
+            .create({
+              data: {
+                userId: tenantUserId,
+                title: "Welcome to PropertyStack!",
+                message: `Your tenant account is active in "${workspaceName}". You can view your lease, pay rent, and submit maintenance requests right here.`,
+                type: "WELCOME",
+              },
+            })
+            .catch(() => {});
+        }
+      }
+
+      // 2. Notify all landlords in this workspace (In-App Notification + Email)
+      notifyLandlordsOfNewTenant({
+        fastify,
+        workspaceId,
+        tenantName: name,
+        tenantEmail: email || null,
+        tenantPhone: phone || null,
+        managerName,
+        workspaceName,
+        frontendUrl,
+      }).catch((notifErr) => {
+        request.log.error(
+          { err: notifErr },
+          `[Create Tenant] Failed to notify landlords in workspace ${workspaceId}`,
+        );
+      });
 
       return reply.status(201).send({
         tenant: (result as { tenant: unknown }).tenant,
@@ -637,6 +1195,48 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
       });
 
       clearWorkspaceCache(workspaceId);
+
+      const frontendUrl =
+        process.env.FRONTEND_URL &&
+        !process.env.FRONTEND_URL.includes("localhost") &&
+        !process.env.FRONTEND_URL.includes("127.0.0.1")
+          ? process.env.FRONTEND_URL
+          : "https://propertystack.vercel.app";
+
+      // Asynchronously fetch manager and workspace details to dispatch notification & email
+      Promise.all([
+        prisma.user.findUnique({
+          where: { id: request.userId },
+          select: { name: true, email: true },
+        }),
+        prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { name: true },
+        }),
+      ])
+        .then(([manager, workspace]) => {
+          return notifyTenantOfLeaseReadyToSign({
+            fastify,
+            workspaceId,
+            tenantId: id,
+            leaseId: lease.id,
+            propertyName: lease.property.name,
+            unitNumber: lease.unit?.unitNumber || null,
+            startDate: lease.startDate,
+            endDate: lease.endDate,
+            yearlyRent: lease.yearlyRent,
+            managerName: manager?.name || "Your Property Manager",
+            workspaceName: workspace?.name || "PropertyStack Workspace",
+            frontendUrl,
+          });
+        })
+        .catch((notifErr) => {
+          request.log.error(
+            { err: notifErr },
+            `[Create Lease] Failed to dispatch lease ready notification to tenant ${id}`,
+          );
+        });
+
       return reply.status(201).send({ lease });
     },
   );
@@ -880,7 +1480,6 @@ Tenant: ${cleanTenant}`;
         where: { id: request.userId },
       });
       if (managerUser && managerUser.email) {
-        const { sendEmail } = await import("../lib/mailer");
         await sendEmail(
           managerUser.email,
           "Legal Lease Request Submitted - Verification Pending",
@@ -939,6 +1538,8 @@ Tenant: ${cleanTenant}`;
         },
         include: {
           tenant: true,
+          property: { select: { id: true, name: true } },
+          unit: { select: { id: true, unitNumber: true } },
         },
       });
 
@@ -956,18 +1557,46 @@ Tenant: ${cleanTenant}`;
         },
       });
 
-      // Send email to tenant that lease is ready to sign
-      if (lease.tenant.email) {
-        const { sendEmail } = await import("../lib/mailer");
-        await sendEmail(
-          lease.tenant.email,
-          "Your Legal Lease Agreement is Ready for Signature",
-          `Hello ${lease.tenant.name || "Resident"},\n\n` +
-            `Your landlord has uploaded the custom legal lease agreement document for your tenancy.\n\n` +
-            `Please open the PropertyStack tenant mobile app, view the document, and type your name to sign the agreement.\n\n` +
-            `Best regards,\nPropertyStack Support Team`,
-        );
-      }
+      // Send branded email and in-app notification to tenant that lease is ready to sign
+      const frontendUrl =
+        process.env.FRONTEND_URL &&
+        !process.env.FRONTEND_URL.includes("localhost") &&
+        !process.env.FRONTEND_URL.includes("127.0.0.1")
+          ? process.env.FRONTEND_URL
+          : "https://propertystack.vercel.app";
+
+      Promise.all([
+        prisma.user.findUnique({
+          where: { id: request.userId },
+          select: { name: true },
+        }),
+        prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { name: true },
+        }),
+      ])
+        .then(([manager, workspace]) => {
+          return notifyTenantOfLeaseReadyToSign({
+            fastify,
+            workspaceId,
+            tenantId,
+            leaseId,
+            propertyName: lease.property.name,
+            unitNumber: lease.unit?.unitNumber || null,
+            startDate: lease.startDate,
+            endDate: lease.endDate,
+            yearlyRent: lease.yearlyRent,
+            managerName: manager?.name || "Your Property Manager",
+            workspaceName: workspace?.name || "PropertyStack Workspace",
+            frontendUrl,
+          });
+        })
+        .catch((notifErr) => {
+          fastify.log.error(
+            notifErr,
+            `[Upload Legal Doc] Failed to notify tenant ${tenantId} of signed document ready`,
+          );
+        });
 
       fastify.io
         .to(`workspace:${workspaceId}`)
