@@ -1038,6 +1038,23 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           await prisma.user.delete({ where: { id } }).catch(() => {});
         }
 
+        // Release any units currently assigned to this tenant's leases back to VACANT
+        const tenantLeases = await prisma.lease.findMany({
+          where: { tenantId: id, unitId: { not: null } },
+          select: { unitId: true },
+        });
+        const unitIds = tenantLeases
+          .map((l) => l.unitId)
+          .filter(Boolean) as string[];
+        if (unitIds.length > 0) {
+          await prisma.unit
+            .updateMany({
+              where: { id: { in: unitIds } },
+              data: { status: "VACANT" },
+            })
+            .catch(() => {});
+        }
+
         // Hard-delete the tenant record
         await prisma.tenant.delete({
           where: { tenant_workspace_id: { id, workspaceId } },
