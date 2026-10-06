@@ -1018,24 +1018,54 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         if (!tenant)
           return reply.status(404).send({ error: "Tenant not found" });
 
+        // Guardrail: Block deletion if tenant has recorded payments to preserve accounting and tax integrity
+        const recordedPaymentsCount = await prisma.payment.count({
+          where: {
+            lease: { tenantId: id },
+            OR: [
+              { status: { in: ["PAID", "PARTIALLY_PAID"] } },
+              { amountPaid: { gt: 0 } },
+            ],
+          },
+        });
+
+        if (recordedPaymentsCount > 0) {
+          return reply.status(400).send({
+            error:
+              "Cannot delete tenant with recorded payment history. To preserve financial, accounting, and tax records, please end their tenancy instead.",
+            code: "TENANT_HAS_PAYMENT_HISTORY",
+          });
+        }
+
+        // Determine resolved user ID (either matching tenant ID or via user email)
+        let resolvedUserId = id;
+        if (tenant.email) {
+          const matchedUser = await prisma.user.findUnique({
+            where: { email: tenant.email },
+          });
+          if (matchedUser) {
+            resolvedUserId = matchedUser.id;
+          }
+        }
+
         // Clean up Supabase Auth user so the email can be reused
         try {
-          await supabaseAdmin.auth.admin.deleteUser(id);
+          await supabaseAdmin.auth.admin.deleteUser(resolvedUserId);
         } catch (_) {
           /* ignore */
         }
 
         // Remove workspace membership and user record
         await prisma.workspaceMember.deleteMany({
-          where: { userId: id, workspaceId },
+          where: { userId: resolvedUserId, workspaceId },
         });
 
         // Only delete User record if they aren't part of other workspaces
         const otherMemberships = await prisma.workspaceMember.count({
-          where: { userId: id },
+          where: { userId: resolvedUserId },
         });
         if (otherMemberships === 0) {
-          await prisma.user.delete({ where: { id } }).catch(() => {});
+          await prisma.user.delete({ where: { id: resolvedUserId } }).catch(() => {});
         }
 
         // Release any units currently assigned to this tenant's leases back to VACANT
@@ -1079,7 +1109,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         });
 
         // Notify the deleted tenant directly to trigger a dashboard/app reload
-        (fastify as any).io.to(`user:${id}`).emit("WORKSPACE_MEMBER_REMOVED", {
+        (fastify as any).io.to(`user:${resolvedUserId}`).emit("WORKSPACE_MEMBER_REMOVED", {
           workspaceId,
           message: "You have been removed from this workspace.",
         });

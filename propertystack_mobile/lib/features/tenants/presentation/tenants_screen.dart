@@ -1091,7 +1091,7 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         content: Text(
-          'Are you sure you want to remove ${tenant.name}? This will archive their profile.',
+          'Are you sure you want to permanently delete ${tenant.name}? This will remove their account and active leases.\n\nNote: If this tenant has payment history, deletion will be blocked — please end their tenancy instead to preserve financial records.',
           style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
         ),
         actions: [

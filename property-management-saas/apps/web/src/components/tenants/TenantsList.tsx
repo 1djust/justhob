@@ -155,8 +155,13 @@ export function TenantsList({
         },
       );
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["tenants", workspaceId] }),
+    onSuccess: () => {
+      alert("Tenant deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["tenants", workspaceId] });
+    },
+    onError: (e: Error) => {
+      alert(e.message || "Failed to delete tenant");
+    },
   });
 
   const endTenancyMutation = useMutation({
@@ -184,7 +189,7 @@ export function TenantsList({
   const handleDelete = async (id: string) => {
     if (
       !confirm(
-        "Are you sure you want to remove this tenant? This will effectively archive their profile.",
+        "Are you sure you want to permanently delete this tenant? This will remove their account and active leases.\n\nNote: If this tenant has recorded payment history, deletion will be blocked — please use 'End Tenancy' instead to preserve financial records.",
       )
     )
       return;
