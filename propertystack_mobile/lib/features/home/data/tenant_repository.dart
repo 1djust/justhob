@@ -198,10 +198,18 @@ class TenantRepository {
     );
   }
 
-  Future<void> approveLease(String leaseId, String signatureUrl) async {
+  Future<void> approveLease(
+    String leaseId,
+    String signatureUrl, {
+    String? passportPhotoUrl,
+  }) async {
     await _apiClient.dio.post(
       '/tenant/leases/$leaseId/approve',
-      data: {'signatureUrl': signatureUrl},
+      data: {
+        'signatureUrl': signatureUrl,
+        if (passportPhotoUrl != null && passportPhotoUrl.isNotEmpty)
+          'passportPhotoUrl': passportPhotoUrl,
+      },
     );
   }
 

@@ -36,6 +36,7 @@ interface Lease {
   signatureUrl?: string;
   managerSignature?: string;
   legalDocUrl?: string;
+  passportPhotoUrl?: string;
   payments?: { id: string; status: string; dueDate: string }[];
 }
 
@@ -45,6 +46,7 @@ interface Tenant {
   email?: string;
   phone?: string;
   allowPartialPayments?: boolean | null;
+  passportPhotoUrl?: string | null;
   leases: Lease[];
 }
 
@@ -52,6 +54,7 @@ interface Property {
   id: string;
   name: string;
   address?: string;
+  agreementDocUrl?: string | null;
   units?: { id: string; status: string; unitNumber: string; type: string }[];
 }
 
@@ -674,9 +677,17 @@ export function TenantsList({
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80 flex items-center justify-center font-bold">
-                          {t.name.charAt(0)}
-                        </div>
+                        {t.passportPhotoUrl ? (
+                          <img
+                            src={sanitizeUrl(t.passportPhotoUrl)}
+                            alt={t.name}
+                            className="w-10 h-10 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shadow-xs"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80 flex items-center justify-center font-bold">
+                            {t.name.charAt(0)}
+                          </div>
+                        )}
                         <div>
                           <h4 className="font-bold text-sm text-zinc-900 dark:text-white">
                             {t.name}
@@ -1033,9 +1044,17 @@ export function TenantsList({
                         <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors group">
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80 flex items-center justify-center font-bold text-xs">
-                                {t.name.charAt(0)}
-                              </div>
+                              {t.passportPhotoUrl ? (
+                                <img
+                                  src={sanitizeUrl(t.passportPhotoUrl)}
+                                  alt={t.name}
+                                  className="w-9 h-9 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shadow-xs"
+                                />
+                              ) : (
+                                <div className="w-9 h-9 rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80 flex items-center justify-center font-bold text-xs">
+                                  {t.name.charAt(0)}
+                                </div>
+                              )}
                               <div>
                                 <p className="font-bold text-zinc-900 dark:text-white">
                                   {t.name}
@@ -1399,6 +1418,27 @@ export function TenantsList({
               <div className="bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 font-mono text-xs leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap max-h-[40vh] overflow-y-auto">
                 {viewingLease.agreementText || "No agreement terms drafted."}
               </div>
+
+              {viewingLease.passportPhotoUrl && (
+                <div className="bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex items-center gap-4">
+                  <img
+                    src={sanitizeUrl(viewingLease.passportPhotoUrl)}
+                    alt="Tenant Passport"
+                    className="w-16 h-16 rounded-xl object-cover border border-zinc-200 dark:border-zinc-700 shadow-sm"
+                  />
+                  <div>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                      Tenant Identity (KYC)
+                    </span>
+                    <h5 className="text-sm font-bold text-zinc-900 dark:text-white mt-0.5">
+                      Verified Passport Photograph
+                    </h5>
+                    <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+                      Uploaded by tenant during lease agreement signing
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="border-t border-zinc-100 dark:border-zinc-800/60 pt-4">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">

@@ -18,6 +18,7 @@ interface Property {
   id: string;
   name: string;
   address?: string;
+  agreementDocUrl?: string | null;
   units?: Unit[];
 }
 
@@ -280,6 +281,9 @@ export function LeaseForm({
                   propertyId: newPropertyId,
                   unitId: "",
                 });
+                if (prop?.agreementDocUrl && !customLeaseDocUrl) {
+                  setCustomLeaseDocUrl(prop.agreementDocUrl);
+                }
                 if (prop) {
                   setLegalDetails((prev) => ({
                     ...prev,
@@ -788,10 +792,14 @@ export function LeaseForm({
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-zinc-850 dark:text-zinc-100 truncate">
-                        Lease Document
+                        {selectedProperty?.agreementDocUrl === customLeaseDocUrl
+                          ? `Master Agreement (${selectedProperty?.name})`
+                          : "Custom Lease Document"}
                       </p>
                       <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold tracking-tight mt-0.5 uppercase">
-                        Successfully Uploaded
+                        {selectedProperty?.agreementDocUrl === customLeaseDocUrl
+                          ? "Auto-attached from building"
+                          : "Successfully Uploaded"}
                       </p>
                     </div>
                   </div>

@@ -1216,7 +1216,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           status: "PENDING_SIGNATURE",
           agreementText: agreementText || null,
           managerSignature: managerSignature || null,
-          legalDocUrl: legalDocUrl || null,
+          legalDocUrl: legalDocUrl || property.agreementDocUrl || null,
         },
         include: {
           property: { select: { id: true, name: true } },

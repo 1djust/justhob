@@ -26,6 +26,7 @@ import {
   ChevronDown,
   Users,
   UploadCloud,
+  FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ExportButton } from "@/components/shared/ExportButton";
@@ -52,6 +53,7 @@ interface Property {
   name: string;
   address: string;
   imageUrl?: string | null;
+  agreementDocUrl?: string | null;
   owner?: { name?: string; email: string };
   units?: Unit[];
   leases?: Lease[];
@@ -1020,6 +1022,110 @@ function ImageUploader({
   );
 }
 
+function DocumentUploader({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const [uploading, setUploading] = React.useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const { signedUrl, publicUrl } = await apiFetch(
+        "/api/uploads/presigned-url",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            contentType: file.type || "application/pdf",
+            bucket: "uploads",
+          }),
+          credentials: "include",
+        },
+      );
+
+      await fetch(signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/pdf" },
+        body: file,
+      });
+
+      onChange(publicUrl);
+      toast.success("Master tenancy agreement uploaded!");
+    } catch (error) {
+      console.error("Upload failed", error);
+      toast.error("Failed to upload agreement document.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="relative border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 bg-zinc-50 dark:bg-zinc-900/50 text-center hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors group">
+      <input
+        type="file"
+        accept=".pdf,image/*"
+        onChange={handleUpload}
+        disabled={uploading}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+      />
+      {uploading ? (
+        <div className="flex flex-col items-center gap-2 py-4">
+          <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-xs font-medium text-zinc-500">Uploading document...</p>
+        </div>
+      ) : value ? (
+        <div className="flex items-center justify-between p-2">
+          <div className="flex items-center gap-2.5 text-left min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div className="truncate">
+              <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
+                Master Agreement Attached
+              </p>
+              <p className="text-[10px] text-emerald-600 font-semibold">
+                Will auto-apply to all units
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+            }}
+            className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600 rounded-lg text-xs font-medium"
+          >
+            Remove
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-2 py-4">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+            <FileText className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+              Upload Master Agreement (PDF)
+            </p>
+            <p className="text-[10px] text-zinc-500 mt-0.5">
+              Standard contract for all units in this building
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PropertyForm({
   workspaceId,
   onComplete,
@@ -1035,6 +1141,7 @@ function PropertyForm({
     address: "",
     ownerId: "",
     imageUrl: "",
+    agreementDocUrl: "",
   });
   const [units, setUnits] = React.useState<
     { unitNumber: string; type: string }[]
@@ -1070,6 +1177,7 @@ function PropertyForm({
         units,
         ownerId: formData.ownerId || undefined,
         imageUrl: formData.imageUrl || undefined,
+        agreementDocUrl: formData.agreementDocUrl || undefined,
       };
       await apiFetch(`/api/workspaces/${workspaceId}/properties`, {
         method: "POST",
@@ -1137,6 +1245,22 @@ function PropertyForm({
             <ImageUploader
               value={formData.imageUrl}
               onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+            />
+          </div>
+
+          {/* Card 2: Master Tenancy Agreement */}
+          <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-2">
+            <div>
+              <h5 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+                Master Tenancy Agreement (Optional)
+              </h5>
+              <p className="text-[11px] text-zinc-500 mt-0.5">
+                Upload your building&apos;s standard lease agreement (PDF). The system will automatically use it for any unit rented in this property.
+              </p>
+            </div>
+            <DocumentUploader
+              value={formData.agreementDocUrl}
+              onChange={(url) => setFormData({ ...formData, agreementDocUrl: url })}
             />
           </div>
 

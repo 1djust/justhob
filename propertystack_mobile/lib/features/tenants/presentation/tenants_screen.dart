@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -451,13 +452,7 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
                 child: SizedBox(
                   width: 56,
                   height: 56,
-                  child: tenant.avatarUrl != null && tenant.avatarUrl!.isNotEmpty
-                      ? Image.network(
-                          tenant.avatarUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => _buildAvatarFallback(tenant.name),
-                        )
-                      : _buildAvatarFallback(tenant.name),
+                  child: _buildAvatarImage(tenant.avatarUrl, tenant.name),
                 ),
               ),
               const SizedBox(width: 14),
@@ -1196,6 +1191,26 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
         ),
       );
     }
+  }
+
+  Widget _buildAvatarImage(String? url, String name) {
+    if (url != null && url.isNotEmpty) {
+      if (url.startsWith('data:image')) {
+        try {
+          final commaIndex = url.indexOf(',');
+          final base64Str = commaIndex != -1 ? url.substring(commaIndex + 1) : url;
+          final bytes = base64Decode(base64Str);
+          return Image.memory(bytes, fit: BoxFit.cover);
+        } catch (_) {}
+      } else if (url.startsWith('http')) {
+        return Image.network(
+          url,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _buildAvatarFallback(name),
+        );
+      }
+    }
+    return _buildAvatarFallback(name);
   }
 
   Widget _buildAvatarFallback(String name) {

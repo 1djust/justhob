@@ -75,6 +75,7 @@ model Property {
   deletedAt           DateTime?
   ownerId             String?
   imageUrl            String?
+  agreementDocUrl     String?              @db.Text
   leases              Lease[]
   maintenanceRequests MaintenanceRequest[]
   owner               User?                @relation(fields: [ownerId], references: [id], onDelete: SetNull)
@@ -116,6 +117,7 @@ model Tenant {
   updatedAt            DateTime             @updatedAt
   deletedAt            DateTime?
   allowPartialPayments Boolean?
+  passportPhotoUrl     String?              @db.Text
   leases               Lease[]
   maintenanceRequests  MaintenanceRequest[]
   workspace            Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -139,6 +141,7 @@ model Lease {
   signatureUrl  String?
   managerSignature String?
   legalDocUrl   String?             @db.Text
+  passportPhotoUrl String?          @db.Text
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   unitId        String?

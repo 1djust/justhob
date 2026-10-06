@@ -9,6 +9,7 @@ class TenantModel {
   final String unitNumber;
   final String status; // 'Active', 'Expiring', 'Overdue'
   final String? avatarUrl;
+  final String? passportPhotoUrl;
 
   // New fields for feature parity with web
   final bool? allowPartialPayments;
@@ -26,6 +27,7 @@ class TenantModel {
     required this.unitNumber,
     required this.status,
     this.avatarUrl,
+    this.passportPhotoUrl,
     this.allowPartialPayments,
     this.leaseStatus,
     this.leaseId,
@@ -179,7 +181,8 @@ class TenantModel {
       propertyName: property?['name'] ?? 'Unassigned',
       unitNumber: unit?['unitNumber'] ?? '-',
       status: json['status'] ?? displayStatus,
-      avatarUrl: json['avatarUrl'],
+      avatarUrl: json['passportPhotoUrl'] ?? activeLease?['passportPhotoUrl'] ?? json['avatarUrl'],
+      passportPhotoUrl: (json['passportPhotoUrl'] ?? activeLease?['passportPhotoUrl'])?.toString(),
       allowPartialPayments: json['allowPartialPayments'] as bool?,
       leaseStatus: rawLeaseStatus,
       leaseId: activeLease?['id']?.toString(),

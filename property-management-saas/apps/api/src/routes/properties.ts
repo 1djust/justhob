@@ -24,6 +24,7 @@ const CreatePropertyBody = Type.Object({
   address: Type.Optional(Type.String()),
   ownerId: Type.Optional(Type.String()),
   imageUrl: Type.Optional(Type.String()),
+  agreementDocUrl: Type.Optional(Type.String()),
   units: Type.Optional(
     Type.Array(
       Type.Object({
@@ -39,6 +40,7 @@ const UpdatePropertyBody = Type.Object({
   address: Type.Optional(Type.String()),
   ownerId: Type.Optional(Type.String()),
   imageUrl: Type.Optional(Type.String()),
+  agreementDocUrl: Type.Optional(Type.String()),
 });
 
 /**
@@ -279,7 +281,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { workspaceId } = request.params;
-      const { name, address, ownerId, units, imageUrl } = request.body;
+      const { name, address, ownerId, units, imageUrl, agreementDocUrl } = request.body;
 
       if (!name || !address) {
         return reply
@@ -326,6 +328,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
                 name,
                 address,
                 imageUrl,
+                agreementDocUrl: agreementDocUrl || null,
                 ownerId: ownerId || null,
                 workspaceId,
                 units: {
@@ -424,7 +427,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { workspaceId, id } = request.params;
-      const { name, address, ownerId, imageUrl } = request.body;
+      const { name, address, ownerId, imageUrl, agreementDocUrl } = request.body;
 
       try {
         const existingProperty = await prisma.property.findUnique({
@@ -438,6 +441,7 @@ export default async function propertiesRoutes(fastify: FastifyInstance) {
             name,
             address,
             ...(imageUrl !== undefined ? { imageUrl } : {}),
+            ...(agreementDocUrl !== undefined ? { agreementDocUrl } : {}),
             ...(ownerId !== undefined ? { ownerId: ownerId || null } : {}),
           },
           include: { units: true },

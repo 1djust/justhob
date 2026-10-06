@@ -38,7 +38,10 @@ const OfferParams = Type.Object({
 const OfferBody = Type.Object({ accept: Type.Boolean() });
 
 const LeaseIdParams = Type.Object({ leaseId: Type.String() });
-const ApproveLeaseBody = Type.Object({ signatureUrl: Type.String() });
+const ApproveLeaseBody = Type.Object({
+  signatureUrl: Type.String(),
+  passportPhotoUrl: Type.Optional(Type.String()),
+});
 const RejectLeaseBody = Type.Object({ reason: Type.String() });
 
 /**
@@ -995,7 +998,7 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const userId = request.userId!;
       const { leaseId } = request.params;
-      const { signatureUrl } = request.body;
+      const { signatureUrl, passportPhotoUrl } = request.body;
 
       const membership = await prisma.workspaceMember.findFirst({
         where: { userId, role: "TENANT" },
@@ -1026,8 +1029,17 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
           status: "ACTIVE",
           signatureUrl,
           rejectionReason: null,
+          ...(passportPhotoUrl ? { passportPhotoUrl } : {}),
         },
       });
+
+      // Update tenant profile with passport photograph so it reflects for manager & landlord
+      if (passportPhotoUrl) {
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: { passportPhotoUrl },
+        });
+      }
 
       // Update unit status to OCCUPIED if unitId exists on the lease
       if (lease.unitId) {
@@ -1060,6 +1072,14 @@ export default async function tenantProfileRoutes(fastify: FastifyInstance) {
         .emit("LEASE_UPDATED", {
           leaseId,
           message: "Lease status changed",
+        });
+
+      fastify.io
+        .to(`workspace:${membership.workspaceId}`)
+        .emit("TENANT_UPDATED", {
+          tenantId: tenant.id,
+          passportPhotoUrl,
+          message: "Tenant uploaded passport photograph",
         });
 
       return reply.send({ success: true, lease: updatedLease });
