@@ -119,6 +119,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           IconButton(
             onPressed: () => context.push('/profile'),
             icon: const Icon(Icons.person_outline),
+            tooltip: 'Profile',
+          ),
+          IconButton(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  title: const Text('Log Out?', style: TextStyle(fontWeight: FontWeight.w800)),
+                  content: const Text('Are you sure you want to sign out of your account on this device?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        ref.read(authStateProvider.notifier).logout();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEF4444),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              );
+            },
+            icon: const Icon(Icons.logout_rounded, color: Color(0xFF64748B)),
+            tooltip: 'Log Out',
           ),
         ],
       ),
@@ -126,13 +159,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         data: (tenant) {
           if (tenant == null) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.person_off_outlined, size: 64, color: Colors.grey.shade400),
-                  const SizedBox(height: 16),
-                  Text('No tenant profile found', style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.person_off_outlined, size: 64, color: Colors.grey.shade400),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No Tenant Profile Found',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'You do not have an active occupancy profile in this workspace yet. Contact your property manager to assign your apartment.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () => ref.read(authStateProvider.notifier).logout(),
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: const Text('Log Out'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEF4444),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -370,12 +431,61 @@ class _LeaseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (lease == null) {
       return Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24.0),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: const Text('No Active Lease', style: TextStyle(color: Colors.white)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'SETUP IN PROGRESS',
+                    style: TextStyle(
+                      color: Color(0xFF2563EB),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                const Icon(Icons.home_work_outlined, color: Color(0xFF94A3B8), size: 22),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Awaiting Unit Assignment',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+                letterSpacing: -0.4,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Your property manager has not yet assigned an apartment unit or lease agreement to your profile. Once your lease is prepared, it will appear here for your review and digital signature.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+            ),
+          ],
+        ),
       );
     }
 

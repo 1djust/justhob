@@ -686,6 +686,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             letterSpacing: -0.8,
                           ),
                         ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => _confirmLogout(context),
+                          icon: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444)),
+                          tooltip: 'Log Out',
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -940,7 +946,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onTap: () => _confirmDeleteAccount(isLandlord: isLandlord),
                       ),
                     ]),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+
+                    // LOGOUT SECTION
+                    _buildSettingsCard([
+                      _SettingsRow(
+                        icon: Icons.logout_rounded,
+                        iconColor: const Color(0xFFEF4444),
+                        title: 'Log Out',
+                        titleColor: const Color(0xFFEF4444),
+                        isLast: true,
+                        onTap: () => _confirmLogout(context),
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
 
                     // Version Footer
                     const Center(
@@ -1147,6 +1166,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         content: Text('Preparing account data export (CSV/PDF)... Check your email shortly.'),
         backgroundColor: Color(0xFF2563EB),
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Log Out?', style: TextStyle(fontWeight: FontWeight.w800)),
+        content: const Text('Are you sure you want to sign out of your account on this device?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(authStateProvider.notifier).logout();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
       ),
     );
   }
