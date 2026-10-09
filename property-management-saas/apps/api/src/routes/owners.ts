@@ -51,6 +51,20 @@ const verifyPropertyManager = async (
 };
 
 /**
+ * Generates a secure, human-readable temporary password for landlords.
+ * Length: 11 characters (e.g. "Lnd-8492!Pk").
+ * Meets all Supabase password requirements while being readable and easy to enter on mobile.
+ */
+export function generateOwnerTempPassword(): string {
+  const digits = Math.floor(1000 + Math.random() * 9000).toString();
+  const lowerLetters = "abcdefghjkmnpqrstuvwxyz";
+  const upperLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const c1 = upperLetters[Math.floor(Math.random() * upperLetters.length)];
+  const c2 = lowerLetters[Math.floor(Math.random() * lowerLetters.length)];
+  return `Lnd-${digits}!${c1}${c2}`;
+}
+
+/**
  * Dispatches an official branded invitation email to a newly created landlord.
  */
 export async function sendLandlordInviteEmail(params: {
@@ -296,7 +310,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
 
         if (!user) {
           tempPassword =
-            password || randomBytes(12).toString("hex") + "A!1";
+            password || generateOwnerTempPassword();
 
           // 1. Create confirmed user with temp password in Supabase Auth
           let supabaseUserId: string | null = null;
@@ -320,10 +334,15 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
               const { data: listData } =
                 await supabaseAdmin.auth.admin.listUsers();
               const existingUser = listData?.users?.find(
-                (u) => u.email?.toLowerCase() === email.toLowerCase(),
+                (u) => u.email?.toLowerCase().trim() === email.toLowerCase().trim(),
               );
               if (existingUser) {
                 supabaseUserId = existingUser.id;
+                // Synchronize password so the credentials provided in the welcome email work
+                await supabaseAdmin.auth.admin.updateUserById(supabaseUserId, {
+                  password: tempPassword,
+                  email_confirm: true,
+                });
               } else {
                 return reply.status(400).send({
                   error: `Failed to create landlord account: ${createError.message}`,
@@ -627,7 +646,7 @@ export default async function ownerRoutes(fastify: FastifyInstance) {
         }
 
         // 2. Generate a fresh temporary password and update Supabase auth
-        const tempPassword = `Lnd-${randomBytes(3).toString("hex")}!`;
+        const tempPassword = generateOwnerTempPassword();
         await supabaseAdmin.auth.admin.updateUserById(member.userId, {
           password: tempPassword,
           user_metadata: {

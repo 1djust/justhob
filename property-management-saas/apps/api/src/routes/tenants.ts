@@ -79,6 +79,21 @@ const UploadLegalDocBody = Type.Object({
 });
 
 /**
+ * Generates a secure, human-readable temporary password for tenants.
+ * Length: 11 characters (e.g. "Ten-8492!Pk").
+ * Meets all Supabase password requirements (uppercase, lowercase, number, symbol)
+ * while avoiding visually ambiguous characters for seamless mobile touchscreen entry.
+ */
+export function generateTenantTempPassword(): string {
+  const digits = Math.floor(1000 + Math.random() * 9000).toString();
+  const lowerLetters = "abcdefghjkmnpqrstuvwxyz";
+  const upperLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const c1 = upperLetters[Math.floor(Math.random() * upperLetters.length)];
+  const c2 = lowerLetters[Math.floor(Math.random() * lowerLetters.length)];
+  return `Ten-${digits}!${c1}${c2}`;
+}
+
+/**
  * Dispatches an official branded welcome and onboarding email to a newly created tenant.
  */
 export async function sendTenantWelcomeEmail(params: {
@@ -729,10 +744,11 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
             let supabaseUserId = null;
             let inviteLink = null;
             const tempPassword =
-              password || randomBytes(12).toString("hex") + "A!1";
+              password || generateTenantTempPassword();
 
             // If email is provided, create a Supabase Auth account for the mobile app
             if (email) {
+              const normalizedEmail = email.toLowerCase().trim();
               const frontendUrl =
                 process.env.FRONTEND_URL &&
                 !process.env.FRONTEND_URL.includes("localhost") &&
@@ -742,7 +758,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
               const { data: linkData, error: linkError } =
                 await supabaseAdmin.auth.admin.generateLink({
                   type: "invite",
-                  email,
+                  email: normalizedEmail,
                   options: {
                     data: { name, role: "TENANT", mustChangePassword: true },
                     redirectTo: `${frontendUrl}/login`,
@@ -764,12 +780,23 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
                   authError.message.includes("already") &&
                   authError.message.includes("registered")
                 ) {
-                  const { data: listData } =
-                    await supabaseAdmin.auth.admin.listUsers();
-                  const existingUser = listData.users.find(
-                    (u) => u.email === email,
-                  );
-                  supabaseUserId = existingUser?.id || null;
+                  // Find existing account with case-insensitive matching & pagination
+                  let page = 1;
+                  const perPage = 100;
+                  while (!supabaseUserId && page <= 5) {
+                    const { data: listData, error: listErr } =
+                      await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+                    if (listErr || !listData?.users) break;
+                    const existing = listData.users.find(
+                      (u) => u.email?.toLowerCase().trim() === normalizedEmail,
+                    );
+                    if (existing) {
+                      supabaseUserId = existing.id;
+                      break;
+                    }
+                    if (listData.users.length < perPage) break;
+                    page++;
+                  }
                   if (!supabaseUserId) {
                     throw new Error("AUTH_ERR:Could not find existing account");
                   }
@@ -783,15 +810,21 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
 
               // Actually set the temp password on the Supabase account so the tenant can log in
               if (supabaseUserId) {
-                await supabaseAdmin.auth.admin.updateUserById(supabaseUserId, {
-                  password: tempPassword,
-                  email_confirm: true,
-                });
+                const { error: updateError } =
+                  await supabaseAdmin.auth.admin.updateUserById(supabaseUserId, {
+                    password: tempPassword,
+                    email_confirm: true,
+                  });
+                if (updateError) {
+                  throw new Error(
+                    `AUTH_ERR:Failed to set tenant credentials: ${updateError.message}`,
+                  );
+                }
               }
 
               if (supabaseUserId) {
                 const existingDbUser = await tx.user.findUnique({
-                  where: { email },
+                  where: { email: normalizedEmail },
                 });
                 if (existingDbUser && existingDbUser.id !== supabaseUserId) {
                   const oldId = existingDbUser.id;
