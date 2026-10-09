@@ -25,6 +25,11 @@ const TenantIdParams = Type.Object({
   workspaceId: Type.String(),
   id: Type.String(),
 });
+const LeaseAgreementParams = Type.Object({
+  workspaceId: Type.String(),
+  id: Type.String(),
+  leaseId: Type.String(),
+});
 const CreateTenantBody = Type.Object({
   name: Type.Optional(Type.String()),
   email: Type.Optional(Type.String()),
@@ -562,8 +567,19 @@ export async function notifyTenantOfLeaseReadyToSign(params: {
 
     const plainText = `Hi ${displayName},\n\nYour property manager, ${managerName}, has prepared your lease agreement for ${unitLabel}, ${propertyName} in ${workspaceName}.\n\nTenancy Details:\n- Property: ${propertyName}\n- Unit: ${unitLabel}\n${rentFormatted ? `- Yearly Rent: ${rentFormatted}\n` : ""}- Period: ${startFormatted} to ${endFormatted}\n\nPlease open the PropertyStack mobile app on your phone to review the terms and apply your signature:\n${appDownloadUrl}\n\nBest regards,\nThe PropertyStack Team`;
 
-    await sendEmail(tenant.email, subject, plainText, html);
+    console.log(
+      `[Lease] Dispatching lease agreement ready email to tenant: ${tenant.email} (Property: ${propertyName}, Unit: ${unitLabel})`,
+    );
+    const emailRes = await sendEmail(tenant.email, subject, plainText, html);
+    console.log(
+      `[Lease] Successfully delivered lease agreement email to ${tenant.email}:`,
+      emailRes,
+    );
   } catch (emailErr) {
+    console.error(
+      `[Lease] Failed to send lease agreement email to tenant ${tenant.email}:`,
+      emailErr,
+    );
     fastify.log.error(
       emailErr,
       `[Lease] Failed to send lease agreement email to tenant ${tenant.email}`,
@@ -1358,8 +1374,89 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           ? process.env.FRONTEND_URL
           : "https://propertystack.vercel.app";
 
-      // Asynchronously fetch manager and workspace details to dispatch notification & email
-      Promise.all([
+      // Fetch manager and workspace details to dispatch notification & email
+      try {
+        const [manager, workspace] = await Promise.all([
+          prisma.user.findUnique({
+            where: { id: request.userId },
+            select: { name: true, email: true },
+          }),
+          prisma.workspace.findUnique({
+            where: { id: workspaceId },
+            select: { name: true },
+          }),
+        ]);
+
+        await notifyTenantOfLeaseReadyToSign({
+          fastify,
+          workspaceId,
+          tenantId: id,
+          leaseId: lease.id,
+          propertyName: lease.property.name,
+          unitNumber: lease.unit?.unitNumber || null,
+          startDate: lease.startDate,
+          endDate: lease.endDate,
+          yearlyRent: lease.yearlyRent,
+          managerName: manager?.name || "Your Property Manager",
+          workspaceName: workspace?.name || "PropertyStack Workspace",
+          frontendUrl,
+        });
+      } catch (notifErr) {
+        request.log.error(
+          { err: notifErr },
+          `[Create Lease] Failed to dispatch lease ready notification to tenant ${id}`,
+        );
+      }
+
+      return reply.status(201).send({ lease });
+    },
+  );
+
+  // Resend lease agreement email to tenant
+  server.post<{
+    Params: Static<typeof LeaseAgreementParams>;
+  }>(
+    "/:id/leases/:leaseId/resend-agreement",
+    {
+      preHandler: requireManager,
+      schema: { params: LeaseAgreementParams },
+    },
+    async (request, reply) => {
+      const { workspaceId, id, leaseId } = request.params;
+
+      const lease = await prisma.lease.findFirst({
+        where: {
+          id: leaseId,
+          tenantId: id,
+          property: { workspaceId },
+        },
+        include: {
+          property: { select: { id: true, name: true } },
+          unit: { select: { id: true, unitNumber: true } },
+          tenant: { select: { id: true, name: true, email: true } },
+        },
+      });
+
+      if (!lease) {
+        return reply
+          .status(404)
+          .send({ error: "Lease not found in this workspace" });
+      }
+
+      if (!lease.tenant.email) {
+        return reply
+          .status(400)
+          .send({ error: "Tenant has no registered email address" });
+      }
+
+      const frontendUrl =
+        process.env.FRONTEND_URL &&
+        !process.env.FRONTEND_URL.includes("localhost") &&
+        !process.env.FRONTEND_URL.includes("127.0.0.1")
+          ? process.env.FRONTEND_URL
+          : "https://propertystack.vercel.app";
+
+      const [manager, workspace] = await Promise.all([
         prisma.user.findUnique({
           where: { id: request.userId },
           select: { name: true, email: true },
@@ -1368,31 +1465,164 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           where: { id: workspaceId },
           select: { name: true },
         }),
-      ])
-        .then(([manager, workspace]) => {
-          return notifyTenantOfLeaseReadyToSign({
-            fastify,
-            workspaceId,
-            tenantId: id,
-            leaseId: lease.id,
-            propertyName: lease.property.name,
-            unitNumber: lease.unit?.unitNumber || null,
-            startDate: lease.startDate,
-            endDate: lease.endDate,
-            yearlyRent: lease.yearlyRent,
-            managerName: manager?.name || "Your Property Manager",
-            workspaceName: workspace?.name || "PropertyStack Workspace",
-            frontendUrl,
-          });
-        })
-        .catch((notifErr) => {
-          request.log.error(
-            { err: notifErr },
-            `[Create Lease] Failed to dispatch lease ready notification to tenant ${id}`,
-          );
-        });
+      ]);
 
-      return reply.status(201).send({ lease });
+      await notifyTenantOfLeaseReadyToSign({
+        fastify,
+        workspaceId,
+        tenantId: id,
+        leaseId: lease.id,
+        propertyName: lease.property.name,
+        unitNumber: lease.unit?.unitNumber || null,
+        startDate: lease.startDate,
+        endDate: lease.endDate,
+        yearlyRent: lease.yearlyRent,
+        managerName: manager?.name || "Your Property Manager",
+        workspaceName: workspace?.name || "PropertyStack Workspace",
+        frontendUrl,
+      });
+
+      await logAction({
+        userId: request.userId!,
+        action: "RESEND_LEASE_AGREEMENT",
+        entityType: "LEASE",
+        entityId: lease.id,
+        details: `Resent lease agreement email to tenant "${lease.tenant.name}" (${lease.tenant.email}) for property "${lease.property.name}".`,
+        workspaceId,
+        req: request,
+      });
+
+      return reply.send({
+        success: true,
+        message: `Lease agreement email sent to ${lease.tenant.email}`,
+      });
+    },
+  );
+
+  // Resend tenant credentials / invitation email
+  server.post<{
+    Params: Static<typeof TenantIdParams>;
+  }>(
+    "/:id/resend-invite",
+    {
+      preHandler: requireManager,
+      schema: { params: TenantIdParams },
+    },
+    async (request, reply) => {
+      const { workspaceId, id } = request.params;
+
+      const tenant = await prisma.tenant.findUnique({
+        where: { tenant_workspace_id: { id, workspaceId } },
+      });
+
+      if (!tenant) {
+        return reply
+          .status(404)
+          .send({ error: "Tenant not found in this workspace" });
+      }
+
+      if (!tenant.email) {
+        return reply
+          .status(400)
+          .send({ error: "Tenant has no email address" });
+      }
+
+      const tempPassword = generateTenantTempPassword();
+      const normalizedEmail = tenant.email.trim().toLowerCase();
+
+      // Find Supabase auth user
+      let supabaseUserId: string | null = null;
+      let page = 1;
+      const perPage = 100;
+      while (true) {
+        const { data: listData, error: listError } =
+          await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+        if (listError || !listData?.users) break;
+        const matched = listData.users.find(
+          (u) => u.email?.trim().toLowerCase() === normalizedEmail,
+        );
+        if (matched) {
+          supabaseUserId = matched.id;
+          break;
+        }
+        if (listData.users.length < perPage) break;
+        page++;
+      }
+
+      if (!supabaseUserId) {
+        const { data: createData, error: createError } =
+          await supabaseAdmin.auth.admin.createUser({
+            email: normalizedEmail,
+            password: tempPassword,
+            email_confirm: true,
+            user_metadata: {
+              name: tenant.name,
+              role: "TENANT",
+              mustChangePassword: true,
+            },
+          });
+        if (createError) {
+          return reply
+            .status(500)
+            .send({ error: `Failed to create auth user: ${createError.message}` });
+        }
+        supabaseUserId = createData.user.id;
+      } else {
+        const { error: updateError } =
+          await supabaseAdmin.auth.admin.updateUserById(supabaseUserId, {
+            password: tempPassword,
+            email_confirm: true,
+            user_metadata: { mustChangePassword: true },
+          });
+        if (updateError) {
+          return reply
+            .status(500)
+            .send({ error: `Failed to reset credentials: ${updateError.message}` });
+        }
+      }
+
+      const frontendUrl =
+        process.env.FRONTEND_URL &&
+        !process.env.FRONTEND_URL.includes("localhost") &&
+        !process.env.FRONTEND_URL.includes("127.0.0.1")
+          ? process.env.FRONTEND_URL
+          : "https://propertystack.vercel.app";
+
+      const [manager, workspace] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: request.userId },
+          select: { name: true, email: true },
+        }),
+        prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { name: true },
+        }),
+      ]);
+
+      await sendTenantWelcomeEmail({
+        tenantEmail: tenant.email,
+        tenantName: tenant.name,
+        managerName: manager?.name || "Your Property Manager",
+        workspaceName: workspace?.name || "PropertyStack Workspace",
+        tempPassword,
+        frontendUrl,
+      });
+
+      await logAction({
+        userId: request.userId!,
+        action: "RESEND_TENANT_INVITE",
+        entityType: "TENANT",
+        entityId: tenant.id,
+        details: `Resent tenant invitation and credentials to "${tenant.name}" (${tenant.email}).`,
+        workspaceId,
+        req: request,
+      });
+
+      return reply.send({
+        success: true,
+        message: `Invitation email resent to ${tenant.email}`,
+        tempPassword,
+      });
     },
   );
 
