@@ -639,8 +639,48 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         prisma.tenant.count({ where: whereClause }),
       ]);
 
+      const formattedTenants = await Promise.all(
+        tenants.map(async (t) => {
+          let inviteAccepted = false;
+          let accountStatus = "INVITED";
+          if (t.email) {
+            try {
+              const { data: supaData } =
+                await supabaseAdmin.auth.admin.getUserById(t.id);
+              if (supaData?.user) {
+                const mustChange =
+                  supaData.user.user_metadata?.mustChangePassword === true;
+                const hasLoggedIn = Boolean(supaData.user.last_sign_in_at);
+                inviteAccepted = hasLoggedIn && !mustChange;
+                accountStatus = inviteAccepted ? "ACTIVE" : "INVITED";
+              }
+            } catch {
+              // fallback if user is not in Supabase Auth
+            }
+          }
+
+          let computedStatus = "INVITED";
+          if (!inviteAccepted) {
+            computedStatus = "INVITED";
+          } else if (!t.leases || t.leases.length === 0) {
+            computedStatus = "NO_LEASE";
+          } else {
+            const activeLease = t.leases.find((l) => l.status === "ACTIVE");
+            const primaryLease = activeLease || t.leases[0];
+            computedStatus = primaryLease.status || "ACTIVE";
+          }
+
+          return {
+            ...t,
+            inviteAccepted,
+            accountStatus,
+            status: computedStatus,
+          };
+        }),
+      );
+
       const responseBody = {
-        tenants,
+        tenants: formattedTenants,
         pagination: {
           total,
           page: pageNum,
@@ -699,7 +739,42 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         },
       });
       if (!tenant) return reply.status(404).send({ error: "Tenant not found" });
-      return reply.send({ tenant });
+
+      let inviteAccepted = false;
+      let accountStatus = "INVITED";
+      if (tenant.email) {
+        try {
+          const { data: supaData } =
+            await supabaseAdmin.auth.admin.getUserById(tenant.id);
+          if (supaData?.user) {
+            const mustChange =
+              supaData.user.user_metadata?.mustChangePassword === true;
+            const hasLoggedIn = Boolean(supaData.user.last_sign_in_at);
+            inviteAccepted = hasLoggedIn && !mustChange;
+            accountStatus = inviteAccepted ? "ACTIVE" : "INVITED";
+          }
+        } catch {}
+      }
+
+      let computedStatus = "INVITED";
+      if (!inviteAccepted) {
+        computedStatus = "INVITED";
+      } else if (!tenant.leases || tenant.leases.length === 0) {
+        computedStatus = "NO_LEASE";
+      } else {
+        const activeLease = tenant.leases.find((l) => l.status === "ACTIVE");
+        const primaryLease = activeLease || tenant.leases[0];
+        computedStatus = primaryLease.status || "ACTIVE";
+      }
+
+      return reply.send({
+        tenant: {
+          ...tenant,
+          inviteAccepted,
+          accountStatus,
+          status: computedStatus,
+        },
+      });
     },
   );
 

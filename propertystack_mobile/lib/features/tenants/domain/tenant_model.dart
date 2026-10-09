@@ -17,6 +17,8 @@ class TenantModel {
   final String? leaseId;
   final String? rejectionReason;
   final String? legalDocUrl;
+  final bool inviteAccepted;
+  final String accountStatus; // 'INVITED', 'ACTIVE'
 
   TenantModel({
     required this.id,
@@ -33,6 +35,8 @@ class TenantModel {
     this.leaseId,
     this.rejectionReason,
     this.legalDocUrl,
+    this.inviteAccepted = false,
+    this.accountStatus = 'INVITED',
   });
 
   String get locationSubtitle => '$propertyName, Unit $unitNumber';
@@ -62,8 +66,21 @@ class TenantModel {
       legalDocUrl != null &&
       legalDocUrl!.isNotEmpty;
 
-  /// Display-friendly lease status label
+  /// Display-friendly lease and account status label
   String get displayLeaseStatus {
+    // 1. If tenant account has never logged in or is still pending invitation
+    if (!inviteAccepted ||
+        accountStatus.toUpperCase() == 'INVITED' ||
+        status.toUpperCase() == 'INVITED') {
+      return 'Invited';
+    }
+
+    // 2. If tenant has no lease assigned
+    if (leaseStatus == null || leaseStatus!.isEmpty) {
+      return 'No Lease';
+    }
+
+    // 3. Specific lease workflow statuses
     switch (leaseStatus) {
       case 'PENDING_SIGNATURE':
         return 'Pending Signature';
@@ -75,6 +92,10 @@ class TenantModel {
         return 'Rejected';
       case 'PENDING_RENEWAL':
         return 'Pending Renewal';
+      case 'EXPIRED':
+        return 'Expired';
+      case 'TERMINATED':
+        return 'Terminated';
       case 'ACTIVE':
         return status; // Use computed status (Active/Expiring/Overdue)
       default:
@@ -83,27 +104,26 @@ class TenantModel {
   }
 
   Color get statusTextColor {
-    // Check raw lease status first for non-standard statuses
-    switch (leaseStatus) {
-      case 'PENDING_SIGNATURE':
-        return const Color(0xFFD97706); // Amber
-      case 'PENDING_LEGAL_VERIFICATION':
-        return const Color(0xFF2563EB); // Blue
-      case 'PENDING_LEGAL_UPLOAD':
-        return const Color(0xFF0284C7); // Sky
-      case 'REJECTED':
-        return const Color(0xFFEF4444); // Rose
-      case 'PENDING_RENEWAL':
-        return const Color(0xFFD97706); // Amber
-      default:
-        break;
-    }
-    // Fall back to computed status
-    switch (status.toLowerCase()) {
+    switch (displayLeaseStatus.toLowerCase()) {
+      case 'invited':
+        return const Color(0xFF2563EB); // Vibrant Blue
+      case 'no lease':
+      case 'unassigned':
+        return const Color(0xFF64748B); // Slate Gray
+      case 'pending signature':
+      case 'pending renewal':
       case 'expiring':
         return const Color(0xFFD97706); // Amber
+      case 'pending verification':
+        return const Color(0xFF2563EB); // Blue
+      case 'pending upload':
+        return const Color(0xFF0284C7); // Sky
+      case 'rejected':
       case 'overdue':
-        return const Color(0xFFEF4444); // Red
+      case 'expired':
+        return const Color(0xFFEF4444); // Red/Rose
+      case 'terminated':
+        return const Color(0xFF6B7280); // Neutral Gray
       case 'active':
       default:
         return const Color(0xFF15803D); // Dark Green
@@ -111,25 +131,26 @@ class TenantModel {
   }
 
   Color get statusBackgroundColor {
-    switch (leaseStatus) {
-      case 'PENDING_SIGNATURE':
-        return const Color(0xFFFFFBEB); // Soft Amber
-      case 'PENDING_LEGAL_VERIFICATION':
-        return const Color(0xFFEFF6FF); // Soft Blue
-      case 'PENDING_LEGAL_UPLOAD':
-        return const Color(0xFFF0F9FF); // Soft Sky
-      case 'REJECTED':
-        return const Color(0xFFFEF2F2); // Soft Red/Rose
-      case 'PENDING_RENEWAL':
-        return const Color(0xFFFFFBEB); // Soft Amber
-      default:
-        break;
-    }
-    switch (status.toLowerCase()) {
+    switch (displayLeaseStatus.toLowerCase()) {
+      case 'invited':
+        return const Color(0xFFEFF6FF); // Soft Blue pill
+      case 'no lease':
+      case 'unassigned':
+        return const Color(0xFFF1F5F9); // Soft Slate Gray pill
+      case 'pending signature':
+      case 'pending renewal':
       case 'expiring':
         return const Color(0xFFFFFBEB); // Soft Amber
+      case 'pending verification':
+        return const Color(0xFFEFF6FF); // Soft Blue
+      case 'pending upload':
+        return const Color(0xFFF0F9FF); // Soft Sky
+      case 'rejected':
       case 'overdue':
+      case 'expired':
         return const Color(0xFFFEF2F2); // Soft Red
+      case 'terminated':
+        return const Color(0xFFF3F4F6); // Soft Gray
       case 'active':
       default:
         return const Color(0xFFDCFCE7); // Soft Green
@@ -149,12 +170,23 @@ class TenantModel {
     }
     activeLease ??= leases.isNotEmpty ? (leases.first as Map<String, dynamic>) : null;
 
+    final inviteAccepted = json['inviteAccepted'] == true;
+    final rawAccountStatus = json['accountStatus']?.toString();
+    final accountStatus = rawAccountStatus ??
+        (inviteAccepted
+            ? 'ACTIVE'
+            : (json['status'] == 'INVITED' || leases.isEmpty
+                ? 'INVITED'
+                : 'ACTIVE'));
+
     final property = activeLease?['property'];
     final unit = activeLease?['unit'];
     final rawLeaseStatus = activeLease?['status']?.toString();
 
     // Determine computed status from lease dates
-    String calculatedStatus = 'Active';
+    String calculatedStatus = leases.isEmpty
+        ? (inviteAccepted ? 'No Lease' : 'Invited')
+        : 'Active';
     if (activeLease != null && activeLease['endDate'] != null) {
       final endDate = DateTime.tryParse(activeLease['endDate'].toString());
       if (endDate != null) {
@@ -171,6 +203,8 @@ class TenantModel {
     String displayStatus = calculatedStatus;
     if (rawLeaseStatus != null && rawLeaseStatus != 'ACTIVE') {
       displayStatus = rawLeaseStatus.replaceAll('_', ' ');
+    } else if (activeLease == null) {
+      displayStatus = inviteAccepted ? 'No Lease' : 'Invited';
     }
 
     return TenantModel(
@@ -188,6 +222,8 @@ class TenantModel {
       leaseId: activeLease?['id']?.toString(),
       rejectionReason: activeLease?['rejectionReason']?.toString(),
       legalDocUrl: activeLease?['legalDocUrl']?.toString(),
+      inviteAccepted: inviteAccepted,
+      accountStatus: accountStatus,
     );
   }
 }
