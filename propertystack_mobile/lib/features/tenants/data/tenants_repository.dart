@@ -190,6 +190,42 @@ class TenantsRepository {
     }
   }
 
+  /// Resend lease agreement email to tenant
+  Future<void> resendLeaseAgreement(
+    String workspaceId,
+    String tenantId,
+    String leaseId,
+  ) async {
+    try {
+      await _apiClient.dio.post(
+        '/workspaces/$workspaceId/tenants/$tenantId/leases/$leaseId/resend-agreement',
+      );
+    } on DioException catch (e) {
+      debugPrint('[TenantsRepository] resendLeaseAgreement error: $e');
+      throw Exception(_parseErrorMessage(e));
+    } catch (e) {
+      throw Exception('Failed to resend agreement email: ${e.toString()}');
+    }
+  }
+
+  /// Resend tenant credentials / invitation email
+  Future<String?> resendTenantInvite(
+    String workspaceId,
+    String tenantId,
+  ) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/workspaces/$workspaceId/tenants/$tenantId/resend-invite',
+      );
+      return response.data['tempPassword'] as String?;
+    } on DioException catch (e) {
+      debugPrint('[TenantsRepository] resendTenantInvite error: $e');
+      throw Exception(_parseErrorMessage(e));
+    } catch (e) {
+      throw Exception('Failed to resend tenant invitation: ${e.toString()}');
+    }
+  }
+
   String _parseErrorMessage(DioException e) {
     if (e.response != null && e.response?.data is Map) {
       final data = e.response?.data as Map;

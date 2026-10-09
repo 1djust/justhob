@@ -561,6 +561,22 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
                           },
                         ),
 
+                        // Resend Agreement Button (if lease is awaiting digital signature)
+                        if (tenant.leaseStatus == 'PENDING_SIGNATURE' && tenant.leaseId != null)
+                          _buildActionChip(
+                            icon: Icons.mark_email_read_outlined,
+                            label: 'Resend Agreement',
+                            onTap: () => _resendAgreement(tenant),
+                          ),
+
+                        // Resend Login Credentials (if invited or hasn't accepted yet)
+                        if (tenant.accountStatus == 'INVITED' || !tenant.inviteAccepted)
+                          _buildActionChip(
+                            icon: Icons.vpn_key_outlined,
+                            label: 'Resend Credentials',
+                            onTap: () => _resendInvite(tenant),
+                          ),
+
                         // Attachment Button (if available)
                         if (tenant.hasAttachment)
                           _buildActionChip(
@@ -718,6 +734,18 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
             icon: Icons.shield_outlined,
             label: 'Payment Settings',
           ),
+          if (tenant.leaseStatus == 'PENDING_SIGNATURE' && tenant.leaseId != null)
+            _buildMenuItem(
+              value: 'resend_agreement',
+              icon: Icons.mark_email_read_outlined,
+              label: 'Resend Agreement Email',
+            ),
+          if (tenant.accountStatus == 'INVITED' || !tenant.inviteAccepted)
+            _buildMenuItem(
+              value: 'resend_invite',
+              icon: Icons.vpn_key_outlined,
+              label: 'Resend Credentials',
+            ),
           if (tenant.leaseStatus == 'ACTIVE')
             _buildMenuItem(
               value: 'end_tenancy',
@@ -768,6 +796,12 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
 
   void _handleMenuAction(BuildContext context, TenantModel tenant, String action) {
     switch (action) {
+      case 'resend_agreement':
+        _resendAgreement(tenant);
+        break;
+      case 'resend_invite':
+        _resendInvite(tenant);
+        break;
       case 'payment_settings':
         _showPaymentSettingsSheet(context, tenant);
         break;
@@ -777,6 +811,88 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
       case 'delete':
         _showDeleteDialog(context, tenant);
         break;
+    }
+  }
+
+  Future<void> _resendAgreement(TenantModel tenant) async {
+    final authState = ref.read(authStateProvider);
+    final user = authState.valueOrNull;
+    if (user == null || tenant.leaseId == null) return;
+
+    final managerWorkspace = user.workspaces.firstWhere(
+      (m) => m.role == 'LANDLORD' || m.role == 'PROPERTY_MANAGER',
+    );
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sending lease agreement email to ${tenant.email}...')),
+      );
+
+      await ref.read(tenantsRepositoryProvider).resendLeaseAgreement(
+            managerWorkspace.workspaceId,
+            tenant.id,
+            tenant.leaseId!,
+          );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Agreement email successfully delivered to ${tenant.email}!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to resend agreement: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _resendInvite(TenantModel tenant) async {
+    final authState = ref.read(authStateProvider);
+    final user = authState.valueOrNull;
+    if (user == null) return;
+
+    final managerWorkspace = user.workspaces.firstWhere(
+      (m) => m.role == 'LANDLORD' || m.role == 'PROPERTY_MANAGER',
+    );
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Resending credentials to ${tenant.email}...')),
+      );
+
+      final newPass = await ref.read(tenantsRepositoryProvider).resendTenantInvite(
+            managerWorkspace.workspaceId,
+            tenant.id,
+          );
+
+      ref.invalidate(tenantsProvider);
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Credentials Resent'),
+            content: Text(
+              'A new temporary password was generated and sent to ${tenant.email}.\n\n'
+              'Temporary Password: ${newPass ?? "Sent via email"}',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Done'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to resend credentials: $e')),
+        );
+      }
     }
   }
 
