@@ -226,6 +226,26 @@ class TenantsRepository {
     }
   }
 
+  /// Upload final legal agreement document for a lease in PENDING_LEGAL_UPLOAD
+  Future<void> uploadLegalDocument(
+    String workspaceId,
+    String tenantId,
+    String leaseId, {
+    required String legalDocUrl,
+  }) async {
+    try {
+      await _apiClient.dio.post(
+        '/workspaces/$workspaceId/tenants/$tenantId/leases/$leaseId/upload-legal-document',
+        data: {'legalDocUrl': legalDocUrl},
+      );
+    } on DioException catch (e) {
+      debugPrint('[TenantsRepository] uploadLegalDocument error: $e');
+      throw Exception(_parseErrorMessage(e));
+    } catch (e) {
+      throw Exception('Failed to upload legal document: ${e.toString()}');
+    }
+  }
+
   String _parseErrorMessage(DioException e) {
     if (e.response != null && e.response?.data is Map) {
       final data = e.response?.data as Map;

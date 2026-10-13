@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/add_tenant_bottom_sheet.dart';
@@ -570,6 +571,14 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
                             onTap: () => _showAgreementDialog(tenant),
                           ),
 
+                        // Upload Agreement Button (if lease is awaiting legal upload)
+                        if (tenant.leaseStatus == 'PENDING_LEGAL_UPLOAD' && tenant.leaseId != null)
+                          _buildActionChip(
+                            icon: Icons.cloud_upload_outlined,
+                            label: 'Upload Agreement',
+                            onTap: () => _showUploadAgreementSheet(context, tenant),
+                          ),
+
                         // Resend Agreement Button (if lease is awaiting digital signature)
                         if (tenant.leaseStatus == 'PENDING_SIGNATURE' && tenant.leaseId != null)
                           _buildActionChip(
@@ -749,6 +758,12 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
               icon: Icons.description_outlined,
               label: 'View Lease Agreement',
             ),
+          if (tenant.leaseStatus == 'PENDING_LEGAL_UPLOAD' && tenant.leaseId != null)
+            _buildMenuItem(
+              value: 'upload_agreement',
+              icon: Icons.cloud_upload_outlined,
+              label: 'Upload Final Agreement',
+            ),
           if (tenant.leaseStatus == 'PENDING_SIGNATURE' && tenant.leaseId != null)
             _buildMenuItem(
               value: 'resend_agreement',
@@ -813,6 +828,9 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
     switch (action) {
       case 'view_agreement':
         _showAgreementDialog(tenant);
+        break;
+      case 'upload_agreement':
+        _showUploadAgreementSheet(context, tenant);
         break;
       case 'resend_agreement':
         _resendAgreement(tenant);
@@ -1169,6 +1187,270 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _showUploadAgreementSheet(BuildContext context, TenantModel tenant) {
+    final picker = ImagePicker();
+    String? pickedBase64;
+    String? pickedFileName;
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(28),
+                topRight: Radius.circular(28),
+              ),
+            ),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              16,
+              24,
+              MediaQuery.of(ctx).viewInsets.bottom + 32,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.cloud_upload_outlined, color: Color(0xFF2563EB), size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Upload Final Agreement',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                          ),
+                          Text(
+                            'Tenant: ${tenant.name} (${tenant.locationSubtitle})',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Upload the completed legal tenancy agreement document. Once submitted, the agreement will be sent directly to the tenant to digitally sign and verify with their passport photograph.',
+                  style: TextStyle(fontSize: 13, height: 1.4, color: Color(0xFF475569)),
+                ),
+                const SizedBox(height: 20),
+                if (pickedBase64 != null)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                pickedFileName ?? 'Document Selected',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF15803D)),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Ready to submit to tenant',
+                                style: TextStyle(fontSize: 11, color: Color(0xFF16A34A)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Color(0xFFEF4444)),
+                          onPressed: () {
+                            setSheetState(() {
+                              pickedBase64 = null;
+                              pickedFileName = null;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.file_upload_outlined, size: 36, color: Color(0xFF94A3B8)),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Choose Document or Photo',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF334155)),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Supports PDF or clear photo of document',
+                          style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+                                if (file != null) {
+                                  final bytes = await file.readAsBytes();
+                                  setSheetState(() {
+                                    pickedBase64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+                                    pickedFileName = file.name;
+                                  });
+                                }
+                              },
+                              icon: const Icon(Icons.photo_library_outlined, size: 16),
+                              label: const Text('Choose File'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF2563EB),
+                                side: const BorderSide(color: Color(0xFFBFDBFE)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final file = await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+                                if (file != null) {
+                                  final bytes = await file.readAsBytes();
+                                  setSheetState(() {
+                                    pickedBase64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+                                    pickedFileName = file.name;
+                                  });
+                                }
+                              },
+                              icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                              label: const Text('Take Photo'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF475569),
+                                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: (pickedBase64 == null || isSubmitting)
+                        ? null
+                        : () async {
+                            setSheetState(() => isSubmitting = true);
+                            final authState = ref.read(authStateProvider);
+                            final user = authState.valueOrNull;
+                            if (user == null || tenant.leaseId == null) return;
+                            final managerWorkspace = user.workspaces.firstWhere(
+                              (m) => m.role == 'LANDLORD' || m.role == 'PROPERTY_MANAGER',
+                            );
+
+                            try {
+                              await ref.read(tenantsRepositoryProvider).uploadLegalDocument(
+                                    managerWorkspace.workspaceId,
+                                    tenant.id,
+                                    tenant.leaseId!,
+                                    legalDocUrl: pickedBase64!,
+                                  );
+
+                              ref.invalidate(tenantsProvider);
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx);
+                              }
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Legal agreement uploaded! Notification sent to ${tenant.name} to sign.'),
+                                    backgroundColor: const Color(0xFF16A34A),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              setSheetState(() => isSubmitting = false);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed to upload agreement: $e'),
+                                    backgroundColor: const Color(0xFFEF4444),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFF94A3B8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text(
+                            'Submit Agreement',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 

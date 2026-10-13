@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../features/tenants/data/tenants_repository.dart';
 import '../../features/tenants/presentation/tenants_notifier.dart';
 import '../../features/properties/data/properties_repository.dart';
+import '../../features/properties/domain/property_model.dart';
 import '../../features/auth/presentation/auth_notifier.dart';
 
 class CreateLeaseBottomSheet extends ConsumerStatefulWidget {
@@ -22,14 +25,18 @@ class CreateLeaseBottomSheet extends ConsumerStatefulWidget {
 
 class _CreateLeaseBottomSheetState extends ConsumerState<CreateLeaseBottomSheet> {
   final _formKey = GlobalKey<FormState>();
+  final _picker = ImagePicker();
   String? _selectedPropertyId;
   String? _selectedUnitId;
   DateTime? _startDate = DateTime.now();
   DateTime? _endDate = DateTime.now().add(const Duration(days: 365));
   final _rentController = TextEditingController();
   final _agreementTextController = TextEditingController();
+  String? _attachedDocBase64;
+  String? _attachedDocFileName;
+  String? _propertyMasterDocUrl;
   bool _isLoading = false;
-  List<dynamic> _properties = [];
+  List<PropertyModel> _properties = [];
   List<dynamic> _units = [];
   bool _fetchingProperties = true;
 
@@ -81,13 +88,13 @@ class _CreateLeaseBottomSheetState extends ConsumerState<CreateLeaseBottomSheet>
     });
 
     if (propId != null) {
-      final prop = _properties.firstWhere((p) => p.id == propId, orElse: () => null);
+      final matches = _properties.where((p) => p.id == propId);
+      final prop = matches.isNotEmpty ? matches.first : null;
       if (prop != null) {
-        if (prop.units != null) {
-          setState(() {
-            _units = prop.units;
-          });
-        }
+        setState(() {
+          _units = prop.units;
+          _propertyMasterDocUrl = prop.agreementDocUrl;
+        });
         if (_agreementTextController.text.trim().isEmpty) {
           _agreementTextController.text =
               'Standard Tenancy Agreement for ${prop.name}.\n\n'
@@ -96,6 +103,30 @@ class _CreateLeaseBottomSheetState extends ConsumerState<CreateLeaseBottomSheet>
               '3. Subletting without written permission is prohibited.\n'
               '4. Both parties agree to standard statutory notice periods prior to lease termination.';
         }
+      }
+    }
+  }
+
+  Future<void> _pickAgreementDocument(ImageSource source) async {
+    try {
+      final XFile? file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+      if (file != null) {
+        final bytes = await file.readAsBytes();
+        setState(() {
+          _attachedDocBase64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+          _attachedDocFileName = file.name;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick document: $e')),
+        );
       }
     }
   }
@@ -130,6 +161,7 @@ class _CreateLeaseBottomSheetState extends ConsumerState<CreateLeaseBottomSheet>
             endDate: _endDate != null ? DateFormat('yyyy-MM-dd').format(_endDate!) : null,
             yearlyRent: rent,
             agreementText: _agreementTextController.text.trim(),
+            legalDocUrl: _attachedDocBase64 ?? _propertyMasterDocUrl,
           );
 
       ref.invalidate(tenantsProvider);
@@ -198,8 +230,8 @@ class _CreateLeaseBottomSheetState extends ConsumerState<CreateLeaseBottomSheet>
                   ),
                   items: _properties.map<DropdownMenuItem<String>>((p) {
                     return DropdownMenuItem<String>(
-                      value: p.id as String,
-                      child: Text(p.name as String),
+                      value: p.id,
+                      child: Text(p.name),
                     );
                   }).toList(),
                   onChanged: _onPropertySelected,
@@ -335,6 +367,102 @@ class _CreateLeaseBottomSheetState extends ConsumerState<CreateLeaseBottomSheet>
                           borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Attached Document / File
+                    if (_attachedDocBase64 != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFBBF7D0)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _attachedDocFileName ?? 'Agreement Document Attached',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF15803D)),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFFEF4444)),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                setState(() {
+                                  _attachedDocBase64 = null;
+                                  _attachedDocFileName = null;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ] else if (_propertyMasterDocUrl != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline_rounded, color: Color(0xFF2563EB), size: 16),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Master Property Agreement attached automatically from building template.',
+                                style: TextStyle(fontSize: 11, color: Color(0xFF1E40AF), fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
+                    // Document Upload Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _pickAgreementDocument(ImageSource.gallery),
+                            icon: const Icon(Icons.attach_file_rounded, size: 16),
+                            label: Text(
+                              _attachedDocBase64 != null ? 'Replace File' : 'Attach Document',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF2563EB),
+                              side: const BorderSide(color: Color(0xFFBFDBFE)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _pickAgreementDocument(ImageSource.camera),
+                            icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                            label: const Text('Take Photo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF475569),
+                              side: const BorderSide(color: Color(0xFFCBD5E1)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
