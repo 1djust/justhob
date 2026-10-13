@@ -69,7 +69,10 @@ class TenantModel {
   }
 
   /// Whether this tenant has an active or pending lease
-  bool get hasLease => leaseStatus != null && leaseStatus!.isNotEmpty;
+  bool get hasLease =>
+      (leaseStatus != null && leaseStatus!.isNotEmpty) ||
+      (leaseId != null && leaseId!.isNotEmpty) ||
+      (propertyName != 'No Property Assigned' && propertyName != 'Unassigned');
 
   /// Whether this tenant's lease has a viewable attachment
   bool get hasAttachment =>
