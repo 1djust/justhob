@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/add_tenant_bottom_sheet.dart';
 import '../../../../core/widgets/tenant_filter_bottom_sheet.dart';
@@ -561,6 +562,14 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
                           },
                         ),
 
+                        // View Agreement Button (if lease is assigned/active/pending)
+                        if (tenant.hasLease)
+                          _buildActionChip(
+                            icon: Icons.description_outlined,
+                            label: 'View Agreement',
+                            onTap: () => _showAgreementDialog(tenant),
+                          ),
+
                         // Resend Agreement Button (if lease is awaiting digital signature)
                         if (tenant.leaseStatus == 'PENDING_SIGNATURE' && tenant.leaseId != null)
                           _buildActionChip(
@@ -734,6 +743,12 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
             icon: Icons.shield_outlined,
             label: 'Payment Settings',
           ),
+          if (tenant.hasLease)
+            _buildMenuItem(
+              value: 'view_agreement',
+              icon: Icons.description_outlined,
+              label: 'View Lease Agreement',
+            ),
           if (tenant.leaseStatus == 'PENDING_SIGNATURE' && tenant.leaseId != null)
             _buildMenuItem(
               value: 'resend_agreement',
@@ -796,6 +811,9 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
 
   void _handleMenuAction(BuildContext context, TenantModel tenant, String action) {
     switch (action) {
+      case 'view_agreement':
+        _showAgreementDialog(tenant);
+        break;
       case 'resend_agreement':
         _resendAgreement(tenant);
         break;
@@ -812,6 +830,346 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
         _showDeleteDialog(context, tenant);
         break;
     }
+  }
+
+  void _showAgreementDialog(TenantModel tenant) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final rentFormatted = tenant.yearlyRent != null
+            ? '₦${NumberFormat('#,###').format(tenant.yearlyRent)}'
+            : '₦1,000,000';
+
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.88,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Title Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(Icons.description_outlined, color: Color(0xFF2563EB), size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Lease Agreement',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                              ),
+                              Text(
+                                tenant.locationSubtitle,
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: tenant.statusBackgroundColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      tenant.displayLeaseStatus,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: tenant.statusTextColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Overview Summary Box
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Yearly Rent:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                                Text(
+                                  rentFormatted,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                                ),
+                              ],
+                            ),
+                            if (tenant.startDate != null) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Lease Period:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                                  Text(
+                                    '${tenant.startDate!.split('T').first} to ${tenant.endDate != null ? tenant.endDate!.split('T').first : 'Ongoing'}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Verified Tenant KYC Passport Photo
+                      if (tenant.passportPhotoUrl != null && tenant.passportPhotoUrl!.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFBBF7D0)),
+                          ),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: SizedBox(
+                                  width: 64,
+                                  height: 64,
+                                  child: _buildAvatarImage(tenant.passportPhotoUrl, tenant.name),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.verified_rounded, size: 16, color: Color(0xFF16A34A)),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'TENANT IDENTITY (KYC)',
+                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF15803D), letterSpacing: 0.5),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Verified Passport Photograph',
+                                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Uploaded by tenant during agreement signing',
+                                      style: TextStyle(fontSize: 11, color: Color(0xFF16A34A)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Tenancy Agreement Terms Document Text
+                      const Text(
+                        'Tenancy Agreement Terms',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Text(
+                          (tenant.agreementText != null && tenant.agreementText!.trim().isNotEmpty)
+                              ? tenant.agreementText!
+                              : 'Standard lease agreement terms agreed by parties upon assignment.',
+                          style: const TextStyle(fontSize: 13, height: 1.5, color: Color(0xFF334155)),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Signatures Box
+                      const Text(
+                        'Digital Signatures',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Manager Signature', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    tenant.managerSignature ?? 'Authorized',
+                                    style: const TextStyle(fontSize: 15, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: tenant.signatureUrl != null ? const Color(0xFFF0FDF4) : const Color(0xFFFFFBEB),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: tenant.signatureUrl != null ? const Color(0xFFBBF7D0) : const Color(0xFFFDE68A),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Tenant Signature',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: tenant.signatureUrl != null ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  if (tenant.signatureUrl != null)
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF16A34A)),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            tenant.signatureUrl!.startsWith('http') ? 'Digitally Signed' : tenant.signatureUrl!,
+                                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF15803D)),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.hourglass_top_rounded, size: 14, color: Color(0xFFD97706)),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Pending Signature',
+                                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFB45309)),
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Attached Legal PDF Document Button (if any)
+                      if (tenant.legalDocUrl != null && tenant.legalDocUrl!.isNotEmpty) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFDC2626)),
+                            label: const Text('Open Attached Agreement PDF Document'),
+                            onPressed: () => _viewAttachment(tenant),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              side: const BorderSide(color: Color(0xFFCBD5E1)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _resendAgreement(TenantModel tenant) async {

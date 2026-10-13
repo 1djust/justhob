@@ -82,10 +82,20 @@ class _CreateLeaseBottomSheetState extends ConsumerState<CreateLeaseBottomSheet>
 
     if (propId != null) {
       final prop = _properties.firstWhere((p) => p.id == propId, orElse: () => null);
-      if (prop != null && prop.units != null) {
-        setState(() {
-          _units = prop.units;
-        });
+      if (prop != null) {
+        if (prop.units != null) {
+          setState(() {
+            _units = prop.units;
+          });
+        }
+        if (_agreementTextController.text.trim().isEmpty) {
+          _agreementTextController.text =
+              'Standard Tenancy Agreement for ${prop.name}.\n\n'
+              '1. Rent is payable yearly as stated.\n'
+              '2. The tenant agrees to keep the premises in good condition.\n'
+              '3. Subletting without written permission is prohibited.\n'
+              '4. Both parties agree to standard statutory notice periods prior to lease termination.';
+        }
       }
     }
   }
@@ -280,6 +290,56 @@ class _CreateLeaseBottomSheetState extends ConsumerState<CreateLeaseBottomSheet>
                 ],
               ),
               const SizedBox(height: 16),
+
+              // Tenancy Agreement Terms Section
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.description_outlined, size: 18, color: Color(0xFF2563EB)),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Tenancy Agreement Terms',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Terms below will be sent to the tenant to review, upload their passport photo, and digitally sign.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _agreementTextController,
+                      maxLines: 4,
+                      style: const TextStyle(fontSize: 13, height: 1.4),
+                      decoration: InputDecoration(
+                        hintText: 'Enter agreement terms or clauses...',
+                        fillColor: Colors.white,
+                        filled: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
 
               // Submit Button
               SizedBox(

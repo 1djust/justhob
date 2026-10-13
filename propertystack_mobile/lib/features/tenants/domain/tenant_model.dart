@@ -17,6 +17,12 @@ class TenantModel {
   final String? leaseId;
   final String? rejectionReason;
   final String? legalDocUrl;
+  final String? agreementText;
+  final String? signatureUrl;
+  final String? managerSignature;
+  final double? yearlyRent;
+  final String? startDate;
+  final String? endDate;
   final bool inviteAccepted;
   final String accountStatus; // 'INVITED', 'ACTIVE'
 
@@ -35,6 +41,12 @@ class TenantModel {
     this.leaseId,
     this.rejectionReason,
     this.legalDocUrl,
+    this.agreementText,
+    this.signatureUrl,
+    this.managerSignature,
+    this.yearlyRent,
+    this.startDate,
+    this.endDate,
     this.inviteAccepted = false,
     this.accountStatus = 'INVITED',
   });
@@ -222,8 +234,23 @@ class TenantModel {
       leaseId: activeLease?['id']?.toString(),
       rejectionReason: activeLease?['rejectionReason']?.toString(),
       legalDocUrl: activeLease?['legalDocUrl']?.toString(),
+      agreementText: activeLease?['agreementText']?.toString(),
+      signatureUrl: activeLease?['signatureUrl']?.toString(),
+      managerSignature: activeLease?['managerSignature']?.toString(),
+      yearlyRent: (activeLease?['yearlyRent'] as num?)?.toDouble(),
+      startDate: activeLease?['startDate']?.toString(),
+      endDate: activeLease?['endDate']?.toString(),
       inviteAccepted: inviteAccepted,
       accountStatus: accountStatus,
     );
   }
+
+  /// Whether this tenant has agreement terms, documents, KYC photo, or signatures available to view
+  bool get canViewAgreement =>
+      hasLease &&
+      ((agreementText != null && agreementText!.trim().isNotEmpty) ||
+          (legalDocUrl != null && legalDocUrl!.trim().isNotEmpty) ||
+          (passportPhotoUrl != null && passportPhotoUrl!.trim().isNotEmpty) ||
+          (signatureUrl != null && signatureUrl!.trim().isNotEmpty) ||
+          (managerSignature != null && managerSignature!.trim().isNotEmpty));
 }

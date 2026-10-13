@@ -23,6 +23,7 @@ class PropertyModel {
   final String name;
   final String address;
   final String? imageUrl;
+  final String? agreementDocUrl;
   final List<UnitModel> units;
   final int activeLeasesCount;
   final String category; // 'Residential' or 'Commercial'
@@ -33,6 +34,7 @@ class PropertyModel {
     required this.name,
     required this.address,
     this.imageUrl,
+    this.agreementDocUrl,
     required this.units,
     required this.activeLeasesCount,
     required this.category,
@@ -63,6 +65,7 @@ class PropertyModel {
       name: json['name'] ?? 'Unnamed Property',
       address: json['address'] ?? 'No address provided',
       imageUrl: json['imageUrl'],
+      agreementDocUrl: json['agreementDocUrl']?.toString(),
       units: unitsList,
       activeLeasesCount: leasesList.length,
       category: isCommercial ? 'Commercial' : 'Residential',
