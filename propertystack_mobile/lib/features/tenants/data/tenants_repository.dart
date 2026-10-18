@@ -246,6 +246,48 @@ class TenantsRepository {
     }
   }
 
+  /// Submit a legal lease drafting request for PropertyStack legal team
+  Future<Map<String, dynamic>> requestLegalLease(
+    String workspaceId,
+    String tenantId, {
+    required String propertyId,
+    String? unitId,
+    required String startDate,
+    String? endDate,
+    required double yearlyRent,
+    required String managerSignature,
+    required String tenantName,
+    required String tenantAddress,
+    required String landlordName,
+    required String landlordAddress,
+    required String proofUrl,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/workspaces/$workspaceId/tenants/$tenantId/legal-lease-request',
+        data: {
+          'propertyId': propertyId,
+          if (unitId != null && unitId.isNotEmpty) 'unitId': unitId,
+          'startDate': startDate,
+          if (endDate != null && endDate.isNotEmpty) 'endDate': endDate,
+          'yearlyRent': yearlyRent,
+          'managerSignature': managerSignature,
+          'tenantName': tenantName,
+          'tenantAddress': tenantAddress,
+          'landlordName': landlordName,
+          'landlordAddress': landlordAddress,
+          'proofUrl': proofUrl,
+        },
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      debugPrint('[TenantsRepository] requestLegalLease error: $e');
+      throw Exception(_parseErrorMessage(e));
+    } catch (e) {
+      throw Exception('Failed to submit legal lease request: ${e.toString()}');
+    }
+  }
+
   String _parseErrorMessage(DioException e) {
     if (e.response != null && e.response?.data is Map) {
       final data = e.response?.data as Map;
