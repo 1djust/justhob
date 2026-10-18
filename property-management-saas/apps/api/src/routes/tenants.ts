@@ -55,8 +55,9 @@ const CreateLeaseBody = Type.Object({
   legalDocUrl: Type.Optional(Type.String()),
 });
 const EndTenancyBody = Type.Object({
-  leaseId: Type.String(),
+  leaseId: Type.Optional(Type.String()),
   reason: Type.Optional(Type.String()),
+  note: Type.Optional(Type.String()),
 });
 
 const CreateLegalLeaseRequestBody = Type.Object({
@@ -583,6 +584,221 @@ export async function notifyTenantOfLeaseReadyToSign(params: {
     fastify.log.error(
       emailErr,
       `[Lease] Failed to send lease agreement email to tenant ${tenant.email}`,
+    );
+  }
+}
+
+/**
+ * Notifies a tenant that their tenancy has been formally concluded/ended by the manager.
+ * Sends both an in-app notification (with real-time socket event) and a branded transactional email.
+ */
+export async function notifyTenantOfTenancyEnded(params: {
+  fastify: FastifyInstance;
+  workspaceId: string;
+  tenantId: string;
+  leaseId: string;
+  propertyName: string;
+  unitNumber?: string | null;
+  managerName?: string;
+  workspaceName?: string;
+  reason?: string;
+  endDate: Date;
+  frontendUrl: string;
+}) {
+  const {
+    fastify,
+    workspaceId,
+    tenantId,
+    leaseId,
+    propertyName,
+    unitNumber,
+    managerName = "Your Property Manager",
+    workspaceName = "PropertyStack Workspace",
+    reason,
+    endDate,
+    frontendUrl,
+  } = params;
+
+  // 1. Fetch Tenant details
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, name: true, email: true },
+  });
+
+  if (!tenant) return;
+
+  const displayName =
+    tenant.name && tenant.name.trim().length > 0 ? tenant.name.trim() : "there";
+  const unitLabel = unitNumber ? `Unit ${unitNumber}` : null;
+  const unitText = unitLabel ? ` (${unitLabel})` : "";
+  const notifMessage = `Your tenancy at ${propertyName}${unitText} has been concluded by ${managerName}.`;
+
+  // 2. In-App Notification record in DB & Socket Event
+  try {
+    let targetUserId: string | null = null;
+    const directUser = await prisma.user.findUnique({
+      where: { id: tenant.id },
+      select: { id: true },
+    });
+    if (directUser) {
+      targetUserId = directUser.id;
+    } else if (tenant.email) {
+      const emailUser = await prisma.user.findUnique({
+        where: { email: tenant.email },
+        select: { id: true },
+      });
+      if (emailUser) {
+        targetUserId = emailUser.id;
+      }
+    }
+
+    if (targetUserId) {
+      const notification = await prisma.notification.create({
+        data: {
+          userId: targetUserId,
+          title: "Tenancy Ended",
+          message: notifMessage,
+          type: "TENANCY_ENDED",
+        },
+      });
+
+      // Real-time socket event to the tenant
+      fastify.io.to(`user:${targetUserId}`).emit("NOTIFICATION_CREATED", {
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type,
+        createdAt: notification.createdAt,
+      });
+    }
+  } catch (notifErr) {
+    fastify.log.error(
+      notifErr,
+      `[Tenancy End] Failed to create in-app notification for tenant ${tenant.id}`,
+    );
+  }
+
+  // 3. Branded Transactional Email
+  if (!tenant.email) return;
+
+  try {
+    const publicBaseUrl =
+      frontendUrl &&
+      !frontendUrl.includes("localhost") &&
+      !frontendUrl.includes("127.0.0.1")
+        ? frontendUrl.replace(/\/$/, "")
+        : "https://propertystack.vercel.app";
+
+    const appDownloadUrl = `${publicBaseUrl}/download`;
+    const subject = `Notice of Tenancy Conclusion: ${propertyName} - ${workspaceName}`;
+    const dateFormatted = endDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    const rawReason = (reason || "").trim();
+    const reasonDisplay = rawReason
+      ? rawReason
+          .replace(/_/g, " ")
+          .toLowerCase()
+          .replace(/\b\w/g, (c) => c.toUpperCase())
+      : "Standard Conclusion / Voluntary Departure";
+
+    const bodyHtml = `
+      <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">
+        Tenancy Conclusion Notice
+      </h2>
+      <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+        Hi <strong>${escapeHtml(displayName)}</strong>,
+      </p>
+      <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+        This email confirms that your tenancy for <strong>${escapeHtml(propertyName)}</strong>${unitLabel ? ` (<strong>${escapeHtml(unitLabel)}</strong>)` : ""} in <strong>${escapeHtml(workspaceName)}</strong> has been formally concluded.
+      </p>
+
+      <!-- TENANCY CONCLUSION SUMMARY BOX -->
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #ef4444; border-radius: 8px; padding: 18px 20px; margin: 0 0 24px 0;">
+        <p style="margin: 0 0 12px 0; font-size: 13px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px;">
+          Tenancy Closure Details
+        </p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
+          <tr>
+            <td style="padding: 6px 0; font-weight: 600; width: 140px; color: #64748b;">Property:</td>
+            <td style="padding: 6px 0; font-weight: 700; color: #0f172a;">${escapeHtml(propertyName)}</td>
+          </tr>
+          ${
+            unitLabel
+              ? `
+          <tr>
+            <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Assigned Unit:</td>
+            <td style="padding: 6px 0; font-weight: 700; color: #0f172a;">${escapeHtml(unitLabel)}</td>
+          </tr>
+          `
+              : ""
+          }
+          <tr>
+            <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Effective Date:</td>
+            <td style="padding: 6px 0; font-weight: 700; color: #0f172a;">${dateFormatted}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Reason / Status:</td>
+            <td style="padding: 6px 0; font-weight: 600; color: #ef4444;">${escapeHtml(reasonDisplay)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: 600; color: #64748b;">Managed By:</td>
+            <td style="padding: 6px 0;">${escapeHtml(managerName)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- NEXT STEPS BOX -->
+      <div style="background-color: #f1f5f9; border-radius: 8px; padding: 16px; margin: 0 0 24px 0; font-size: 13px; color: #475569; line-height: 1.6;">
+        <strong style="color: #0f172a; display: block; margin-bottom: 6px;">Important Handover Reminders:</strong>
+        <ul style="margin: 0; padding-left: 18px;">
+          <li>Ensure all keys, access cards, and remotes are returned to the property manager.</li>
+          <li>A final walkthrough inspection will be conducted to assess the unit condition.</li>
+          <li>You can still access your past payment history, tenancy receipts, and documents via the PropertyStack app.</li>
+        </ul>
+      </div>
+
+      <!-- CALL TO ACTION -->
+      <div style="margin: 0 0 24px 0; text-align: center;">
+        <a href="${appDownloadUrl}" target="_blank" style="display: inline-block; background-color: #0066FF; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 12px 28px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 102, 255, 0.25);">
+          Open Resident Portal &rarr;
+        </a>
+      </div>
+
+      <p style="margin: 0; font-size: 12px; color: #94a3b8; text-align: center;">
+        If you have any questions regarding this tenancy conclusion, please contact your property manager directly.
+      </p>
+    `;
+
+    const html = renderEmailLayout({
+      title: subject,
+      badge: "TENANCY ENDED",
+      bodyHtml,
+      recipientEmail: tenant.email,
+      preheader: `Notice of tenancy conclusion for ${propertyName} in ${workspaceName}.`,
+    });
+
+    const plainText = `Hi ${displayName},\n\nThis is an official confirmation that your tenancy for ${propertyName}${unitLabel ? ` (${unitLabel})` : ""} in ${workspaceName} has been formally ended.\n\nClosure Details:\n- Property: ${propertyName}\n${unitLabel ? `- Unit: ${unitLabel}\n` : ""}- Effective Date: ${dateFormatted}\n- Reason: ${reasonDisplay}\n- Managed By: ${managerName}\n\nImportant Reminders:\n- Ensure all keys and access cards are returned to your manager.\n- A final walkthrough inspection will be scheduled.\n- You can access past receipts and records via the PropertyStack app:\n${appDownloadUrl}\n\nBest regards,\nThe PropertyStack Team`;
+
+    console.log(
+      `[Tenancy End] Dispatching tenancy closure email to tenant: ${tenant.email} (Property: ${propertyName})`,
+    );
+    const emailRes = await sendEmail(tenant.email, subject, plainText, html);
+    console.log(
+      `[Tenancy End] Successfully delivered tenancy closure email to ${tenant.email}:`,
+      emailRes,
+    );
+  } catch (emailErr) {
+    console.error(
+      `[Tenancy End] Failed to send tenancy closure email to tenant ${tenant.email}:`,
+      emailErr,
+    );
+    fastify.log.error(
+      emailErr,
+      `[Tenancy End] Failed to send tenancy closure email to tenant ${tenant.email}`,
     );
   }
 }
@@ -1638,10 +1854,34 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { workspaceId, id } = request.params;
-      const { leaseId, reason } = request.body;
+      let { leaseId, reason, note } = request.body;
 
       if (!leaseId) {
-        return reply.status(400).send({ error: "Lease ID is required" });
+        const candidateLease = await prisma.lease.findFirst({
+          where: {
+            tenantId: id,
+            tenant: { workspaceId },
+            status: {
+              in: [
+                "ACTIVE",
+                "PENDING_SIGNATURE",
+                "PENDING_LEGAL_VERIFICATION",
+                "PENDING_LEGAL_UPLOAD",
+                "PENDING_RENEWAL",
+              ],
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (candidateLease) {
+          leaseId = candidateLease.id;
+        } else {
+          return reply.status(400).send({
+            error:
+              "Lease ID is required and no active or pending lease was found for this tenant.",
+          });
+        }
       }
 
       const lease = await prisma.lease.findFirst({
@@ -1650,6 +1890,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
           payments: { orderBy: { dueDate: "desc" } },
           tenant: true,
           property: true,
+          unit: true,
         },
       });
 
@@ -1662,10 +1903,13 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         (p) => p.gracePeriodEnd && p.gracePeriodEnd <= now,
       );
 
+      const normalizedReason = (reason || note || "").trim().toUpperCase();
+
       if (
         !hasOverdueGraceEnded &&
         lease.status !== "EXPIRED" &&
-        reason !== "VOLUNTARY_LEAVE"
+        normalizedReason !== "VOLUNTARY_LEAVE" &&
+        normalizedReason !== "VOLUNTARY"
       ) {
         return reply.status(403).send({
           error: "Cannot end tenancy: 3-month grace period has not ended.",
@@ -1684,19 +1928,39 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         });
       }
 
-      const tenantUser = await prisma.user.findUnique({
-        where: { email: lease.tenant.email || "" },
+      const managerUser = request.userId
+        ? await prisma.user.findUnique({
+            where: { id: request.userId },
+            select: { name: true, email: true },
+          })
+        : null;
+      const managerName = managerUser?.name || "Your Property Manager";
+
+      const workspace = await prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { name: true },
       });
-      if (tenantUser) {
-        await prisma.notification.create({
-          data: {
-            userId: tenantUser.id,
-            title: "Tenancy Ended",
-            message: `Your tenancy at ${lease.property.name} has been ended.`,
-            type: "TENANCY_ENDED",
-          },
-        });
-      }
+      const workspaceName = workspace?.name || "PropertyStack Workspace";
+
+      const frontendUrl =
+        process.env.FRONTEND_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        "https://propertystack.vercel.app";
+
+      // Dispatch in-app notification, socket event, and formal closure email to tenant
+      await notifyTenantOfTenancyEnded({
+        fastify,
+        workspaceId,
+        tenantId: id,
+        leaseId,
+        propertyName: lease.property.name,
+        unitNumber: lease.unit?.unitNumber || null,
+        managerName,
+        workspaceName,
+        reason: reason || note,
+        endDate: now,
+        frontendUrl,
+      });
 
       fastify.io
         .to(`workspace:${workspaceId}`)
@@ -1710,7 +1974,7 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
         action: "TERMINATE_LEASE",
         entityType: "LEASE",
         entityId: leaseId,
-        details: `Ended tenancy early/terminated lease for tenant "${lease.tenant.name}" at property "${lease.property.name}" due to reason: "${reason}".`,
+        details: `Ended tenancy early/terminated lease for tenant "${lease.tenant.name}" at property "${lease.property.name}" due to reason: "${reason || note || "Unspecified"}".`,
         workspaceId,
         req: request,
       });

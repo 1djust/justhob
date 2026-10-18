@@ -35,6 +35,7 @@ const {
   sendTenantWelcomeEmail,
   notifyLandlordsOfNewTenant,
   notifyTenantOfLeaseReadyToSign,
+  notifyTenantOfTenancyEnded,
 } = await import("../src/routes/tenants");
 
 describe("Tenant Creation Notifications & Welcome Emails", () => {
@@ -621,6 +622,87 @@ describe("Tenant Creation Notifications & Welcome Emails", () => {
     await prisma.workspaceMember.deleteMany({
       where: { userId: tenantUserId, workspaceId },
     });
+    await prisma.tenant.deleteMany({ where: { id: tenant.id } });
+    await prisma.user.deleteMany({ where: { id: tenantUserId } });
+  });
+
+  it("notifyTenantOfTenancyEnded creates DB notification (TENANCY_ENDED), emits NOTIFICATION_CREATED, and dispatches branded email to tenant", async () => {
+    const sendMailSpy = vi.spyOn(mailer, "sendEmail");
+    const tenantEmail = `ended_tenant_${Date.now()}@testpropertystack.com`;
+    const tenantUserId = randomUUID();
+
+    await prisma.user.create({
+      data: {
+        id: tenantUserId,
+        email: tenantEmail,
+        name: "Chinwe Okonkwo",
+        role: "TENANT",
+      },
+    });
+
+    const tenant = await prisma.tenant.create({
+      data: {
+        id: tenantUserId,
+        name: "Chinwe Okonkwo",
+        email: tenantEmail,
+        workspaceId,
+      },
+    });
+
+    const lease = await prisma.lease.create({
+      data: {
+        tenantId: tenant.id,
+        propertyId,
+        startDate: new Date("2026-01-01"),
+        endDate: new Date("2026-12-31"),
+        yearlyRent: 3000000,
+        status: "ACTIVE",
+      },
+    });
+
+    await notifyTenantOfTenancyEnded({
+      fastify: app,
+      workspaceId,
+      tenantId: tenant.id,
+      leaseId: lease.id,
+      propertyName: "Sunset Heights",
+      unitNumber: "Flat 2",
+      managerName: "Test Manager",
+      workspaceName: "Notification Test Workspace",
+      reason: "VOLUNTARY_LEAVE",
+      endDate: new Date(),
+      frontendUrl: "https://propertystack.vercel.app",
+    });
+
+    // 1. Verify DB notification
+    const notif = await prisma.notification.findFirst({
+      where: {
+        userId: tenant.id,
+        type: "TENANCY_ENDED",
+      },
+    });
+    expect(notif).toBeDefined();
+    expect(notif?.title).toBe("Tenancy Ended");
+    expect(notif?.message).toContain("Sunset Heights");
+    expect(notif?.message).toContain("Flat 2");
+
+    // 2. Verify email dispatch
+    const emailCalls = sendMailSpy.mock.calls.filter(
+      (call) =>
+        call[0] === tenantEmail &&
+        typeof call[1] === "string" &&
+        call[1].includes("Notice of Tenancy Conclusion"),
+    );
+    expect(emailCalls.length).toBeGreaterThan(0);
+    const emailHtml = emailCalls[0][3];
+    expect(emailHtml).toContain("Chinwe Okonkwo");
+    expect(emailHtml).toContain("Sunset Heights");
+    expect(emailHtml).toContain("Unit Flat 2");
+    expect(emailHtml).toContain("Voluntary Leave");
+
+    // Cleanup
+    await prisma.notification.deleteMany({ where: { userId: tenant.id } });
+    await prisma.lease.deleteMany({ where: { id: lease.id } });
     await prisma.tenant.deleteMany({ where: { id: tenant.id } });
     await prisma.user.deleteMany({ where: { id: tenantUserId } });
   });
