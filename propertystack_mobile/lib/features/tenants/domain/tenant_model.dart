@@ -74,6 +74,25 @@ class TenantModel {
       (leaseId != null && leaseId!.isNotEmpty) ||
       (propertyName != 'No Property Assigned' && propertyName != 'Unassigned');
 
+  /// Whether this tenant currently has an active or in-progress lease that prevents re-assignment
+  bool get hasActiveOrPendingLease {
+    if (leaseStatus != null && leaseStatus!.isNotEmpty) {
+      final s = leaseStatus!.toUpperCase();
+      return s == 'ACTIVE' ||
+          s == 'PENDING_SIGNATURE' ||
+          s == 'PENDING_LEGAL_VERIFICATION' ||
+          s == 'PENDING_LEGAL_UPLOAD' ||
+          s == 'PENDING_RENEWAL';
+    }
+    return leaseId != null &&
+        leaseId!.isNotEmpty &&
+        propertyName != 'No Property Assigned' &&
+        propertyName != 'Unassigned';
+  }
+
+  /// Whether a manager can assign a new lease to this tenant
+  bool get canAssignLease => !hasActiveOrPendingLease;
+
   /// Whether this tenant's lease has a viewable attachment
   bool get hasAttachment =>
       hasLease &&

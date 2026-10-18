@@ -97,14 +97,17 @@ class TenantsRepository {
   Future<void> endTenancy(
     String workspaceId,
     String tenantId, {
+    required String leaseId,
     required String reason,
     String? note,
   }) async {
     try {
+      final normalizedReason = reason.toUpperCase() == 'VOLUNTARY' ? 'VOLUNTARY_LEAVE' : reason.toUpperCase();
       await _apiClient.dio.post(
         '/workspaces/$workspaceId/tenants/$tenantId/end-tenancy',
         data: {
-          'reason': reason.toUpperCase(),
+          'leaseId': leaseId,
+          'reason': normalizedReason,
           'note': note ?? 'Ended from mobile app',
         },
       );

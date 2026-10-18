@@ -546,22 +546,23 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
                           onTap: () => _sendMessage(tenant.phone),
                         ),
 
-                        // Assign Lease Button
-                        _buildActionChip(
-                          icon: Icons.assignment_add,
-                          label: tenant.propertyName == 'No Property Assigned' ? 'Assign Lease' : 'New Lease',
-                          onTap: () {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (context) => CreateLeaseBottomSheet(
-                                tenantId: tenant.id,
-                                tenantName: tenant.name,
-                              ),
-                            );
-                          },
-                        ),
+                        // Assign Lease Button (Only available if the tenant does not already have an active or pending lease)
+                        if (tenant.canAssignLease)
+                          _buildActionChip(
+                            icon: Icons.assignment_add,
+                            label: 'Assign Lease',
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => CreateLeaseBottomSheet(
+                                  tenantId: tenant.id,
+                                  tenantName: tenant.name,
+                                ),
+                              );
+                            },
+                          ),
 
                         // View Agreement Button (if lease is assigned/active/pending)
                         if (tenant.hasLease)
@@ -752,6 +753,12 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
             icon: Icons.shield_outlined,
             label: 'Payment Settings',
           ),
+          if (tenant.canAssignLease)
+            _buildMenuItem(
+              value: 'assign_lease',
+              icon: Icons.assignment_add,
+              label: 'Assign Lease',
+            ),
           if (tenant.hasLease)
             _buildMenuItem(
               value: 'view_agreement',
@@ -776,7 +783,7 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
               icon: Icons.vpn_key_outlined,
               label: 'Resend Credentials',
             ),
-          if (tenant.leaseStatus == 'ACTIVE')
+          if (tenant.hasActiveOrPendingLease && tenant.leaseId != null)
             _buildMenuItem(
               value: 'end_tenancy',
               icon: Icons.block_rounded,
@@ -826,6 +833,17 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
 
   void _handleMenuAction(BuildContext context, TenantModel tenant, String action) {
     switch (action) {
+      case 'assign_lease':
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => CreateLeaseBottomSheet(
+            tenantId: tenant.id,
+            tenantName: tenant.name,
+          ),
+        );
+        break;
       case 'view_agreement':
         _showAgreementDialog(tenant);
         break;
@@ -1803,18 +1821,35 @@ class _TenantsScreenState extends ConsumerState<TenantsScreen> {
   }
 
   Future<void> _performEndTenancy(TenantModel tenant, String reason) async {
-
     final workspaceId = ref.read(activeWorkspaceIdProvider);
     if (workspaceId == null) return;
 
+    if (tenant.leaseId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot end tenancy: No lease record found for this tenant.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+      }
+      return;
+    }
+
     final repository = ref.read(tenantsRepositoryProvider);
     try {
-      await repository.endTenancy(workspaceId, tenant.id, reason: reason);
+      await repository.endTenancy(
+        workspaceId,
+        tenant.id,
+        leaseId: tenant.leaseId!,
+        reason: reason,
+      );
       ref.invalidate(tenantsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Tenancy ended successfully'),
+            content: Text('Tenancy ended successfully. You can now assign a new unit or lease.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
