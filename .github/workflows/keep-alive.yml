@@ -1,32 +1,32 @@
 name: Render Backend Keep-Alive
 
 on:
-  schedule:
-    # Run every 10 minutes to prevent Render free instance from hibernating
-    - cron: '*/10 * * * *'
+  # Keep-alive pings are handled externally by cron-job.org (GitHub cron is too delayed).
+  # Run manually from the Actions tab to wake the backend on demand.
   workflow_dispatch:
 
 jobs:
   ping-backend:
     name: Ping Render Health Check
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
+
+    env:
+      HEALTH_URL: https://propertystack.onrender.com/health
 
     steps:
       - name: Ping Backend Health Endpoint
         run: |
-          echo "Pinging https://propertystack.onrender.com/health at $(date -u)"
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 https://propertystack.onrender.com/health)
-          echo "HTTP Status Code: $STATUS"
-          if [ "$STATUS" -ne 200 ]; then
-            echo "::warning ::Backend returned HTTP $STATUS. Retrying in 10s..."
-            sleep 10
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 https://propertystack.onrender.com/health)
-            echo "Retry HTTP Status Code: $STATUS"
-          fi
-          if [ "$STATUS" -eq 200 ]; then
-            echo "Backend is alive and healthy!"
-          else
-            echo "Failed to wake backend, status: $STATUS"
-            exit 1
-          fi
+          echo "Pinging $HEALTH_URL at $(date -u)"
+          for ATTEMPT in 1 2 3 4; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 30 --max-time 90 "$HEALTH_URL") || STATUS="000"
+            echo "Attempt $ATTEMPT: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend is alive and healthy!"
+              exit 0
+            fi
+            echo "::warning ::Backend not ready (HTTP $STATUS), likely cold-starting. Retrying in 15s..."
+            sleep 15
+          done
+          echo "::error ::Failed to wake backend after 4 attempts, last status: $STATUS"
+          exit 1

@@ -321,9 +321,13 @@ export function buildApp() {
     };
   });
 
-  fastify.get("/health", { schema: {} }, async () => {
-    return { status: "ok" };
-  });
+  fastify.get(
+    "/health",
+    { schema: {}, config: { rateLimit: false } },
+    async () => {
+      return { status: "ok" };
+    },
+  );
 
   // Backward compatibility route for older mobile app clients (v0.1.3 and below).
   // These clients still look at onrender.com/downloads/version.json due to hardcoded logic.
