@@ -677,9 +677,9 @@ export function TenantsList({
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        {t.passportPhotoUrl || lease?.passportPhotoUrl ? (
+                        {t.passportPhotoUrl || primary?.passportPhotoUrl ? (
                           <img
-                            src={sanitizeUrl(t.passportPhotoUrl || lease?.passportPhotoUrl)}
+                            src={sanitizeUrl(t.passportPhotoUrl || primary?.passportPhotoUrl)}
                             alt={t.name}
                             className="w-10 h-10 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shadow-xs"
                           />

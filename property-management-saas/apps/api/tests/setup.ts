@@ -20,7 +20,13 @@ process.env.LOG_LEVEL = "silent";
 // Apply the DNS IPv4 resolution fix for Supabase pooler
 const host = "aws-1-eu-north-1.pooler.supabase.com";
 try {
-  const ips = await dns.resolve4(host);
+  let ips: string[] = [];
+  try {
+    ips = await dns.resolve4(host);
+  } catch {
+    const res = await dns.lookup(host, { family: 4, all: true });
+    ips = res.map((r) => r.address);
+  }
   if (ips && ips.length > 0) {
     const isPoolerPort = process.env.DATABASE_URL?.includes(":6543");
     const dbIp = isPoolerPort

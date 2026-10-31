@@ -12,10 +12,25 @@ const start = async () => {
     if (process.env.RENDER !== "true") {
       const host = "aws-1-eu-north-1.pooler.supabase.com";
       console.log(`[DNS] Resolving database host ${host} to IPv4...`);
-      const ips = await dns.resolve4(host);
+      let ips: string[] = [];
+      try {
+        ips = await dns.resolve4(host);
+      } catch (dnsErr: any) {
+        console.warn(`[DNS] dns.resolve4 failed (${dnsErr?.code || dnsErr?.message}), falling back to dns.lookup...`);
+        try {
+          const res = await dns.lookup(host, { family: 4, all: true });
+          ips = res.map((r) => r.address);
+        } catch (lookupErr: any) {
+          console.error(`[DNS] dns.lookup also failed:`, lookupErr);
+        }
+      }
+
       if (ips && ips.length > 0) {
-        // DATABASE_URL uses port 6543 (pooler) which listens on 51.21.18.29
-        const dbIp = ips.includes("51.21.18.29") ? "51.21.18.29" : ips[0];
+        const isPoolerPort = process.env.DATABASE_URL?.includes(":6543");
+        // DATABASE_URL uses port 6543 (pooler) which listens on 51.21.18.29, or port 5432 (direct) which listens on 51.21.189.77
+        const dbIp = isPoolerPort
+          ? (ips.includes("51.21.18.29") ? "51.21.18.29" : ips[0])
+          : (ips.includes("51.21.189.77") ? "51.21.189.77" : ips[0]);
         // DIRECT_URL uses port 5432 (direct) which listens on 51.21.189.77
         const directIp = ips.includes("51.21.189.77") ? "51.21.189.77" : ips[0];
 
@@ -60,7 +75,7 @@ const start = async () => {
     }, 50 * 1000).unref();
 
     const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
-    const host = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "::");
+    const host = process.env.HOST || "0.0.0.0";
     await app.listen({ port, host });
     console.log(`API running on http://localhost:${port}`);
   } catch (err) {
